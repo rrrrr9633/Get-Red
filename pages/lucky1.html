@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>幸运掉落 - 幸运降临</title>
-    <link rel="stylesheet" href="../../css/style.css">
-    <link rel="stylesheet" href="../../css/neon.css">
-    <link rel="stylesheet" href="../../css/slot-machine.css">
+    <title>temp - 幸运降临</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/neon.css">
+    <link rel="stylesheet" href="../css/slot-machine.css">
 </head>
 <body>
     <div class="particles"></div>
@@ -807,8 +807,8 @@
         }
     </style>
 
-    <script src="../../js/api-client.js"></script>
-    <script src="../../js/effects.js"></script>
+    <script src="../js/api-client.js"></script>
+    <script src="../js/effects.js"></script>
     <script>
         let currentUser = null;
         let prizeData = [];
@@ -860,9 +860,29 @@
         // 加载奖品数据
         async function loadPrizes() {
             try {
-                const result = await api.getPrizes('lucky_drop');
+                // 从URL中获取当前页面参数，或者根据文件名确定页面
+                const urlParams = new URLSearchParams(window.location.search);
+                let currentPage = urlParams.get('page');
+                
+                // 如果URL中没有page参数，尝试从文件名推断
+                if (!currentPage) {
+                    const path = window.location.pathname;
+                    const filename = path.substring(path.lastIndexOf('/') + 1);
+                    currentPage = filename;
+                }
+                
+                // 如果还是没有，默认使用lucky1.html
+                if (!currentPage || currentPage === 'luckytemp.html') {
+                    currentPage = 'lucky1.html';
+                }
+                
+                console.log('当前页面:', currentPage);
+                
+                // 使用修改后的API调用，传入页面参数
+                const result = await api.getPrizes('lucky_drop', currentPage);
                 if (result.success) {
                     prizeData = result.prizes;
+                    console.log('加载的奖品数据:', prizeData);
                 }
             } catch (error) {
                 console.error('加载奖品数据失败:', error);
@@ -1001,8 +1021,26 @@
                 
                 console.log('开始抽奖，用户ID:', currentUser.id);
                 
-                // 调用后端抽奖API
-                const drawResult = await api.drawPrizes('lucky_drop', currentMode);
+                // 获取当前页面参数
+                const urlParams = new URLSearchParams(window.location.search);
+                let currentPage = urlParams.get('page');
+                
+                // 如果URL中没有page参数，尝试从文件名推断
+                if (!currentPage) {
+                    const path = window.location.pathname;
+                    const filename = path.substring(path.lastIndexOf('/') + 1);
+                    currentPage = filename;
+                }
+                
+                // 如果还是没有，默认使用lucky1.html
+                if (!currentPage || currentPage === 'luckytemp.html') {
+                    currentPage = 'lucky1.html';
+                }
+                
+                console.log('抽奖页面:', currentPage);
+                
+                // 调用后端抽奖API，传递页面参数
+                const drawResult = await api.drawPrizes('lucky_drop', currentMode, currentPage);
                 console.log('抽奖API返回:', drawResult);
                 
                 if (!drawResult.success) {

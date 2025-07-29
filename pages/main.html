@@ -49,38 +49,8 @@
         </div>
 
         <!-- 游戏模块网格 -->
-        <div class="game-grid">
-            <!-- 星辰祈愿 -->
-            <div class="game-card" onclick="navigateToGame('lucky1.html')">
-                <div class="card-icon">🍎</div>
-                <h3 class="neon-text gold">大红行动</h3>
-                <p class="neon-text">抽取心爱的大红</p>
-                <div class="card-glow"></div>
-            </div>
-
-            <!-- 魔法转盘 -->
-            <div class="game-card" onclick="navigateToGame('lucky2.html')">
-                <div class="card-icon">🎡</div>
-                <h3 class="neon-text gold">魔法转盘</h3>
-                <p class="neon-text">转动命运之轮获得惊喜</p>
-                <div class="card-glow"></div>
-            </div>
-
-            <!-- 宝箱寻宝 -->
-            <div class="game-card" onclick="navigateToGame('lucky3.html')">
-                <div class="card-icon">�</div>
-                <h3 class="neon-text gold">宝箱寻宝</h3>
-                <p class="neon-text">探索神秘宝箱的秘密</p>
-                <div class="card-glow"></div>
-            </div>
-
-            <!-- 命运骰子 -->
-            <div class="game-card" onclick="navigateToGame('lucky4.html')">
-                <div class="card-icon">🎲</div>
-                <h3 class="neon-text gold">命运骰子</h3>
-                <p class="neon-text">投掷骰子决定你的运气</p>
-                <div class="card-glow"></div>
-            </div>
+        <div class="game-grid" id="gameGrid">
+            <!-- Lucky页面将动态加载到这里 -->
         </div>
     </div>
 
@@ -398,8 +368,59 @@
             window.api = new APIClient();
             
             loadUserInfo();
+            loadLuckyPages();
             createParticles();
         });
+
+        // 加载Lucky页面列表
+        async function loadLuckyPages() {
+            try {
+                const response = await fetch('../server/api/admin.php?action=list_lucky_pages');
+                const data = await response.json();
+                
+                if (data.success && data.pages) {
+                    renderLuckyPages(data.pages);
+                } else {
+                    // fallback到默认页面
+                    renderLuckyPages([
+                        {fileName: "lucky1.html", displayName: "大红行动", icon: "🍎"},
+                        {fileName: "lucky2.html", displayName: "大红行动2", icon: "🍎"},
+                        {fileName: "lucky3.html", displayName: "大红行动3", icon: "🍎"},
+                        {fileName: "lucky4.html", displayName: "大红行动4", icon: "🍎"}
+                    ]);
+                }
+            } catch (error) {
+                console.error('加载Lucky页面失败:', error);
+                // fallback到默认页面
+                renderLuckyPages([
+                    {fileName: "lucky1.html", displayName: "大红行动", icon: "🍎"},
+                    {fileName: "lucky2.html", displayName: "大红行动2", icon: "🍎"},
+                    {fileName: "lucky3.html", displayName: "大红行动3", icon: "🍎"},
+                    {fileName: "lucky4.html", displayName: "大红行动4", icon: "🍎"}
+                ]);
+            }
+        }
+
+        // 渲染Lucky页面卡片
+        function renderLuckyPages(pages) {
+            const gameGrid = document.getElementById('gameGrid');
+            gameGrid.innerHTML = '';
+            
+            pages.forEach(function(page) {
+                const gameCard = document.createElement('div');
+                gameCard.className = 'game-card';
+                gameCard.onclick = function() { navigateToGame(page.fileName); };
+                
+                gameCard.innerHTML = `
+                    <div class="card-icon">${page.icon || '🍎'}</div>
+                    <h3 class="neon-text gold">${page.displayName || page.fileName}</h3>
+                    <p class="neon-text">抽取心爱的大红</p>
+                    <div class="card-glow"></div>
+                `;
+                
+                gameGrid.appendChild(gameCard);
+            });
+        }
 
         // 新增功能函数
 

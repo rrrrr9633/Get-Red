@@ -115,7 +115,7 @@ function deletePrize($id) {
     }
 }
 
-function performDraw($userId, $gameType, $count = 1) {
+function performDraw($userId, $gameType, $count = 1, $page = null) {
     global $pdo;
     
     try {
@@ -136,13 +136,32 @@ function performDraw($userId, $gameType, $count = 1) {
             throw new Exception('余额不足');
         }
         
+        // 根据页面参数确定表名
+        $tableName = 'prizes'; // 默认表名
+        if ($page) {
+            // 从 lucky1.html -> lucky1_prizes
+            $pageBase = str_replace('.html', '', $page);
+            if (preg_match('/^lucky\d+$/', $pageBase)) {
+                $tableName = $pageBase . '_prizes';
+            }
+        }
+        
         // 获取奖品列表
-        $stmt = $pdo->prepare("SELECT * FROM prizes WHERE game_type = ? AND active = 1 ORDER BY probability ASC");
-        $stmt->execute([$gameType]);
+        $stmt = $pdo->prepare("SELECT * FROM `{$tableName}` WHERE active = 1 ORDER BY probability ASC");
+        $stmt->execute();
         $prizes = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         if (empty($prizes)) {
-            throw new Exception('暂无可抽取的奖品');
+            // 如果指定表没有数据，回退到默认表
+            if ($tableName !== 'prizes') {
+                $stmt = $pdo->prepare("SELECT * FROM prizes WHERE game_type = ? AND active = 1 ORDER BY probability ASC");
+                $stmt->execute([$gameType]);
+                $prizes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            }
+            
+            if (empty($prizes)) {
+                throw new Exception('暂无可抽取的奖品');
+            }
         }
         
         $results = [];
@@ -160,10 +179,11 @@ function performDraw($userId, $gameType, $count = 1) {
         $stmt->execute([$cost, $userId]);
         
         // 记录交易
+        $pageInfo = $page ? " - {$page}" : '';
         $stmt = $pdo->prepare("INSERT INTO transactions (user_id, amount, description, type) VALUES (?, ?, ?, 'expense')");
-        $stmt->execute([$userId, $cost, "抽奖消费({$gameType})x{$count}"]);
+        $stmt->execute([$userId, $cost, "抽奖消费({$gameType}{$pageInfo})x{$count}"]);
         
-        // 记录抽奖结果
+        // 记录抽奖结果 - 不在game_type中包含页面信息
         $stmt = $pdo->prepare("INSERT INTO lottery_records (user_id, game_type, cost, reward, result) VALUES (?, ?, ?, ?, ?)");
         $stmt->execute([$userId, $gameType, $cost, $totalValue, json_encode($results)]);
         
@@ -244,13 +264,14 @@ switch ($method) {
                     $userId = $input['user_id'] ?? null;
                     $gameType = $input['game_type'] ?? 'lucky_drop';
                     $count = $input['count'] ?? 1;
+                    $page = $input['page'] ?? null;
                     
                     if (!$userId) {
                         echo json_encode(['success' => false, 'message' => '用户ID不能为空']);
                         break;
                     }
                     
-                    echo json_encode(performDraw($userId, $gameType, $count));
+                    echo json_encode(performDraw($userId, $gameType, $count, $page));
                     break;
                 default:
                     echo json_encode(['success' => false, 'message' => '未知操作']);

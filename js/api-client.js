@@ -134,8 +134,12 @@ class APIClient {
     }
 
     // 获取奖品列表
-    async getPrizes(gameType) {
-        return await this.request(`/games.php?action=prizes&game_type=${gameType}`);
+    async getPrizes(gameType, page = null) {
+        if (page) {
+            return await this.request(`/admin.php?action=prizes&page=${page}`);
+        } else {
+            return await this.request(`/prizes.php?game_type=${gameType}`);
+        }
     }
 
     // 幸运掉落抽奖
@@ -286,7 +290,7 @@ class APIClient {
     }
 
     // 新增抽奖方法
-    async drawPrizes(gameType, count = 1) {
+    async drawPrizes(gameType, count = 1, page = null) {
         // 直接从localStorage获取用户信息
         const currentUserData = localStorage.getItem('currentUser');
         if (!currentUserData) {
@@ -304,22 +308,25 @@ class APIClient {
             return { success: false, message: '用户ID无效' };
         }
         
+        const requestBody = {
+            action: 'draw',
+            game_type: gameType,
+            count: count,
+            user_id: user.id
+        };
+        
+        // 如果提供了页面参数，添加到请求中
+        if (page) {
+            requestBody.page = page;
+        }
+        
         return await this.request('/prizes.php', {
             method: 'POST',
-            body: {
-                action: 'draw',
-                game_type: gameType,
-                count: count,
-                user_id: user.id
-            }
+            body: requestBody
         });
     }
 
-    // 奖品管理方法
-    async getPrizes(gameType = null) {
-        const endpoint = gameType ? `/prizes.php?game_type=${gameType}` : '/prizes.php';
-        return await this.request(endpoint);
-    }
+    // 奖品管理方法（已合并到上面的getPrizes方法中）
 
     async addPrize(prizeData) {
         return await this.request('/prizes.php', {

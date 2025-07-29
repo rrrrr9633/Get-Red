@@ -145,13 +145,101 @@
             </div>
         </a>
 
-        <a href="admin-prizes.html" class="menu-card">
+
+        <div class="menu-card" onclick="showPrizePageSelector()">
             <div class="menu-icon">🎁</div>
             <div class="menu-title">奖品管理</div>
             <div class="menu-description">
                 管理游戏奖品、修改奖品图片、设置中奖概率和奖品价值
             </div>
-        </a>
+        </div>
+    <!-- 奖品页面选择弹窗 -->
+    <div id="prizePageModal" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.7);z-index:2000;align-items:center;justify-content:center;">
+        <div style="background:#222;padding:30px 40px;border-radius:20px;max-width:90vw;min-width:400px;box-shadow:0 0 30px #ffd700;">
+            <h2 style="color:#ffd700;text-align:center;margin-bottom:20px;">Lucky页面管理</h2>
+            
+            <!-- 管理按钮 -->
+            <div style="display:flex;gap:10px;justify-content:center;margin-bottom:20px;">
+                <button onclick="showCreateLuckyModal()" style="padding:8px 16px;border-radius:15px;background:#4ade80;color:#000;font-weight:bold;border:none;cursor:pointer;">创建新Lucky</button>
+                <button onclick="showRenameLuckyModal()" style="padding:8px 16px;border-radius:15px;background:#f59e0b;color:#000;font-weight:bold;border:none;cursor:pointer;">重命名Lucky</button>
+                <button onclick="showDeleteLuckyModal()" style="padding:8px 16px;border-radius:15px;background:#ef4444;color:#fff;font-weight:bold;border:none;cursor:pointer;">删除Lucky</button>
+            </div>
+            
+            <div id="luckyPageList" style="display:flex;flex-wrap:wrap;gap:20px;justify-content:center;"></div>
+            <div style="text-align:center;margin-top:20px;">
+                <button onclick="closePrizePageModal()" style="padding:10px 30px;border-radius:20px;background:#ffd700;color:#222;font-weight:bold;border:none;cursor:pointer;">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 创建Lucky页面弹窗 -->
+    <div id="createLuckyModal" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.8);z-index:2100;align-items:center;justify-content:center;">
+        <div style="background:#222;padding:30px;border-radius:20px;max-width:500px;width:90%;box-shadow:0 0 30px #4ade80;">
+            <h2 style="color:#4ade80;text-align:center;margin-bottom:20px;">创建新Lucky页面</h2>
+            <form id="createLuckyForm">
+                <div style="margin-bottom:15px;">
+                    <label style="color:#fff;display:block;margin-bottom:5px;">文件名 (lucky开头):</label>
+                    <input type="text" id="luckyFileName" placeholder="例如: lucky5" style="width:100%;padding:8px;border-radius:5px;border:1px solid #4ade80;background:#333;color:#fff;" required>
+                    <small style="color:#ccc;">将自动添加.html后缀</small>
+                </div>
+                <div style="margin-bottom:20px;">
+                    <label style="color:#fff;display:block;margin-bottom:5px;">页面显示名称:</label>
+                    <input type="text" id="luckyDisplayName" placeholder="例如: 大红行动5" style="width:100%;padding:8px;border-radius:5px;border:1px solid #4ade80;background:#333;color:#fff;" required>
+                </div>
+                <div style="text-align:center;gap:10px;display:flex;justify-content:center;">
+                    <button type="submit" style="padding:10px 20px;border-radius:15px;background:#4ade80;color:#000;font-weight:bold;border:none;cursor:pointer;">创建</button>
+                    <button type="button" onclick="closeCreateLuckyModal()" style="padding:10px 20px;border-radius:15px;background:#6b7280;color:#fff;font-weight:bold;border:none;cursor:pointer;">取消</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 重命名Lucky页面弹窗 -->
+    <div id="renameLuckyModal" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.8);z-index:2100;align-items:center;justify-content:center;">
+        <div style="background:#222;padding:30px;border-radius:20px;max-width:500px;width:90%;box-shadow:0 0 30px #f59e0b;">
+            <h2 style="color:#f59e0b;text-align:center;margin-bottom:20px;">重命名Lucky页面</h2>
+            <form id="renameLuckyForm">
+                <div style="margin-bottom:15px;">
+                    <label style="color:#fff;display:block;margin-bottom:5px;">选择要重命名的页面:</label>
+                    <select id="renameSelectPage" style="width:100%;padding:8px;border-radius:5px;border:1px solid #f59e0b;background:#333;color:#fff;" required>
+                        <option value="">请选择页面</option>
+                    </select>
+                </div>
+                <div style="margin-bottom:15px;">
+                    <label style="color:#fff;display:block;margin-bottom:5px;">新文件名 (lucky开头):</label>
+                    <input type="text" id="newLuckyFileName" placeholder="例如: lucky6" style="width:100%;padding:8px;border-radius:5px;border:1px solid #f59e0b;background:#333;color:#fff;" required>
+                </div>
+                <div style="margin-bottom:20px;">
+                    <label style="color:#fff;display:block;margin-bottom:5px;">新页面显示名称:</label>
+                    <input type="text" id="newLuckyDisplayName" placeholder="例如: 大红行动6" style="width:100%;padding:8px;border-radius:5px;border:1px solid #f59e0b;background:#333;color:#fff;" required>
+                </div>
+                <div style="text-align:center;gap:10px;display:flex;justify-content:center;">
+                    <button type="submit" style="padding:10px 20px;border-radius:15px;background:#f59e0b;color:#000;font-weight:bold;border:none;cursor:pointer;">重命名</button>
+                    <button type="button" onclick="closeRenameLuckyModal()" style="padding:10px 20px;border-radius:15px;background:#6b7280;color:#fff;font-weight:bold;border:none;cursor:pointer;">取消</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 删除Lucky页面弹窗 -->
+    <div id="deleteLuckyModal" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.8);z-index:2100;align-items:center;justify-content:center;">
+        <div style="background:#222;padding:30px;border-radius:20px;max-width:500px;width:90%;box-shadow:0 0 30px #ef4444;">
+            <h2 style="color:#ef4444;text-align:center;margin-bottom:20px;">删除Lucky页面</h2>
+            <div style="margin-bottom:15px;">
+                <label style="color:#fff;display:block;margin-bottom:5px;">选择要删除的页面:</label>
+                <select id="deleteSelectPage" style="width:100%;padding:8px;border-radius:5px;border:1px solid #ef4444;background:#333;color:#fff;" required>
+                    <option value="">请选择页面</option>
+                </select>
+            </div>
+            <div style="color:#ef4444;margin-bottom:20px;text-align:center;">
+                <strong>警告：删除操作将同时删除页面文件和对应的奖品数据，此操作不可恢复！</strong>
+            </div>
+            <div style="text-align:center;gap:10px;display:flex;justify-content:center;">
+                <button onclick="confirmDeleteLucky()" style="padding:10px 20px;border-radius:15px;background:#ef4444;color:#fff;font-weight:bold;border:none;cursor:pointer;">确认删除</button>
+                <button onclick="closeDeleteLuckyModal()" style="padding:10px 20px;border-radius:15px;background:#6b7280;color:#fff;font-weight:bold;border:none;cursor:pointer;">取消</button>
+            </div>
+        </div>
+    </div>
 
         <a href="admin-draws.html" class="menu-card">
             <div class="menu-icon">🎰</div>
@@ -189,6 +277,241 @@
     <script>
         function goToHome() {
             window.location.href = '/';
+        }
+
+        // 弹窗显示奖品页面选择
+        function showPrizePageSelector() {
+            // 获取lucky页面列表
+            fetchLuckyPages().then(function(pages) {
+                const list = document.getElementById('luckyPageList');
+                list.innerHTML = '';
+                if (pages.length === 0) {
+                    list.innerHTML = '<div style="color:#fff;">未检测到lucky页面</div>';
+                } else {
+                    pages.forEach(function(page) {
+                        const btn = document.createElement('button');
+                        btn.textContent = page.displayName || page.fileName;
+                        btn.style = 'padding:12px 28px;margin:5px;border-radius:18px;background:#ffd700;color:#222;font-weight:bold;border:none;cursor:pointer;font-size:16px;';
+                        btn.onclick = function() {
+                            window.location.href = `admin-prizes.html?page=${encodeURIComponent(page.fileName)}`;
+                        };
+                        list.appendChild(btn);
+                    });
+                }
+                document.getElementById('prizePageModal').style.display = 'flex';
+            });
+        }
+
+        function closePrizePageModal() {
+            document.getElementById('prizePageModal').style.display = 'none';
+        }
+
+        // 显示创建Lucky弹窗
+        function showCreateLuckyModal() {
+            document.getElementById('createLuckyModal').style.display = 'flex';
+        }
+
+        function closeCreateLuckyModal() {
+            document.getElementById('createLuckyModal').style.display = 'none';
+            document.getElementById('createLuckyForm').reset();
+        }
+
+        // 显示重命名Lucky弹窗
+        function showRenameLuckyModal() {
+            fetchLuckyPages().then(function(pages) {
+                const select = document.getElementById('renameSelectPage');
+                select.innerHTML = '<option value="">请选择页面</option>';
+                pages.forEach(function(page) {
+                    const option = document.createElement('option');
+                    option.value = page.fileName;
+                    option.textContent = `${page.fileName} (${page.displayName || '未命名'})`;
+                    select.appendChild(option);
+                });
+                document.getElementById('renameLuckyModal').style.display = 'flex';
+            });
+        }
+
+        function closeRenameLuckyModal() {
+            document.getElementById('renameLuckyModal').style.display = 'none';
+            document.getElementById('renameLuckyForm').reset();
+        }
+
+        // 显示删除Lucky弹窗
+        function showDeleteLuckyModal() {
+            fetchLuckyPages().then(function(pages) {
+                const select = document.getElementById('deleteSelectPage');
+                select.innerHTML = '<option value="">请选择页面</option>';
+                pages.forEach(function(page) {
+                    const option = document.createElement('option');
+                    option.value = page.fileName;
+                    option.textContent = `${page.fileName} (${page.displayName || '未命名'})`;
+                    select.appendChild(option);
+                });
+                document.getElementById('deleteLuckyModal').style.display = 'flex';
+            });
+        }
+
+        function closeDeleteLuckyModal() {
+            document.getElementById('deleteLuckyModal').style.display = 'none';
+        }
+
+        // 检测pages目录下的lucky*.html页面
+        async function fetchLuckyPages() {
+            try {
+                const response = await fetch('/server/api/admin.php?action=list_lucky_pages');
+                const data = await response.json();
+                if (data.success) {
+                    return data.pages;
+                } else {
+                    console.error('获取Lucky页面列表失败:', data.error);
+                    return [];
+                }
+            } catch (error) {
+                console.error('网络错误:', error);
+                // fallback到静态列表
+                return [
+                    {fileName: "lucky1.html", displayName: "大红行动"},
+                    {fileName: "lucky2.html", displayName: "大红行动2"},
+                    {fileName: "lucky3.html", displayName: "大红行动3"},
+                    {fileName: "lucky4.html", displayName: "大红行动4"}
+                ];
+            }
+        }
+
+        // 创建新Lucky页面
+        document.getElementById('createLuckyForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const fileName = document.getElementById('luckyFileName').value.trim();
+            const displayName = document.getElementById('luckyDisplayName').value.trim();
+            
+            // 验证文件名
+            if (!fileName.startsWith('lucky')) {
+                alert('文件名必须以"lucky"开头！');
+                return;
+            }
+            
+            if (!/^lucky[a-zA-Z0-9_-]*$/.test(fileName)) {
+                alert('文件名只能包含字母、数字、下划线和连字符！');
+                return;
+            }
+
+            try {
+                const response = await fetch('/server/api/admin.php?action=create_lucky_page', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        fileName: fileName + '.html',
+                        displayName: displayName
+                    })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    alert('Lucky页面创建成功！');
+                    closeCreateLuckyModal();
+                    // 刷新页面列表
+                    showPrizePageSelector();
+                } else {
+                    alert('创建失败: ' + data.error);
+                }
+            } catch (error) {
+                console.error('创建Lucky页面失败:', error);
+                alert('网络错误，请稍后重试');
+            }
+        });
+
+        // 重命名Lucky页面
+        document.getElementById('renameLuckyForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const oldFileName = document.getElementById('renameSelectPage').value;
+            const newFileName = document.getElementById('newLuckyFileName').value.trim();
+            const newDisplayName = document.getElementById('newLuckyDisplayName').value.trim();
+            
+            if (!oldFileName) {
+                alert('请选择要重命名的页面！');
+                return;
+            }
+            
+            // 验证新文件名
+            if (!newFileName.startsWith('lucky')) {
+                alert('新文件名必须以"lucky"开头！');
+                return;
+            }
+            
+            if (!/^lucky[a-zA-Z0-9_-]*$/.test(newFileName)) {
+                alert('新文件名只能包含字母、数字、下划线和连字符！');
+                return;
+            }
+
+            try {
+                const response = await fetch('/server/api/admin.php?action=rename_lucky_page', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        oldFileName: oldFileName,
+                        newFileName: newFileName + '.html',
+                        newDisplayName: newDisplayName
+                    })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    alert('Lucky页面重命名成功！');
+                    closeRenameLuckyModal();
+                    // 刷新页面列表
+                    showPrizePageSelector();
+                } else {
+                    alert('重命名失败: ' + data.error);
+                }
+            } catch (error) {
+                console.error('重命名Lucky页面失败:', error);
+                alert('网络错误，请稍后重试');
+            }
+        });
+
+        // 确认删除Lucky页面
+        async function confirmDeleteLucky() {
+            const fileName = document.getElementById('deleteSelectPage').value;
+            
+            if (!fileName) {
+                alert('请选择要删除的页面！');
+                return;
+            }
+            
+            if (!confirm(`确定要删除 ${fileName} 吗？此操作将同时删除页面文件和所有相关数据，且不可恢复！`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/server/api/admin.php?action=delete_lucky_page', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        fileName: fileName
+                    })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    alert('Lucky页面删除成功！');
+                    closeDeleteLuckyModal();
+                    // 刷新页面列表
+                    showPrizePageSelector();
+                } else {
+                    alert('删除失败: ' + data.error);
+                }
+            } catch (error) {
+                console.error('删除Lucky页面失败:', error);
+                alert('网络错误，请稍后重试');
+            }
         }
     </script>
 </body>

@@ -402,13 +402,14 @@
 <body>
     <div class="admin-header">
         <h1 onclick="goToHome()">奖品管理系统</h1>
+        <div id="currentLuckyPage" style="margin-top:10px;color:#ffd700;font-size:18px;"></div>
     </div>
 
     <div class="admin-container">
         <div class="admin-nav">
             <a href="admin.html" class="nav-btn">用户管理</a>
             <button class="nav-btn active">奖品管理</button>
-            <a href="pages/modules/lucky.html" class="nav-btn">返回游戏</a>
+            <a href="pages/main.html" class="nav-btn">返回游戏</a>
         </div>
 
         <!-- 概率统计显示 -->
@@ -496,8 +497,17 @@
         let prizes = [];
         let editingPrizeId = null;
 
+        // 获取URL参数
+        function getQueryParam(name) {
+            const url = new URL(window.location.href);
+            return url.searchParams.get(name);
+        }
+
         // 页面初始化
         document.addEventListener('DOMContentLoaded', function() {
+            const luckyPage = getQueryParam('page') || 'lucky1.html';
+            document.getElementById('currentLuckyPage').textContent = '当前管理页面: ' + luckyPage;
+            window.currentLuckyPage = luckyPage;
             loadPrizes();
             setupEventListeners();
         });
@@ -526,7 +536,8 @@
         // 加载奖品列表
         async function loadPrizes() {
             try {
-                const response = await fetch('/server/api/admin.php?action=prizes');
+                // 传递lucky页面参数，后端可据此区分不同页面奖品
+                const response = await fetch(`/server/api/admin.php?action=prizes&page=${encodeURIComponent(window.currentLuckyPage)}`);
                 const data = await response.json();
                 
                 if (data.success) {
@@ -651,7 +662,7 @@
             const updatePromises = activePrizes.map(async (prize) => {
                 const newProbability = parseFloat(prize.probability) + averageProbability;
                 
-                const response = await fetch('/server/api/admin.php?action=update_prize', {
+                const response = await fetch(`/server/api/admin.php?action=update_prize&page=${currentLuckyPage}`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -759,7 +770,7 @@
 
             try {
                 const action = editingPrizeId ? 'update_prize' : 'add_prize';
-                const response = await fetch(`/server/api/admin.php?action=${action}`, {
+                const response = await fetch(`/server/api/admin.php?action=${action}&page=${encodeURIComponent(window.currentLuckyPage)}`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -785,7 +796,7 @@
         // 切换奖品状态
         async function togglePrize(id, currentStatus) {
             try {
-                const response = await fetch('/server/api/admin.php?action=toggle_prize', {
+                const response = await fetch(`/server/api/admin.php?action=toggle_prize&page=${encodeURIComponent(window.currentLuckyPage)}`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -817,7 +828,7 @@
             }
 
             try {
-                const response = await fetch(`server/api/admin.php?action=delete_prize&id=${id}`, {
+                const response = await fetch(`server/api/admin.php?action=delete_prize&id=${id}&page=${encodeURIComponent(window.currentLuckyPage)}`, {
                     method: 'DELETE'
                 });
 
