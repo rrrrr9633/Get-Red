@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>幸运降临2 - 幸运降临</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/neon.css">
+</head>
+<body>
+    <div class="particles"></div>
+    
+    <!-- 导航栏 -->
+    <nav class="navbar">
+        <div class="nav-brand">
+            <h1 class="neon-text gold">幸运降临</h1>
+        </div>
+        
+        <div class="nav-user">
+            <!-- 仓库功能 -->
+            <div class="nav-item warehouse-btn" onclick="openWarehouse()" title="我的仓库">
+                <i class="icon">📦</i>
+                <span>仓库</span>
+            </div>
+            
+            <!-- 每日签到 -->
+            <div class="nav-item checkin-btn" onclick="openCheckin()" title="每日签到">
+                <i class="icon">📅</i>
+                <span>签到</span>
+            </div>
+            
+            <div class="user-info" id="userInfo">
+                <img id="userAvatar" src="" alt="头像" class="user-avatar">
+                <span id="userNickname" class="neon-text"></span>
+                <span id="userBalance" class="neon-text gold"></span>
+                <div class="user-dropdown">
+                    <a href="user/profile.html" class="neon-text">个人中心</a>
+                    <a href="#" onclick="logout()" class="neon-text">退出登录</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="main-container">
+        <div class="welcome-section">
+            <h2 class="neon-text rainbow">幸运降临2 - 魔法转盘</h2>
+            <p class="neon-text">转动神秘的魔法转盘，命运之轮将为你带来意想不到的惊喜！</p>
+        </div>
+
+        <!-- 游戏内容区域 -->
+        <div class="game-content">
+            <div class="game-main">
+                <div class="wheel-container">
+                    <div class="wheel-wrapper">
+                        <div class="wheel" id="magicWheel">
+                            <div class="wheel-section section1">💎</div>
+                            <div class="wheel-section section2">🎁</div>
+                            <div class="wheel-section section3">⭐</div>
+                            <div class="wheel-section section4">💰</div>
+                            <div class="wheel-section section5">🔮</div>
+                            <div class="wheel-section section6">👑</div>
+                            <div class="wheel-section section7">🌟</div>
+                            <div class="wheel-section section8">💫</div>
+                        </div>
+                        <div class="wheel-pointer">▼</div>
+                    </div>
+                    
+                    <div class="spin-controls">
+                        <button class="spin-btn neon-btn" onclick="spinWheel()" id="spinButton">
+                            <span class="btn-text">转动转盘</span>
+                            <span class="btn-cost">(消耗: 20金币)</span>
+                        </button>
+                        
+                        <div class="spin-result" id="spinResult" style="display: none;">
+                            <div class="result-glow"></div>
+                            <div class="result-content">
+                                <h4 class="neon-text">恭喜获得!</h4>
+                                <div class="prize-item" id="prizeItem"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="back-btn-container">
+                    <button class="back-btn neon-btn" onclick="goBack()">
+                        返回主界面
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .game-content {
+            padding: 20px;
+            min-height: calc(100vh - 100px);
+        }
+        
+        .wheel-container {
+            background: radial-gradient(circle, rgba(138, 43, 226, 0.2) 0%, rgba(25, 25, 112, 0.9) 100%);
+            border-radius: 20px;
+            padding: 40px;
+            margin: 20px auto;
+            max-width: 600px;
+            text-align: center;
+            box-shadow: 0 0 50px rgba(138, 43, 226, 0.3);
+        }
+        
+        .wheel-wrapper {
+            position: relative;
+            display: inline-block;
+            margin-bottom: 40px;
+        }
+        
+        .wheel {
+            width: 300px;
+            height: 300px;
+            border-radius: 50%;
+            position: relative;
+            border: 5px solid #ffd700;
+            overflow: hidden;
+            transition: transform 3s cubic-bezier(0.23, 1, 0.32, 1);
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.5);
+        }
+        
+        .wheel-section {
+            position: absolute;
+            width: 50%;
+            height: 50%;
+            transform-origin: 100% 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 30px;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        
+        .section1 { background: linear-gradient(45deg, #ff0066, #ff6600); transform: rotate(0deg); }
+        .section2 { background: linear-gradient(45deg, #0066ff, #00ccff); transform: rotate(45deg); }
+        .section3 { background: linear-gradient(45deg, #ff9900, #ffcc00); transform: rotate(90deg); }
+        .section4 { background: linear-gradient(45deg, #00cc66, #66ff99); transform: rotate(135deg); }
+        .section5 { background: linear-gradient(45deg, #9900ff, #cc66ff); transform: rotate(180deg); }
+        .section6 { background: linear-gradient(45deg, #ff0099, #ff66cc); transform: rotate(225deg); }
+        .section7 { background: linear-gradient(45deg, #0099ff, #66ccff); transform: rotate(270deg); }
+        .section8 { background: linear-gradient(45deg, #ff6600, #ff9966); transform: rotate(315deg); }
+        
+        .wheel-pointer {
+            position: absolute;
+            top: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 30px;
+            color: #ffd700;
+            z-index: 10;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.8);
+        }
+        
+        .spin-btn {
+            padding: 20px 40px;
+            font-size: 18px;
+            margin: 20px 0;
+            background: linear-gradient(45deg, #8a2be2, #4169e1);
+            border: 2px solid #8a2be2;
+            border-radius: 15px;
+            color: #fff;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .spin-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(138, 43, 226, 0.4);
+        }
+        
+        .spin-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .btn-cost {
+            display: block;
+            font-size: 14px;
+            opacity: 0.8;
+            margin-top: 5px;
+        }
+        
+        .spin-result {
+            margin-top: 30px;
+            padding: 30px;
+            background: radial-gradient(circle, rgba(138, 43, 226, 0.2) 0%, rgba(138, 43, 226, 0.05) 100%);
+            border: 2px solid #8a2be2;
+            border-radius: 15px;
+            position: relative;
+        }
+        
+        .result-glow {
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(45deg, #8a2be2, #4169e1, #8a2be2);
+            border-radius: 17px;
+            z-index: -1;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+        
+        .prize-item {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            font-size: 18px;
+        }
+        
+        .back-btn-container {
+            text-align: center;
+            margin-top: 40px;
+        }
+        
+        .back-btn {
+            padding: 15px 30px;
+            background: linear-gradient(45deg, #ff00ff, #00ffff);
+            border: none;
+            border-radius: 10px;
+            color: #fff;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .back-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(255, 0, 255, 0.4);
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+
+    <script src="../js/api-client.js"></script>
+    <script src="../js/effects.js"></script>
+    <script>
+        let isSpinning = false;
+        
+        // 转盘转动功能
+        function spinWheel() {
+            if (isSpinning) return;
+            
+            isSpinning = true;
+            const wheel = document.getElementById('magicWheel');
+            const button = document.getElementById('spinButton');
+            const resultDiv = document.getElementById('spinResult');
+            
+            button.disabled = true;
+            button.textContent = '转动中...';
+            
+            // 随机旋转角度（至少转3圈）
+            const randomRotation = Math.floor(Math.random() * 360) + 1080;
+            wheel.style.transform = `rotate(${randomRotation}deg)`;
+            
+            // 3秒后显示结果
+            setTimeout(() => {
+                const prizes = [
+                    { name: '钻石宝石', icon: '💎', rarity: 'legendary' },
+                    { name: '神秘礼盒', icon: '🎁', rarity: 'epic' },
+                    { name: '幸运之星', icon: '⭐', rarity: 'rare' },
+                    { name: '金币奖励', icon: '💰', rarity: 'common' },
+                    { name: '魔法水晶', icon: '🔮', rarity: 'epic' },
+                    { name: '王者之冠', icon: '👑', rarity: 'legendary' },
+                    { name: '星辰之力', icon: '🌟', rarity: 'rare' },
+                    { name: '流星碎片', icon: '💫', rarity: 'common' }
+                ];
+                
+                const finalAngle = randomRotation % 360;
+                const sectionAngle = 360 / 8;
+                const prizeIndex = Math.floor((360 - finalAngle + sectionAngle/2) / sectionAngle) % 8;
+                const selectedPrize = prizes[prizeIndex];
+                
+                document.getElementById('prizeItem').innerHTML = `
+                    <div class="prize-icon">${selectedPrize.icon}</div>
+                    <div class="prize-name neon-text gold">${selectedPrize.name}</div>
+                    <div class="prize-rarity ${selectedPrize.rarity}">${getRarityText(selectedPrize.rarity)}</div>
+                `;
+                
+                resultDiv.style.display = 'block';
+                
+                // 重置按钮状态
+                button.disabled = false;
+                button.innerHTML = `
+                    <span class="btn-text">转动转盘</span>
+                    <span class="btn-cost">(消耗: 20金币)</span>
+                `;
+                isSpinning = false;
+                
+            }, 3000);
+        }
+        
+        function getRarityText(rarity) {
+            const rarityMap = {
+                'common': '普通',
+                'rare': '稀有',
+                'epic': '史诗',
+                'legendary': '传说'
+            };
+            return rarityMap[rarity] || '普通';
+        }
+        
+        function goBack() {
+            window.location.href = 'main.html';
+        }
+        
+        // 初始化页面
+        document.addEventListener('DOMContentLoaded', function() {
+            loadUserInfo();
+            createParticles();
+        });
+        
+        // 用户信息加载函数
+        function loadUserInfo() {
+            const user = JSON.parse(localStorage.getItem('currentUser') || '{}');
+            if (user.nickname) {
+                document.getElementById('userNickname').textContent = user.nickname;
+                document.getElementById('userBalance').textContent = user.balance + ' 金币';
+                if (user.avatar) {
+                    document.getElementById('userAvatar').src = user.avatar;
+                }
+            }
+        }
+        
+        // 导航功能
+        function openCheckin() {
+            window.location.href = 'lucky1.html';
+        }
+        
+        function openWarehouse() {
+            window.location.href = 'lucky3.html';
+        }
+        
+        function logout() {
+            if (confirm('确定要退出登录吗？')) {
+                localStorage.removeItem('currentUser');
+                localStorage.removeItem('isLoggedIn');
+                window.location.href = 'auth/login.html';
+            }
+        }
+    </script>
+</body>
+</html>

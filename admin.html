@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理后台 - 幸运降临</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #0c0c0c, #1a1a1a);
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .admin-header {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+
+        .admin-header h1 {
+            color: #ffd700;
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+            font-size: 48px;
+            margin-bottom: 10px;
+            cursor: pointer;
+        }
+
+        .admin-header p {
+            color: #ccc;
+            font-size: 18px;
+        }
+
+        .admin-menu {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 30px;
+            max-width: 800px;
+            width: 100%;
+            padding: 0 20px;
+        }
+
+        .menu-card {
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #ffd700;
+            border-radius: 20px;
+            padding: 40px 30px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .menu-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 10px 30px rgba(255, 215, 0, 0.3);
+            background: rgba(255, 215, 0, 0.1);
+        }
+
+        .menu-icon {
+            font-size: 60px;
+            margin-bottom: 20px;
+            color: #ffd700;
+        }
+
+        .menu-title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #ffd700;
+            margin-bottom: 15px;
+        }
+
+        .menu-description {
+            color: #ccc;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .back-btn {
+            position: fixed;
+            top: 30px;
+            left: 30px;
+            padding: 12px 24px;
+            background: linear-gradient(45deg, #ffd700, #ffed4e);
+            color: #000;
+            text-decoration: none;
+            border-radius: 25px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .back-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 215, 0, 0.4);
+        }
+
+        @media (max-width: 768px) {
+            .admin-header h1 {
+                font-size: 36px;
+            }
+
+            .admin-menu {
+                grid-template-columns: 1fr;
+                max-width: 400px;
+            }
+
+            .menu-card {
+                padding: 30px 20px;
+            }
+
+            .menu-icon {
+                font-size: 48px;
+            }
+
+            .menu-title {
+                font-size: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <a href="/" class="back-btn">← 返回主页</a>
+
+    <div class="admin-header">
+        <h1 onclick="goToHome()">管理后台</h1>
+        <p>系统管理与配置中心</p>
+    </div>
+
+    <div class="admin-menu">
+        <a href="admin-users.html" class="menu-card">
+            <div class="menu-icon">👥</div>
+            <div class="menu-title">用户管理</div>
+            <div class="menu-description">
+                管理用户账户、查看用户信息、编辑用户资料和权限设置
+            </div>
+        </a>
+
+        <a href="admin-prizes.html" class="menu-card">
+            <div class="menu-icon">🎁</div>
+            <div class="menu-title">奖品管理</div>
+            <div class="menu-description">
+                管理游戏奖品、修改奖品图片、设置中奖概率和奖品价值
+            </div>
+        </a>
+
+        <a href="admin-draws.html" class="menu-card">
+            <div class="menu-icon">🎰</div>
+            <div class="menu-title">抽奖记录</div>
+            <div class="menu-description">
+                查看所有抽奖记录、统计分析和用户抽奖行为监控
+            </div>
+        </a>
+
+        <a href="admin-stats.html" class="menu-card">
+            <div class="menu-icon">📊</div>
+            <div class="menu-title">数据统计</div>
+            <div class="menu-description">
+                查看系统统计数据、收入支出报表和运营分析
+            </div>
+        </a>
+
+        <a href="pages/modules/lucky.html" class="menu-card">
+            <div class="menu-icon">🎮</div>
+            <div class="menu-title">返回游戏</div>
+            <div class="menu-description">
+                返回游戏界面，体验抽奖功能和测试系统
+            </div>
+        </a>
+
+        <a href="admin-settings.html" class="menu-card">
+            <div class="menu-icon">⚙️</div>
+            <div class="menu-title">系统设置</div>
+            <div class="menu-description">
+                系统配置、游戏参数设置和安全管理
+            </div>
+        </a>
+    </div>
+
+    <script>
+        function goToHome() {
+            window.location.href = '/';
+        }
+    </script>
+</body>
+</html>

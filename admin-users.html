@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户管理 - 幸运降临</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #0c0c0c, #1a1a1a);
+            color: #fff;
+            min-height: 100vh;
+        }
+
+        .admin-header {
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px 0;
+            border-bottom: 2px solid #ffd700;
+            text-align: center;
+        }
+
+        .admin-header h1 {
+            color: #ffd700;
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+            font-size: 32px;
+            cursor: pointer;
+        }
+
+        .admin-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .admin-nav {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 40px;
+            justify-content: center;
+        }
+
+        .nav-btn {
+            padding: 12px 24px;
+            background: linear-gradient(45deg, #ffd700, #ffed4e);
+            color: #000;
+            text-decoration: none;
+            border-radius: 25px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+        }
+
+        .nav-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 215, 0, 0.4);
+        }
+
+        .nav-btn.active {
+            background: linear-gradient(45deg, #ff6b6b, #ff8e8e);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .stat-card {
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #ffd700;
+            border-radius: 15px;
+            padding: 30px 20px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(255, 215, 0, 0.3);
+        }
+
+        .stat-number {
+            font-size: 36px;
+            font-weight: bold;
+            color: #ffd700;
+            margin-bottom: 10px;
+        }
+
+        .stat-label {
+            font-size: 16px;
+            opacity: 0.8;
+        }
+
+        .users-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .user-card {
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #444;
+            border-radius: 15px;
+            padding: 20px;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .user-card:hover {
+            border-color: #ffd700;
+            box-shadow: 0 5px 20px rgba(255, 215, 0, 0.2);
+        }
+
+        .user-card.online {
+            border-left: 4px solid #4ade80;
+        }
+
+        .user-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .user-info {
+            flex: 1;
+        }
+
+        .user-name {
+            font-size: 18px;
+            font-weight: bold;
+            color: #ffd700;
+            margin-bottom: 5px;
+        }
+
+        .user-username {
+            font-size: 14px;
+            opacity: 0.7;
+        }
+
+        .user-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #666;
+        }
+
+        .status-dot.online {
+            background: #4ade80;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .user-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .detail-item {
+            font-size: 14px;
+        }
+
+        .detail-label {
+            opacity: 0.7;
+            margin-bottom: 2px;
+        }
+
+        .detail-value {
+            color: #ffd700;
+            font-weight: bold;
+        }
+
+        .user-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            flex: 1;
+        }
+
+        .btn-view {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .btn-view:hover {
+            background: #2563eb;
+        }
+
+        .btn-edit {
+            background: #f59e0b;
+            color: white;
+        }
+
+        .btn-edit:hover {
+            background: #d97706;
+        }
+
+        .btn-delete {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-delete:hover {
+            background: #dc2626;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            font-size: 18px;
+            opacity: 0.7;
+        }
+
+        .error {
+            color: #ef4444;
+            text-align: center;
+            padding: 20px;
+            background: rgba(239, 68, 68, 0.1);
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        .success {
+            color: #4ade80;
+            text-align: center;
+            padding: 20px;
+            background: rgba(74, 222, 128, 0.1);
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        /* 用户详情弹窗 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: rgba(0, 0, 0, 0.95);
+            border: 2px solid #ffd700;
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-header h3 {
+            color: #ffd700;
+            font-size: 24px;
+        }
+
+        .close {
+            font-size: 30px;
+            cursor: pointer;
+            color: #999;
+            transition: color 0.3s;
+        }
+
+        .close:hover {
+            color: #ffd700;
+        }
+
+        .user-detail-grid {
+            display: grid;
+            gap: 15px;
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+        }
+
+        .detail-row .label {
+            opacity: 0.8;
+        }
+
+        .detail-row .value {
+            color: #ffd700;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-header">
+        <h1 onclick="goToHome()">幸运降临 - 用户管理</h1>
+    </div>
+
+    <div class="admin-container">
+        <div class="admin-nav">
+            <a href="admin.html" class="nav-btn">管理首页</a>
+            <a href="admin-prizes.html" class="nav-btn">奖品管理</a>
+            <a href="admin-users.html" class="nav-btn active">用户管理</a>
+        </div>
+
+        <!-- 统计卡片 -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number" id="totalUsers">-</div>
+                <div class="stat-label">总用户数</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="onlineUsers">-</div>
+                <div class="stat-label">在线用户</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="todayNewUsers">-</div>
+                <div class="stat-label">今日新增</div>
+            </div>
+        </div>
+
+        <!-- 用户列表 -->
+        <div id="usersContainer">
+            <div class="loading">正在加载用户数据...</div>
+        </div>
+    </div>
+
+    <!-- 用户详情弹窗 -->
+    <div id="userModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>用户详情</h3>
+                <span class="close" onclick="closeUserModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div id="userDetails" class="user-detail-grid">
+                    <!-- 用户详情将通过JS生成 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let usersData = [];
+
+        // 页面加载完成后执行
+        document.addEventListener('DOMContentLoaded', function() {
+            loadUsers();
+            
+            // 每30秒刷新一次在线状态
+            setInterval(loadUsers, 30000);
+        });
+
+        // 加载用户数据
+        async function loadUsers() {
+            try {
+                const response = await fetch('server/api/admin.php?action=users');
+                const data = await response.json();
+                
+                if (data.success) {
+                    usersData = data.users;
+                    renderUsers(data.users);
+                    updateStats(data.stats);
+                } else {
+                    showError('获取用户数据失败: ' + data.error);
+                }
+            } catch (error) {
+                console.error('加载用户数据失败:', error);
+                showError('网络错误，请稍后重试');
+            }
+        }
+
+        // 渲染用户列表
+        function renderUsers(users) {
+            const container = document.getElementById('usersContainer');
+            
+            if (users.length === 0) {
+                container.innerHTML = '<div class="loading">暂无用户数据</div>';
+                return;
+            }
+
+            const usersHtml = users.map(user => {
+                const isOnline = user.is_online == 1;
+                const lastLogin = user.last_login ? new Date(user.last_login).toLocaleString() : '从未登录';
+                const registerTime = new Date(user.created_at).toLocaleString();
+                
+                return `
+                    <div class="user-card ${isOnline ? 'online' : ''}">
+                        <div class="user-header">
+                            <div class="user-info">
+                                <div class="user-name">${user.nickname || user.username}</div>
+                                <div class="user-username">@${user.username}</div>
+                            </div>
+                            <div class="user-status">
+                                <span class="status-dot ${isOnline ? 'online' : ''}"></span>
+                                <span>${isOnline ? '在线' : '离线'}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="user-details">
+                            <div class="detail-item">
+                                <div class="detail-label">余额</div>
+                                <div class="detail-value">¥${user.balance}</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">用户ID</div>
+                                <div class="detail-value">#${user.id}</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">注册时间</div>
+                                <div class="detail-value">${registerTime}</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">最后登录</div>
+                                <div class="detail-value">${lastLogin}</div>
+                            </div>
+                        </div>
+                        
+                        <div class="user-actions">
+                            <button class="btn btn-view" onclick="viewUser(${user.id})">详情</button>
+                            <button class="btn btn-edit" onclick="editUser(${user.id})">编辑</button>
+                            <button class="btn btn-delete" onclick="deleteUser(${user.id})">删除</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            container.innerHTML = `<div class="users-grid">${usersHtml}</div>`;
+        }
+
+        // 更新统计数据
+        function updateStats(stats) {
+            document.getElementById('totalUsers').textContent = stats.total;
+            document.getElementById('onlineUsers').textContent = stats.online;
+            document.getElementById('todayNewUsers').textContent = stats.today_new;
+        }
+
+        // 查看用户详情
+        function viewUser(userId) {
+            const user = usersData.find(u => u.id == userId);
+            if (!user) return;
+
+            const isOnline = user.is_online == 1;
+            const lastLogin = user.last_login ? new Date(user.last_login).toLocaleString() : '从未登录';
+            const registerTime = new Date(user.created_at).toLocaleString();
+
+            const detailsHtml = `
+                <div class="detail-row">
+                    <span class="label">用户ID:</span>
+                    <span class="value">#${user.id}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="label">用户名:</span>
+                    <span class="value">${user.username}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="label">昵称:</span>
+                    <span class="value">${user.nickname || '未设置'}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="label">邮箱:</span>
+                    <span class="value">${user.email || '未设置'}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="label">余额:</span>
+                    <span class="value">¥${user.balance}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="label">状态:</span>
+                    <span class="value ${isOnline ? 'online' : ''}">${isOnline ? '在线' : '离线'}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="label">注册时间:</span>
+                    <span class="value">${registerTime}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="label">最后登录:</span>
+                    <span class="value">${lastLogin}</span>
+                </div>
+            `;
+
+            document.getElementById('userDetails').innerHTML = detailsHtml;
+            document.getElementById('userModal').classList.add('show');
+        }
+
+        // 编辑用户
+        function editUser(userId) {
+            alert('编辑功能开发中...');
+        }
+
+        // 删除用户
+        async function deleteUser(userId) {
+            const user = usersData.find(u => u.id == userId);
+            if (!user) return;
+
+            if (!confirm(`确定要删除用户 "${user.username}" 吗？此操作不可恢复！`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`server/api/admin.php?action=delete_user&id=${userId}`, {
+                    method: 'DELETE'
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    showSuccess('用户删除成功！');
+                    loadUsers(); // 重新加载用户列表
+                } else {
+                    showError('删除失败: ' + data.error);
+                }
+            } catch (error) {
+                console.error('删除用户失败:', error);
+                showError('网络错误，请稍后重试');
+            }
+        }
+
+        // 关闭用户详情弹窗
+        function closeUserModal() {
+            document.getElementById('userModal').classList.remove('show');
+        }
+
+        // 返回主页
+        function goToHome() {
+            window.location.href = '/';
+        }
+
+        // 显示错误消息
+        function showError(message) {
+            const container = document.getElementById('usersContainer');
+            container.innerHTML = `<div class="error">${message}</div>`;
+        }
+
+        // 显示成功消息
+        function showSuccess(message) {
+            // 创建临时的成功消息
+            const successDiv = document.createElement('div');
+            successDiv.className = 'success';
+            successDiv.textContent = message;
+            
+            const container = document.querySelector('.admin-container');
+            container.insertBefore(successDiv, container.firstChild);
+            
+            // 3秒后自动移除
+            setTimeout(() => {
+                successDiv.remove();
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

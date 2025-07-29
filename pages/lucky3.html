@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>幸运降临3 - 幸运降临</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/neon.css">
+</head>
+<body>
+    <div class="particles"></div>
+    
+    <!-- 导航栏 -->
+    <nav class="navbar">
+        <div class="nav-brand">
+            <h1 class="neon-text gold">幸运降临</h1>
+        </div>
+        
+        <div class="nav-user">
+            <!-- 仓库功能 -->
+            <div class="nav-item warehouse-btn" onclick="openWarehouse()" title="我的仓库">
+                <i class="icon">📦</i>
+                <span>仓库</span>
+            </div>
+            
+            <!-- 每日签到 -->
+            <div class="nav-item checkin-btn" onclick="openCheckin()" title="每日签到">
+                <i class="icon">📅</i>
+                <span>签到</span>
+            </div>
+            
+            <div class="user-info" id="userInfo">
+                <img id="userAvatar" src="" alt="头像" class="user-avatar">
+                <span id="userNickname" class="neon-text"></span>
+                <span id="userBalance" class="neon-text gold"></span>
+                <div class="user-dropdown">
+                    <a href="user/profile.html" class="neon-text">个人中心</a>
+                    <a href="#" onclick="logout()" class="neon-text">退出登录</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="main-container">
+        <div class="welcome-section">
+            <h2 class="neon-text rainbow">幸运降临3 - 宝箱寻宝</h2>
+            <p class="neon-text">在神秘的宝箱中寻找珍贵宝物，每个宝箱都蕴含着无限可能！</p>
+        </div>
+
+        <!-- 游戏内容区域 -->
+        <div class="game-content">
+            <div class="game-main">
+                <div class="treasure-container">
+                    <div class="treasure-grid">
+                        <div class="treasure-box" onclick="openTreasure(1)" id="box1">
+                            <div class="box-icon">📦</div>
+                            <div class="box-label">神秘宝箱</div>
+                        </div>
+                        <div class="treasure-box" onclick="openTreasure(2)" id="box2">
+                            <div class="box-icon">🎁</div>
+                            <div class="box-label">精美礼盒</div>
+                        </div>
+                        <div class="treasure-box" onclick="openTreasure(3)" id="box3">
+                            <div class="box-icon">💎</div>
+                            <div class="box-label">钻石宝箱</div>
+                        </div>
+                        <div class="treasure-box" onclick="openTreasure(4)" id="box4">
+                            <div class="box-icon">👑</div>
+                            <div class="box-label">王者宝箱</div>
+                        </div>
+                        <div class="treasure-box" onclick="openTreasure(5)" id="box5">
+                            <div class="box-icon">🌟</div>
+                            <div class="box-label">星辰宝箱</div>
+                        </div>
+                        <div class="treasure-box" onclick="openTreasure(6)" id="box6">
+                            <div class="box-icon">🔮</div>
+                            <div class="box-label">魔法宝箱</div>
+                        </div>
+                    </div>
+                    
+                    <div class="treasure-info">
+                        <h3 class="neon-text gold">宝箱开启费用</h3>
+                        <div class="cost-info">
+                            <div class="cost-item">普通宝箱: 30金币</div>
+                            <div class="cost-item">稀有宝箱: 50金币</div>
+                            <div class="cost-item">史诗宝箱: 100金币</div>
+                        </div>
+                    </div>
+                    
+                    <div class="treasure-result" id="treasureResult" style="display: none;">
+                        <div class="result-glow"></div>
+                        <div class="result-content">
+                            <h4 class="neon-text">宝箱开启成功！</h4>
+                            <div class="treasure-item" id="treasureItem"></div>
+                            <button class="continue-btn neon-btn" onclick="resetTreasure()">
+                                继续寻宝
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="back-btn-container">
+                    <button class="back-btn neon-btn" onclick="goBack()">
+                        返回主界面
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .game-content {
+            padding: 20px;
+            min-height: calc(100vh - 100px);
+        }
+        
+        .treasure-container {
+            background: radial-gradient(circle, rgba(184, 134, 11, 0.2) 0%, rgba(120, 53, 15, 0.9) 100%);
+            border-radius: 20px;
+            padding: 40px;
+            margin: 20px auto;
+            max-width: 900px;
+            box-shadow: 0 0 50px rgba(184, 134, 11, 0.3);
+        }
+        
+        .treasure-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+        
+        .treasure-box {
+            background: linear-gradient(145deg, rgba(255, 215, 0, 0.1), rgba(255, 165, 0, 0.1));
+            border: 3px solid #ffd700;
+            border-radius: 15px;
+            padding: 30px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .treasure-box:hover {
+            transform: translateY(-5px) scale(1.05);
+            box-shadow: 0 15px 40px rgba(255, 215, 0, 0.4);
+            border-color: #ffb347;
+        }
+        
+        .treasure-box::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255, 215, 0, 0.1), transparent);
+            transform: rotate(45deg);
+            transition: all 0.5s ease;
+            opacity: 0;
+        }
+        
+        .treasure-box:hover::before {
+            animation: shimmer 1s ease-in-out;
+            opacity: 1;
+        }
+        
+        @keyframes shimmer {
+            0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+            100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+        }
+        
+        .box-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+            display: block;
+        }
+        
+        .box-label {
+            color: #ffd700;
+            font-weight: bold;
+            font-size: 16px;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+        }
+        
+        .treasure-info {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(255, 215, 0, 0.1);
+            border-radius: 10px;
+            border: 1px solid #ffd700;
+        }
+        
+        .cost-info {
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .cost-item {
+            color: #ffd700;
+            font-size: 14px;
+            padding: 8px 15px;
+            background: rgba(255, 215, 0, 0.1);
+            border-radius: 8px;
+            border: 1px solid rgba(255, 215, 0, 0.3);
+        }
+        
+        .treasure-result {
+            margin-top: 30px;
+            padding: 30px;
+            background: radial-gradient(circle, rgba(255, 215, 0, 0.2) 0%, rgba(255, 215, 0, 0.05) 100%);
+            border: 2px solid #ffd700;
+            border-radius: 15px;
+            position: relative;
+            text-align: center;
+        }
+        
+        .result-glow {
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(45deg, #ffd700, #ffb347, #ffd700);
+            border-radius: 17px;
+            z-index: -1;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+        
+        .treasure-item {
+            margin: 20px 0;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            font-size: 18px;
+        }
+        
+        .continue-btn {
+            padding: 12px 25px;
+            background: linear-gradient(45deg, #ffd700, #ffb347);
+            border: none;
+            border-radius: 8px;
+            color: #000;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 15px;
+        }
+        
+        .continue-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(255, 215, 0, 0.4);
+        }
+        
+        .back-btn-container {
+            text-align: center;
+            margin-top: 40px;
+        }
+        
+        .back-btn {
+            padding: 15px 30px;
+            background: linear-gradient(45deg, #ff00ff, #00ffff);
+            border: none;
+            border-radius: 10px;
+            color: #fff;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .back-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(255, 0, 255, 0.4);
+        }
+        
+        .opened {
+            opacity: 0.6;
+            pointer-events: none;
+            transform: scale(0.95);
+        }
+    </style>
+
+    <script src="../js/api-client.js"></script>
+    <script src="../js/effects.js"></script>
+    <script>
+        // 宝箱开启功能
+        function openTreasure(boxId) {
+            const box = document.getElementById(`box${boxId}`);
+            const resultDiv = document.getElementById('treasureResult');
+            const treasureItem = document.getElementById('treasureItem');
+            
+            // 标记宝箱已开启
+            box.classList.add('opened');
+            
+            // 模拟宝箱开启结果
+            const treasures = [
+                { name: '古代金币', icon: '🪙', rarity: 'common', value: 100 },
+                { name: '神秘药水', icon: '🧪', rarity: 'rare', value: 200 },
+                { name: '魔法卷轴', icon: '📜', rarity: 'epic', value: 500 },
+                { name: '传说武器', icon: '⚔️', rarity: 'legendary', value: 1000 },
+                { name: '远古宝石', icon: '💎', rarity: 'legendary', value: 800 },
+                { name: '幸运符咒', icon: '🔮', rarity: 'epic', value: 400 },
+                { name: '星辰指环', icon: '💍', rarity: 'rare', value: 300 },
+                { name: '龙鳞护甲', icon: '🛡️', rarity: 'epic', value: 600 }
+            ];
+            
+            const randomTreasure = treasures[Math.floor(Math.random() * treasures.length)];
+            
+            treasureItem.innerHTML = `
+                <div class="treasure-icon" style="font-size: 48px; margin-bottom: 15px;">${randomTreasure.icon}</div>
+                <div class="treasure-name neon-text gold" style="font-size: 24px; margin-bottom: 10px;">${randomTreasure.name}</div>
+                <div class="treasure-rarity ${randomTreasure.rarity}" style="margin-bottom: 10px;">${getRarityText(randomTreasure.rarity)}</div>
+                <div class="treasure-value neon-text" style="font-size: 18px;">价值: ${randomTreasure.value} 金币</div>
+            `;
+            
+            resultDiv.style.display = 'block';
+            
+            // 添加获得动画
+            setTimeout(() => {
+                resultDiv.style.animation = 'fadeInScale 0.5s ease-out';
+            }, 100);
+        }
+        
+        function resetTreasure() {
+            // 重置所有宝箱状态
+            for (let i = 1; i <= 6; i++) {
+                const box = document.getElementById(`box${i}`);
+                box.classList.remove('opened');
+            }
+            
+            // 隐藏结果
+            document.getElementById('treasureResult').style.display = 'none';
+        }
+        
+        function getRarityText(rarity) {
+            const rarityMap = {
+                'common': '普通',
+                'rare': '稀有',
+                'epic': '史诗',
+                'legendary': '传说'
+            };
+            return rarityMap[rarity] || '普通';
+        }
+        
+        function goBack() {
+            window.location.href = 'main.html';
+        }
+        
+        // 初始化页面
+        document.addEventListener('DOMContentLoaded', function() {
+            loadUserInfo();
+            createParticles();
+        });
+        
+        // 用户信息加载函数
+        function loadUserInfo() {
+            const user = JSON.parse(localStorage.getItem('currentUser') || '{}');
+            if (user.nickname) {
+                document.getElementById('userNickname').textContent = user.nickname;
+                document.getElementById('userBalance').textContent = user.balance + ' 金币';
+                if (user.avatar) {
+                    document.getElementById('userAvatar').src = user.avatar;
+                }
+            }
+        }
+        
+        // 导航功能
+        function openCheckin() {
+            window.location.href = 'lucky1.html';
+        }
+        
+        function openWarehouse() {
+            window.location.href = 'lucky3.html';
+        }
+        
+        function logout() {
+            if (confirm('确定要退出登录吗？')) {
+                localStorage.removeItem('currentUser');
+                localStorage.removeItem('isLoggedIn');
+                window.location.href = 'auth/login.html';
+            }
+        }
+    </script>
+</body>
+</html>

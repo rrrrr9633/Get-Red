@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>幸运降临 - 抽奖网站</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/neon.css">
+</head>
+<body>
+    <div class="page active" style="display: flex; justify-content: center; align-items: center; min-height: 100vh;">
+        <div style="text-align: center;">
+            <h1 class="neon-text gold" style="font-size: 48px; margin-bottom: 30px;">幸运降临</h1>
+            <p class="neon-text" style="margin-bottom: 40px;">正在进入登录界面...</p>
+            <div style="width: 60px; height: 60px; border: 4px solid #ffd700; border-top-color: transparent; border-radius: 50%; margin: 0 auto; animation: spin 1s linear infinite;"></div>
+        </div>
+    </div>
+
+    <style>
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+
+    <script src="js/api-client.js"></script>
+    <script>
+        // 检查登录状态并跳转
+        async function checkAndRedirect() {
+            try {
+                if (api.isLoggedIn()) {
+                    // 尝试验证服务器端登录状态
+                    const result = await api.getUserProfile();
+                    if (result.success) {
+                        // 已登录，跳转到主界面
+                        window.location.href = 'pages/main.html';
+                        return;
+                    }
+                }
+            } catch (error) {
+                console.log('用户未登录或登录状态已过期');
+            }
+            
+            // 未登录，跳转到登录页面
+            window.location.href = 'pages/auth/login.html';
+        }
+
+        // 页面加载后2秒跳转
+        setTimeout(checkAndRedirect, 2000);
+    </script>
+</body>
+</html>

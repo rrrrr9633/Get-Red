@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 - 幸运降临</title>
+    <link rel="stylesheet" href="../../css/style.css">
+    <link rel="stylesheet" href="../../css/neon.css">
+    <style>
+        /* 优化的登录样式 */
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a0a1a 50%, #0a1a0a 100%);
+            position: relative;
+        }
+        
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+        
+        .login-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+            position: relative;
+        }
+        
+        .login-form {
+            background: rgba(20, 20, 40, 0.95);
+            padding: 50px 40px;
+            border-radius: 20px;
+            box-shadow: 
+                0 0 50px rgba(255, 0, 255, 0.3),
+                0 0 100px rgba(0, 255, 255, 0.2),
+                inset 0 0 50px rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(15px);
+            border: 2px solid transparent;
+            background-clip: padding-box;
+            position: relative;
+            width: 450px;
+            max-width: 90vw;
+            text-align: center;
+        }
+        
+        .login-form::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(45deg, #ff00ff, #00ffff, #ffff00, #ff00ff);
+            border-radius: 22px;
+            z-index: -1;
+            animation: borderGlow 3s linear infinite;
+        }
+        
+        @keyframes borderGlow {
+            0% { filter: hue-rotate(0deg); }
+            100% { filter: hue-rotate(360deg); }
+        }
+        
+        .login-form h2 {
+            font-size: 32px;
+            margin-bottom: 40px;
+            background: linear-gradient(45deg, #ffd700, #ffff00);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 0 30px rgba(255, 215, 0, 0.5);
+        }
+        
+        .form-group {
+            margin-bottom: 25px;
+            position: relative;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 18px 25px;
+            background: rgba(255, 255, 255, 0.9);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 12px;
+            color: #333;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            outline: none;
+        }
+        
+        .form-group input:focus {
+            border-color: #ff00ff;
+            box-shadow: 0 0 25px rgba(255, 0, 255, 0.4);
+            background: rgba(255, 255, 255, 0.95);
+        }
+        
+        .form-group input::placeholder {
+            color: #333;
+            font-weight: 500;
+        }
+        
+        .form-group input {
+            color: #333 !important;
+        }
+        
+        .btn-neon {
+            width: 100%;
+            padding: 18px 25px;
+            background: linear-gradient(45deg, #ff00ff, #00ffff);
+            border: none;
+            border-radius: 12px;
+            color: #fff;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .btn-neon:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(255, 0, 255, 0.4);
+        }
+        
+        .btn-neon::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+        
+        .btn-neon:hover::before {
+            left: 100%;
+        }
+        
+        .form-links {
+            margin-top: 30px;
+        }
+        
+        .form-links a {
+            color: #ffd700;
+            text-decoration: none;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+        
+        .form-links a:hover {
+            color: #fff;
+            text-shadow: 0 0 15px rgba(255, 215, 0, 0.8);
+        }
+        
+        /* 消息提示样式 */
+        .message {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 20px 30px;
+            border-radius: 10px;
+            color: #fff;
+            font-size: 16px;
+            font-weight: bold;
+            z-index: 1000;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .message.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .message.success {
+            background: linear-gradient(45deg, #00ff88, #00cc66);
+            box-shadow: 0 0 30px rgba(0, 255, 136, 0.4);
+        }
+        
+        .message.error {
+            background: linear-gradient(45deg, #ff0044, #cc0033);
+            box-shadow: 0 0 30px rgba(255, 0, 68, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <div class="particles"></div>
+    
+    <div class="login-container">
+        <div class="login-form">
+            <h2>用户登录</h2>
+            
+            <form id="loginForm">
+                <div class="form-group">
+                    <input type="text" id="username" placeholder="用户名" required>
+                </div>
+                
+                <div class="form-group">
+                    <input type="password" id="password" placeholder="密码" required>
+                </div>
+                
+                <button type="submit" class="btn-neon">登录</button>
+            </form>
+            
+            <div class="form-links">
+                <a href="register.html">还没有账号？立即注册</a>
+            </div>
+        </div>
+    </div>
+
+    <script src="../../js/api-client.js"></script>
+    <script src="../../js/effects.js"></script>
+    <script>
+        // 消息提示函数
+        function showMessage(text, type = 'success') {
+            // 移除已存在的消息
+            const existingMessage = document.querySelector('.message');
+            if (existingMessage) {
+                existingMessage.remove();
+            }
+            
+            const message = document.createElement('div');
+            message.className = `message ${type}`;
+            message.textContent = text;
+            document.body.appendChild(message);
+            
+            // 显示消息
+            setTimeout(() => message.classList.add('show'), 100);
+            
+            // 3秒后隐藏消息
+            setTimeout(() => {
+                message.classList.remove('show');
+                setTimeout(() => message.remove(), 300);
+            }, 3000);
+        }
+
+        // 登录表单处理
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value.trim();
+            
+            if (!username || !password) {
+                showMessage('请填写完整的登录信息！', 'error');
+                return;
+            }
+            
+            try {
+                // 显示加载状态
+                const submitBtn = this.querySelector('button[type="submit"]');
+                const originalText = submitBtn.textContent;
+                submitBtn.textContent = '登录中...';
+                submitBtn.disabled = true;
+                
+                // 调用API登录
+                const result = await api.login(username, password);
+                
+                if (result.success) {
+                    showMessage('登录成功！正在跳转...', 'success');
+                    
+                    // 1.5秒后跳转到主页
+                    setTimeout(() => {
+                        window.location.href = '../main.html';
+                    }, 1500);
+                } else {
+                    showMessage(result.message || '登录失败，请检查用户名和密码！', 'error');
+                }
+            } catch (error) {
+                console.error('登录失败:', error);
+                showMessage('网络错误，请稍后再试！', 'error');
+            } finally {
+                // 恢复按钮状态
+                const submitBtn = this.querySelector('button[type="submit"]');
+                submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
+            }
+        });
+
+        // 不再自动检查登录状态，用户需要手动登录
+        // 但仍保留自动填充功能
+        const savedUsername = localStorage.getItem('savedUsername');
+        const savedPassword = localStorage.getItem('savedPassword');
+        
+        if (savedUsername && savedPassword) {
+            document.getElementById('username').value = savedUsername;
+            document.getElementById('password').value = savedPassword;
+        }
+
+        // 初始化粒子效果
+        if (typeof createParticles === 'function') {
+            createParticles();
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的仓库 - 幸运降临</title>
+    <link rel="stylesheet" href="../../css/style.css">
+    <link rel="stylesheet" href="../../css/neon.css">
+</head>
+<body>
+    <div class="particles"></div>
+    
+    <!-- 导航栏 -->
+    <nav class="navbar">
+        <div class="nav-brand">
+            <h1 class="neon-text gold" onclick="goToHome()" style="cursor: pointer;" title="返回主页">幸运降临</h1>
+        </div>
+        
+        <div class="nav-user">
+            <div class="nav-item" onclick="window.location.href='../main.html'" title="返回主页">
+                <i class="icon">🏠</i>
+                <span>主页</span>
+            </div>
+            
+            <div class="user-info" id="userInfo">
+                <img id="userAvatar" src="" alt="头像" class="user-avatar">
+                <span id="userNickname" class="neon-text"></span>
+                <span id="userBalance" class="neon-text gold"></span>
+                <div class="user-dropdown">
+                    <a href="../user/profile.html" class="neon-text">个人中心</a>
+                    <a href="../main.html" class="neon-text">返回主页</a>
+                    <a href="#" onclick="logout()" class="neon-text">退出登录</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="header">
+            <h2 class="neon-text rainbow">我的仓库</h2>
+            <p class="neon-text">管理您获得的所有物品，可以分解获得金币</p>
+        </div>
+
+        <!-- 操作工具栏 -->
+        <div class="toolbar">
+            <div class="filter-section">
+                <label class="neon-text">筛选稀有度:</label>
+                <select id="rarityFilter" onchange="filterItems()">
+                    <option value="all">全部</option>
+                    <option value="common">普通</option>
+                    <option value="rare">稀有</option>
+                    <option value="epic">史诗</option>
+                    <option value="legendary">传说</option>
+                </select>
+            </div>
+            
+            <div class="batch-section">
+                <button id="selectAllBtn" class="btn-secondary" onclick="selectAll()">全选</button>
+                <button id="selectNoneBtn" class="btn-secondary" onclick="selectNone()">取消全选</button>
+                <button id="batchDecomposeBtn" class="btn-danger" onclick="batchDecompose()" disabled>批量分解</button>
+            </div>
+        </div>
+
+        <!-- 统计信息 -->
+        <div class="stats-section">
+            <div class="stat-card">
+                <div class="stat-value" id="totalItems">0</div>
+                <div class="stat-label neon-text">总物品数量</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="totalValue">¥0.00</div>
+                <div class="stat-label neon-text">总价值</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="selectedValue">¥0.00</div>
+                <div class="stat-label neon-text">选中价值</div>
+            </div>
+        </div>
+
+        <!-- 物品网格 -->
+        <div class="items-grid" id="itemsGrid">
+            <!-- 物品将通过JavaScript动态生成 -->
+        </div>
+
+        <!-- 空状态 -->
+        <div id="emptyState" class="empty-state" style="display: none;">
+            <div class="empty-icon">📦</div>
+            <h3 class="neon-text">仓库空空如也</h3>
+            <p class="neon-text">去抽奖获得一些物品吧！</p>
+            <button class="btn-neon" onclick="window.location.href='../lucky1.html'">开始抽奖</button>
+        </div>
+    </div>
+
+    <!-- 分解确认弹窗 -->
+    <div id="decomposeModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="neon-text gold">确认分解</h3>
+                <span class="close" onclick="closeDecomposeModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div id="decomposeInfo">
+                    <!-- 分解信息将动态填充 -->
+                </div>
+                <p class="warning-text">⚠️ 分解后物品将永久消失，无法恢复！</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeDecomposeModal()">取消</button>
+                <button class="btn-danger" onclick="confirmDecompose()">确认分解</button>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .navbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 70px;
+            background: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid #ffd700;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 30px;
+            z-index: 1000;
+        }
+        
+        .nav-brand h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        
+        .nav-user {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            padding: 8px 15px;
+            border-radius: 15px;
+            background: rgba(255, 215, 0, 0.1);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255, 215, 0, 0.3);
+        }
+        
+        .nav-item:hover {
+            background: rgba(255, 215, 0, 0.2);
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
+            transform: translateY(-2px);
+        }
+        
+        .nav-item .icon {
+            font-size: 18px;
+        }
+        
+        .nav-item span {
+            font-size: 12px;
+            color: #ffd700;
+            font-weight: bold;
+        }
+        
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            cursor: pointer;
+            padding: 10px;
+            border-radius: 25px;
+            background: rgba(255, 215, 0, 0.1);
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        .user-info:hover {
+            background: rgba(255, 215, 0, 0.2);
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+        }
+        
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 2px solid #ffd700;
+            object-fit: cover;
+        }
+        
+        .user-dropdown {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background: rgba(0, 0, 0, 0.95);
+            border: 1px solid #ffd700;
+            border-radius: 10px;
+            padding: 10px 0;
+            min-width: 150px;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: all 0.3s ease;
+            z-index: 1001;
+        }
+        
+        .user-info:hover .user-dropdown {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+        
+        .user-dropdown a {
+            display: block;
+            padding: 10px 20px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+        
+        .user-dropdown a:hover {
+            background: rgba(255, 215, 0, 0.1);
+            text-shadow: 0 0 10px currentColor;
+        }
+        
+        .container {
+            margin-top: 70px;
+            padding: 40px 20px;
+            max-width: 1200px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .header h2 {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+        
+        .header p {
+            font-size: 18px;
+            opacity: 0.8;
+        }
+        
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid #ffd700;
+            border-radius: 15px;
+        }
+        
+        .filter-section {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .filter-section select {
+            padding: 8px 12px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 1px solid #ffd700;
+            border-radius: 5px;
+            color: #ffd700;
+            font-size: 14px;
+        }
+        
+        .batch-section {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .btn-secondary {
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid #ffd700;
+            border-radius: 5px;
+            color: #ffd700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-secondary:hover:not(:disabled) {
+            background: rgba(255, 215, 0, 0.2);
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+        }
+        
+        .btn-danger {
+            padding: 8px 16px;
+            background: rgba(220, 53, 69, 0.2);
+            border: 1px solid #dc3545;
+            border-radius: 5px;
+            color: #dc3545;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-danger:hover:not(:disabled) {
+            background: rgba(220, 53, 69, 0.4);
+            box-shadow: 0 0 10px rgba(220, 53, 69, 0.3);
+        }
+        
+        .btn-danger:disabled, .btn-secondary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .stats-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid #ffd700;
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #ffd700;
+            margin-bottom: 8px;
+        }
+        
+        .stat-label {
+            font-size: 14px;
+            opacity: 0.8;
+        }
+        
+        .items-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+        
+        .item-card {
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #333;
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        .item-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+        }
+        
+        .item-card.selected {
+            border-color: #ffd700;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+        }
+        
+        .item-card.common { border-color: #9ca3af; }
+        .item-card.rare { border-color: #3b82f6; }
+        .item-card.epic { border-color: #8b5cf6; }
+        .item-card.legendary { border-color: #f59e0b; }
+        
+        .item-checkbox {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+        
+        .item-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+            filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.5));
+        }
+        
+        .item-image {
+            width: 80px;
+            height: 80px;
+            object-fit: cover;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .item-name {
+            font-size: 16px;
+            color: #ffd700;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+        
+        .item-value {
+            font-size: 14px;
+            color: #4ade80;
+            margin-bottom: 10px;
+        }
+        
+        .item-rarity {
+            font-size: 12px;
+            padding: 4px 8px;
+            border-radius: 10px;
+            display: inline-block;
+            margin-bottom: 10px;
+        }
+        
+        .item-rarity.common { background: rgba(156, 163, 175, 0.2); color: #9ca3af; }
+        .item-rarity.rare { background: rgba(59, 130, 246, 0.2); color: #3b82f6; }
+        .item-rarity.epic { background: rgba(139, 92, 246, 0.2); color: #8b5cf6; }
+        .item-rarity.legendary { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
+        
+        .item-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+        
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-decompose {
+            background: rgba(220, 53, 69, 0.2);
+            border: 1px solid #dc3545;
+            color: #dc3545;
+        }
+        
+        .btn-decompose:hover {
+            background: rgba(220, 53, 69, 0.4);
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 80px 20px;
+        }
+        
+        .empty-icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+            opacity: 0.6;
+        }
+        
+        .empty-state h3 {
+            font-size: 24px;
+            margin-bottom: 15px;
+        }
+        
+        .empty-state p {
+            font-size: 16px;
+            opacity: 0.8;
+            margin-bottom: 30px;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+        }
+        
+        .modal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-content {
+            background: rgba(0, 0, 0, 0.95);
+            border: 2px solid #ffd700;
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+            position: relative;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .modal-header h3 {
+            margin: 0;
+            font-size: 24px;
+        }
+        
+        .close {
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            color: #ffd700;
+        }
+        
+        .close:hover {
+            color: #fff;
+        }
+        
+        .modal-body {
+            margin-bottom: 30px;
+        }
+        
+        .modal-footer {
+            display: flex;
+            gap: 15px;
+            justify-content: flex-end;
+        }
+        
+        .warning-text {
+            color: #fbbf24;
+            font-size: 14px;
+            margin-top: 15px;
+            text-align: center;
+        }
+        
+        @media (max-width: 768px) {
+            .navbar {
+                padding: 0 15px;
+            }
+            
+            .toolbar {
+                flex-direction: column;
+                gap: 15px;
+                align-items: stretch;
+            }
+            
+            .filter-section, .batch-section {
+                justify-content: center;
+            }
+            
+            .stats-section {
+                grid-template-columns: 1fr;
+            }
+            
+            .items-grid {
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+                gap: 15px;
+            }
+        }
+    </style>
+
+    <script src="../../js/api-client.js"></script>
+    <script src="../../js/effects.js"></script>
+    <script>
+        let currentUser = null;
+        let userItems = [];
+        let selectedItems = [];
+        let pendingDecompose = [];
+
+        // 初始化页面
+        async function initPage() {
+            // 临时跳过登录检查进行调试
+            console.log('initPage开始执行');
+            
+            // 创建临时用户数据用于测试
+            currentUser = {
+                id: 2,
+                username: '111111',
+                nickname: '111111',
+                balance: 31055.00
+            };
+            
+            // 保存到localStorage供API调用使用
+            localStorage.setItem('currentUser', JSON.stringify(currentUser));
+            
+            console.log('设置临时用户并保存到localStorage:', currentUser);
+            
+            // 为了调试，先不检查登录状态
+            /*
+            if (!api.isLoggedIn()) {
+                alert('请先登录！');
+                window.location.href = '../auth/login.html';
+                return;
+            }
+            
+            currentUser = api.getCurrentUser();
+            
+            if (!currentUser) {
+                alert('用户信息异常，请重新登录！');
+                window.location.href = '../auth/login.html';
+                return;
+            }
+            */
+            
+            await loadUserInfo();
+            await loadUserItems();
+            createParticles();
+        }
+
+        // 加载用户信息
+        async function loadUserInfo() {
+            try {
+                const result = await api.getUserProfile();
+                if (result.success) {
+                    const user = result.user;
+                    document.getElementById('userAvatar').src = user.avatar || '../../uploads/avatars/default.png';
+                    document.getElementById('userNickname').textContent = user.nickname;
+                    document.getElementById('userBalance').textContent = `余额: ¥${parseFloat(user.balance || 0).toFixed(2)}`;
+                }
+            } catch (error) {
+                console.error('加载用户信息失败:', error);
+            }
+        }
+
+        // 加载用户物品
+        async function loadUserItems() {
+            try {
+                console.log('开始加载用户物品...');
+                console.log('当前用户:', currentUser);
+                
+                // 调用后端API获取用户物品
+                const result = await api.getUserItems();
+                console.log('API返回结果:', result);
+                
+                if (result.success) {
+                    userItems = result.items || [];
+                    console.log('获取到用户物品:', userItems);
+                } else {
+                    console.error('获取用户物品失败:', result.message);
+                    userItems = [];
+                }
+                
+                renderItems();
+                updateStats();
+            } catch (error) {
+                console.error('加载用户物品失败:', error);
+                userItems = [];
+                renderItems();
+                updateStats();
+            }
+        }
+
+        // 渲染物品列表
+        function renderItems() {
+            const grid = document.getElementById('itemsGrid');
+            const emptyState = document.getElementById('emptyState');
+            
+            console.log('渲染物品，userItems:', userItems);
+            
+            // 过滤物品
+            const rarityFilter = document.getElementById('rarityFilter').value;
+            const filteredItems = userItems.filter(item => {
+                // 数据库返回的decomposed是数字0/1，需要转换为布尔值
+                const isDecomposed = item.decomposed == 1 || item.decomposed === true;
+                if (isDecomposed) return false; // 已分解的物品不显示
+                if (rarityFilter === 'all') return true;
+                return item.rarity === rarityFilter;
+            });
+            
+            console.log('过滤后的物品:', filteredItems);
+            
+            if (filteredItems.length === 0) {
+                console.log('没有物品，显示空状态');
+                grid.style.display = 'none';
+                emptyState.style.display = 'block';
+                return;
+            }
+            
+            console.log('有物品，开始渲染');
+            grid.style.display = 'grid';
+            emptyState.style.display = 'none';
+            
+            grid.innerHTML = filteredItems.map(item => `
+                <div class="item-card ${item.rarity} ${selectedItems.includes(String(item.id)) ? 'selected' : ''}" 
+                     onclick="toggleItemSelection('${item.id}')">
+                    <input type="checkbox" class="item-checkbox" 
+                           ${selectedItems.includes(String(item.id)) ? 'checked' : ''}
+                           onchange="toggleItemSelection('${item.id}')" onclick="event.stopPropagation()">
+                    
+                    <div class="item-display">
+                        ${item.image_url && item.image_url !== '' ? 
+                            `<img src="${item.image_url}" alt="${item.name}" class="item-image" 
+                                 onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                             <div class="item-icon" style="display:none;">${item.icon}</div>` :
+                            `<div class="item-icon">${item.icon}</div>`
+                        }
+                    </div>
+                    
+                    <div class="item-name">${item.name}</div>
+                    <div class="item-value">价值: ¥${parseFloat(item.value).toFixed(2)}</div>
+                    <div class="item-rarity ${item.rarity}">${getRarityText(item.rarity)}</div>
+                    
+                    <div class="item-actions">
+                        <button class="btn-small btn-decompose" onclick="decomposeItem('${item.id}'); event.stopPropagation();">
+                            分解
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+            
+            console.log('渲染完成，HTML长度:', grid.innerHTML.length);
+        }
+
+        // 获取稀有度文本
+        function getRarityText(rarity) {
+            const rarityMap = {
+                'common': '普通',
+                'rare': '稀有',
+                'epic': '史诗',
+                'legendary': '传说'
+            };
+            return rarityMap[rarity] || '普通';
+        }
+
+        // 切换物品选择状态
+        function toggleItemSelection(itemId) {
+            // 确保ID类型一致，都转换为字符串
+            itemId = String(itemId);
+            
+            const index = selectedItems.indexOf(itemId);
+            if (index > -1) {
+                selectedItems.splice(index, 1);
+            } else {
+                selectedItems.push(itemId);
+            }
+            
+            updateBatchButtons();
+            updateStats();
+            renderItems();
+        }
+
+        // 全选
+        function selectAll() {
+            const rarityFilter = document.getElementById('rarityFilter').value;
+            selectedItems = userItems.filter(item => {
+                const isDecomposed = item.decomposed == 1 || item.decomposed === true;
+                if (isDecomposed) return false;
+                if (rarityFilter === 'all') return true;
+                return item.rarity === rarityFilter;
+            }).map(item => String(item.id));
+            
+            updateBatchButtons();
+            updateStats();
+            renderItems();
+        }
+
+        // 取消全选
+        function selectNone() {
+            selectedItems = [];
+            updateBatchButtons();
+            updateStats();
+            renderItems();
+        }
+
+        // 更新批量操作按钮状态
+        function updateBatchButtons() {
+            const batchBtn = document.getElementById('batchDecomposeBtn');
+            batchBtn.disabled = selectedItems.length === 0;
+        }
+
+        // 更新统计信息
+        function updateStats() {
+            // 数据库返回的decomposed是数字0/1，需要转换为布尔值
+            const activeItems = userItems.filter(item => !(item.decomposed == 1 || item.decomposed === true));
+            const selectedItemsData = userItems.filter(item => selectedItems.includes(String(item.id)));
+            
+            const totalItems = activeItems.length;
+            const totalValue = activeItems.reduce((sum, item) => sum + parseFloat(item.value), 0);
+            const selectedValue = selectedItemsData.reduce((sum, item) => sum + parseFloat(item.value), 0);
+            
+            document.getElementById('totalItems').textContent = totalItems;
+            document.getElementById('totalValue').textContent = `¥${totalValue.toFixed(2)}`;
+            document.getElementById('selectedValue').textContent = `¥${selectedValue.toFixed(2)}`;
+        }
+
+        // 过滤物品
+        function filterItems() {
+            selectedItems = []; // 清空选择
+            updateBatchButtons();
+            renderItems();
+            updateStats();
+        }
+
+        // 分解单个物品
+        function decomposeItem(itemId) {
+            console.log('分解单个物品，ID:', itemId);
+            const item = userItems.find(i => i.id == itemId);
+            console.log('找到的物品:', item);
+            
+            if (!item) {
+                console.error('未找到物品');
+                return;
+            }
+            
+            pendingDecompose = [item];
+            showDecomposeModal();
+        }
+
+        // 批量分解
+        function batchDecompose() {
+            console.log('批量分解，选中物品:', selectedItems);
+            
+            if (selectedItems.length === 0) {
+                alert('请先选择要分解的物品');
+                return;
+            }
+            
+            pendingDecompose = userItems.filter(item => selectedItems.includes(String(item.id)));
+            console.log('待分解物品:', pendingDecompose);
+            
+            showDecomposeModal();
+        }
+
+        // 显示分解确认弹窗
+        function showDecomposeModal() {
+            const modal = document.getElementById('decomposeModal');
+            const info = document.getElementById('decomposeInfo');
+            
+            const totalValue = pendingDecompose.reduce((sum, item) => sum + parseFloat(item.value || 0), 0);
+            const itemNames = pendingDecompose.map(item => item.name).join('、');
+            
+            info.innerHTML = `
+                <div class="neon-text">即将分解以下物品:</div>
+                <div style="margin: 15px 0; padding: 15px; background: rgba(0,0,0,0.5); border-radius: 10px;">
+                    <div class="neon-text gold">${itemNames}</div>
+                </div>
+                <div class="neon-text">将获得金币: <span class="neon-text green">¥${totalValue.toFixed(2)}</span></div>
+            `;
+            
+            modal.classList.add('show');
+        }
+
+        // 关闭分解弹窗
+        function closeDecomposeModal() {
+            document.getElementById('decomposeModal').classList.remove('show');
+            pendingDecompose = [];
+        }
+
+        // 确认分解
+        async function confirmDecompose() {
+            try {
+                console.log('开始分解，待分解物品:', pendingDecompose);
+                
+                const totalValue = pendingDecompose.reduce((sum, item) => sum + parseFloat(item.value), 0);
+                const itemIds = pendingDecompose.map(item => String(item.id));
+                
+                console.log('分解参数:', { itemIds, totalValue });
+                
+                // 调用后端API进行分解
+                const result = await api.decomposeItems(itemIds, totalValue);
+                console.log('分解API响应:', result);
+                
+                if (result.success) {
+                    // 标记物品为已分解
+                    pendingDecompose.forEach(item => {
+                        const itemIndex = userItems.findIndex(i => i.id == item.id);
+                        if (itemIndex > -1) {
+                            userItems[itemIndex].decomposed = 1;
+                            userItems[itemIndex].decomposed_at = new Date().toISOString();
+                        }
+                    });
+                    
+                    // 从选择列表中移除已分解的物品
+                    selectedItems = selectedItems.filter(id => 
+                        !pendingDecompose.some(item => String(item.id) === String(id))
+                    );
+                    
+                    // 更新显示
+                    renderItems();
+                    updateStats();
+                    updateBatchButtons();
+                    loadUserInfo(); // 刷新用户余额
+                    
+                    alert(`成功分解物品，获得 ¥${totalValue.toFixed(2)} 金币！`);
+                } else {
+                    alert('分解失败: ' + (result.message || '未知错误'));
+                }
+                
+                closeDecomposeModal();
+            } catch (error) {
+                console.error('分解失败:', error);
+                alert('分解失败，请稍后重试！');
+                closeDecomposeModal();
+            }
+        }
+
+        // 分解物品API调用
+        async function decomposeItems(itemIds, totalValue) {
+            try {
+                const result = await api.decomposeItems(itemIds, totalValue);
+                return result;
+            } catch (error) {
+                console.error('分解API调用失败:', error);
+                return { success: false, message: '网络错误，请稍后重试' };
+            }
+        }
+
+        // 返回主页
+        function goToHome() {
+            window.location.href = '../main.html';
+        }
+
+        // 退出登录
+        async function logout() {
+            if (confirm('确定要退出登录吗？')) {
+                try {
+                    await api.logout();
+                    window.location.href = '../auth/login.html';
+                } catch (error) {
+                    console.error('退出登录失败:', error);
+                    window.location.href = '../auth/login.html';
+                }
+            }
+        }
+
+        // 页面加载完成后执行
+        document.addEventListener('DOMContentLoaded', initPage);
+    </script>
+</body>
+</html>
