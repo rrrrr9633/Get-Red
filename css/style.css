@@ -506,3 +506,19 @@ body {
         padding: 30px 20px;
     }
 }
+
+/* 充值按钮样式 */
+.recharge-btn {
+    display: inline-block;
+    margin-left: 15px;
+    font-size: 24px;
+    text-decoration: none;
+    color: #ffd700;
+    transition: all 0.3s ease;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+}
+
+.recharge-btn:hover {
+    transform: scale(1.2);
+    text-shadow: 0 0 20px rgba(255, 215, 0, 0.6);
+}

@@ -98,8 +98,6 @@ function verifySuperAdmin() {
         $_SESSION['super_admin_id'] = $admin['id'];
         $_SESSION['super_admin_username'] = $admin['username'];
         $_SESSION['super_admin_verified'] = true;
-        $_SESSION['super_admin_last_check'] = time();
-        $_SESSION['super_admin_login_time'] = time();
         
         // 记录成功登录
         logSuccessfulLogin($admin['id'], $clientIP);
@@ -182,7 +180,7 @@ function createSuperAdmin() {
     }
 }
 
-// 检查超级管理员访问权限 - 更严格的验证
+// 检查超级管理员访问权限
 function checkSuperAdminAccess() {
     // 检查会话是否存在且有效
     if (!isset($_SESSION['super_admin_verified']) || 
@@ -192,21 +190,6 @@ function checkSuperAdminAccess() {
         echo json_encode(['authenticated' => false]);
         return;
     }
-    
-    // 检查会话是否超时（30分钟）
-    if (isset($_SESSION['super_admin_last_check'])) {
-        $timeSinceLastCheck = time() - $_SESSION['super_admin_last_check'];
-        if ($timeSinceLastCheck > 1800) { // 30分钟
-            // 会话超时，清除所有会话数据
-            session_unset();
-            session_destroy();
-            echo json_encode(['authenticated' => false, 'reason' => 'session_timeout']);
-            return;
-        }
-    }
-    
-    // 更新最后检查时间
-    $_SESSION['super_admin_last_check'] = time();
     
     echo json_encode([
         'authenticated' => true,

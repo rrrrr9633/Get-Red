@@ -114,6 +114,7 @@
                         <button class="sub-tab-btn" onclick="showTransactionType('draws')">抽奖获得</button>
                         <button class="sub-tab-btn" onclick="showTransactionType('decompose')">分解物品</button>
                         <button class="sub-tab-btn" onclick="showTransactionType('financial')">资金流水</button>
+                        <button class="sub-tab-btn" onclick="showTransactionType('recharge')">充值记录</button>
                     </div>
                     
                     <div id="transactionsList" class="transactions-list">
@@ -751,53 +752,100 @@
         // 加载交易记录
         async function loadTransactions(page = 1) {
             try {
-                const response = await fetch(`../../server/api/users.php?action=transactions&type=${currentTransactionType}&page=${page}&limit=${pageSize}`, {
-                    method: 'GET',
-                    credentials: 'include'
-                });
+                let url;
+                let transactions = [];
+                let totalPagesCount = 1;
                 
-                const data = await response.json();
+                if (currentTransactionType === 'recharge') {
+                    // 加载充值记录
+                    const response = await fetch(`../../server/api/recharge.php?action=get_user_recharge_history`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        credentials: 'include',
+                        body: JSON.stringify({ 
+                            page: page, 
+                            limit: pageSize 
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        transactions = (data.history || []).map(record => ({
+                            description: `充值 - ${record.payment_method === 'alipay' ? '支付宝' : record.payment_method === 'wechat' ? '微信支付' : record.payment_method}`,
+                            amount: record.coins_gained,
+                            created_at: record.created_at,
+                            type: 'recharge',
+                            status: record.status
+                        }));
+                        totalPagesCount = Math.ceil((data.total || 0) / pageSize);
+                    }
+                } else {
+                    // 加载其他类型的交易记录
+                    const response = await fetch(`../../server/api/users.php?action=transactions&type=${currentTransactionType}&page=${page}&limit=${pageSize}`, {
+                        method: 'GET',
+                        credentials: 'include'
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        transactions = data.transactions || [];
+                        totalPagesCount = data.pagination ? data.pagination.total_pages : (data.totalPages || 1);
+                    }
+                }
                 
-                if (data.success) {
-                    const container = document.getElementById('transactionsList');
-                    const transactions = data.transactions;
+                const container = document.getElementById('transactionsList');
+                
+                currentPage = page;
+                totalPages = totalPagesCount;
+                
+                // 更新分页控件
+                updatePaginationControls();
+                
+                if (transactions.length === 0) {
+                    container.innerHTML = '<p class="neon-text" style="text-align: center; opacity: 0.6;">暂无交易记录</p>';
+                    return;
+                }
+                
+                container.innerHTML = transactions.map(transaction => {
+                    const date = new Date(transaction.created_at).toLocaleString();
+                    const amount = parseFloat(transaction.amount);
+                    const amountClass = amount > 0 ? 'green' : 'red';
+                    const amountText = amount > 0 ? `+${amount}` : amount;
                     
-                    currentPage = page;
-                    totalPages = data.totalPages || 1;
-                    
-                    // 更新分页控件
-                    updatePaginationControls();
-                    
-                    if (transactions.length === 0) {
-                        container.innerHTML = '<p class="neon-text" style="text-align: center; opacity: 0.6;">暂无交易记录</p>';
-                        return;
+                    let statusText = '';
+                    if (transaction.type === 'recharge' && transaction.status) {
+                        const statusMap = {
+                            'pending': '待支付',
+                            'completed': '已完成',
+                            'failed': '失败',
+                            'cancelled': '已取消'
+                        };
+                        statusText = ` (${statusMap[transaction.status] || transaction.status})`;
                     }
                     
-                    container.innerHTML = transactions.map(transaction => {
-                        const date = new Date(transaction.created_at).toLocaleString();
-                        const amount = parseFloat(transaction.amount);
-                        const amountClass = amount > 0 ? 'green' : 'red';
-                        const amountText = amount > 0 ? `+${amount}` : amount;
-                        
-                        return `
-                            <div class="transaction-item">
-                                <div>
-                                    <div class="neon-text">${transaction.description}</div>
-                                    <div style="font-size: 12px; opacity: 0.6; margin-top: 5px;">
-                                        ${date}
-                                    </div>
-                                </div>
-                                <div class="neon-text ${amountClass}">
-                                    ${amountText} 金币
+                    return `
+                        <div class="transaction-item">
+                            <div>
+                                <div class="neon-text">${transaction.description}${statusText}</div>
+                                <div style="font-size: 12px; opacity: 0.6; margin-top: 5px;">
+                                    ${date}
                                 </div>
                             </div>
-                        `;
-                    }).join('');
-                } else {
-                    console.error('加载交易记录失败:', data.error);
-                }
+                            <div class="neon-text ${amountClass}">
+                                ${amountText} 金币
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                
             } catch (error) {
                 console.error('加载交易记录失败:', error);
+                const container = document.getElementById('transactionsList');
+                container.innerHTML = '<p class="neon-text" style="text-align: center; opacity: 0.6;">加载失败，请稍后重试</p>';
             }
         }
 

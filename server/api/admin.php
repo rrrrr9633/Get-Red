@@ -72,6 +72,15 @@ switch ($action) {
     case 'delete_user_item':
         deleteUserItem();
         break;
+    case 'user_details':
+        getUserDetails();
+        break;
+    case 'user_draws':
+        getUserDraws();
+        break;
+    case 'user_transactions':
+        getUserTransactions();
+        break;
     default:
         http_response_code(400);
         echo json_encode(['error' => '无效的操作']);
@@ -890,13 +899,183 @@ function deleteUserItem() {
             }
             
             echo json_encode(['success' => true, 'message' => '物品删除成功']);
-        } else {
-            echo json_encode(['success' => false, 'error' => '删除失败']);
         }
     } catch (Exception $e) {
         error_log("删除用户物品异常: " . $e->getMessage());
         http_response_code(500);
         echo json_encode(['error' => '删除物品失败: ' . $e->getMessage()]);
+    }
+}
+
+// 获取用户详细信息
+function getUserDetails() {
+    global $db;
+    global $input;
+    
+    $userId = $input['user_id'] ?? null;
+    
+    if (!$userId) {
+        http_response_code(400);
+        echo json_encode(['error' => '缺少用户ID']);
+        return;
+    }
+    
+    try {
+        $stmt = $db->prepare("
+            SELECT 
+                id,
+                username,
+                nickname,
+                balance,
+                is_online,
+                last_login,
+                last_activity,
+                created_at,
+                updated_at,
+                (SELECT COUNT(*) FROM lottery_records WHERE user_id = ?) as total_draws,
+                (SELECT COUNT(*) FROM lottery_records WHERE user_id = ? AND reward > 0) as win_count,
+                (SELECT SUM(cost) FROM lottery_records WHERE user_id = ?) as total_spent,
+                (SELECT COUNT(*) FROM transactions WHERE user_id = ?) as total_transactions
+            FROM users 
+            WHERE id = ?
+        ");
+        $stmt->execute([$userId, $userId, $userId, $userId, $userId]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$user) {
+            http_response_code(404);
+            echo json_encode(['error' => '用户不存在']);
+            return;
+        }
+        
+        // 计算胜率
+        $user['win_rate'] = $user['total_draws'] > 0 ? round(($user['win_count'] / $user['total_draws']) * 100, 2) : 0;
+        
+        echo json_encode(['success' => true, 'user' => $user]);
+    } catch (Exception $e) {
+        error_log("获取用户详情失败: " . $e->getMessage());
+        http_response_code(500);
+        echo json_encode(['error' => '获取用户详情失败']);
+    }
+}
+
+// 获取用户抽奖记录
+function getUserDraws() {
+    global $db;
+    global $input;
+    
+    $userId = $input['user_id'] ?? null;
+    $page = max(1, intval($input['page'] ?? 1));
+    $limit = min(50, max(10, intval($input['limit'] ?? 20)));
+    $offset = ($page - 1) * $limit;
+    
+    if (!$userId) {
+        http_response_code(400);
+        echo json_encode(['error' => '缺少用户ID']);
+        return;
+    }
+    
+    try {
+        // 获取总数
+        $countStmt = $db->prepare("SELECT COUNT(*) as total FROM lottery_records WHERE user_id = ?");
+        $countStmt->execute([$userId]);
+        $total = $countStmt->fetch(PDO::FETCH_ASSOC)['total'];
+        
+        // 获取抽奖记录
+        $stmt = $db->prepare("
+            SELECT 
+                id,
+                user_id,
+                game_type,
+                cost,
+                reward,
+                result,
+                created_at
+            FROM lottery_records 
+            WHERE user_id = ?
+            ORDER BY created_at DESC
+            LIMIT {$limit} OFFSET {$offset}
+        ");
+        $stmt->execute([$userId]);
+        $draws = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // 解析结果JSON
+        foreach ($draws as &$draw) {
+            if ($draw['result']) {
+                $draw['result'] = json_decode($draw['result'], true);
+            }
+        }
+        
+        echo json_encode([
+            'success' => true,
+            'draws' => $draws,
+            'pagination' => [
+                'current_page' => $page,
+                'total_pages' => ceil($total / $limit),
+                'total_records' => $total,
+                'limit' => $limit
+            ]
+        ]);
+    } catch (Exception $e) {
+        error_log("获取用户抽奖记录失败: " . $e->getMessage());
+        http_response_code(500);
+        echo json_encode(['error' => '获取抽奖记录失败']);
+    }
+}
+
+// 获取用户交易记录
+function getUserTransactions() {
+    global $db;
+    global $input;
+    
+    $userId = $input['user_id'] ?? null;
+    $page = max(1, intval($input['page'] ?? 1));
+    $limit = min(50, max(10, intval($input['limit'] ?? 20)));
+    $offset = ($page - 1) * $limit;
+    
+    if (!$userId) {
+        http_response_code(400);
+        echo json_encode(['error' => '缺少用户ID']);
+        return;
+    }
+    
+    try {
+        // 获取总数
+        $countStmt = $db->prepare("SELECT COUNT(*) as total FROM transactions WHERE user_id = ?");
+        $countStmt->execute([$userId]);
+        $total = $countStmt->fetch(PDO::FETCH_ASSOC)['total'];
+        
+        // 获取交易记录
+        $stmt = $db->prepare("
+            SELECT 
+                id,
+                user_id,
+                type,
+                amount,
+                description,
+                created_at
+            FROM transactions 
+            WHERE user_id = ?
+            ORDER BY created_at DESC
+            LIMIT {$limit} OFFSET {$offset}
+        ");
+        $stmt->execute([$userId]);
+        $transactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        echo json_encode([
+            'success' => true,
+            'transactions' => $transactions,
+            'pagination' => [
+                'current_page' => $page,
+                'total_pages' => ceil($total / $limit),
+                'total_records' => $total,
+                'limit' => $limit
+            ]
+        ]);
+    } catch (Exception $e) {
+        error_log("获取用户交易记录失败: " . $e->getMessage());
+        http_response_code(500);
+        echo json_encode(['error' => '获取交易记录失败']);
     }
 }
 ?>
