@@ -39,7 +39,6 @@
             <div class="profile-info">
                 <h2 id="profileNickname" class="neon-text gold"></h2>
                 <p id="profileUsername" class="neon-text"></p>
-                <p id="profilePhone" class="neon-text"></p>
                 <div class="balance-info">
                     <span class="neon-text">当前余额: </span>
                     <span id="profileBalance" class="neon-text gold"></span>
@@ -57,8 +56,13 @@
             <!-- 账户信息标签页 -->
             <div id="accountTab" class="tab-content active">
                 <div class="info-card">
-                    <h3 class="neon-text gold">编辑资料</h3>
-                    <form id="profileForm">
+                    <h3 class="neon-text gold">个人资料</h3>
+                    <div id="profileInfo" class="profile-info-display">
+                        <!-- 资料信息将在这里显示 -->
+                    </div>
+                    <button id="editProfileBtn" class="btn-neon" onclick="toggleEditMode()">编辑资料</button>
+                    
+                    <form id="profileForm" style="display: none;">
                         <div class="form-group">
                             <label class="neon-text">昵称:</label>
                             <input type="text" id="editNickname" placeholder="请输入昵称">
@@ -70,11 +74,14 @@
                         </div>
                         
                         <div class="form-group">
-                            <label class="neon-text">手机号:</label>
-                            <input type="tel" id="editPhone" disabled>
+                            <label class="neon-text">邮箱:</label>
+                            <input type="email" id="editEmail" placeholder="请输入邮箱">
                         </div>
                         
-                        <button type="submit" class="btn-neon">保存修改</button>
+                        <div class="form-buttons">
+                            <button type="submit" class="btn-neon">保存修改</button>
+                            <button type="button" class="btn-neon secondary" onclick="cancelEdit()">取消</button>
+                        </div>
                     </form>
                 </div>
                 
@@ -102,8 +109,25 @@
             <div id="transactionsTab" class="tab-content">
                 <div class="info-card">
                     <h3 class="neon-text gold">交易记录</h3>
+                    <div class="tab-sub-nav">
+                        <button class="sub-tab-btn active" onclick="showTransactionType('all')">全部记录</button>
+                        <button class="sub-tab-btn" onclick="showTransactionType('draws')">抽奖获得</button>
+                        <button class="sub-tab-btn" onclick="showTransactionType('decompose')">分解物品</button>
+                        <button class="sub-tab-btn" onclick="showTransactionType('financial')">资金流水</button>
+                    </div>
+                    
                     <div id="transactionsList" class="transactions-list">
                         <!-- 交易记录将在这里显示 -->
+                    </div>
+                    
+                    <div class="pagination-controls">
+                        <button class="btn-pagination" onclick="previousPage()" id="prevBtn">上一页</button>
+                        <div class="page-info">
+                            <span>第</span>
+                            <input type="number" id="pageInput" min="1" value="1" onchange="goToPage(this.value)">
+                            <span>页，共 <span id="totalPages">1</span> 页</span>
+                        </div>
+                        <button class="btn-pagination" onclick="nextPage()" id="nextBtn">下一页</button>
                     </div>
                 </div>
             </div>
@@ -334,6 +358,128 @@
             cursor: not-allowed;
         }
         
+        .profile-info-display {
+            margin-bottom: 20px;
+        }
+        
+        .profile-info-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 0;
+            border-bottom: 1px solid rgba(255, 215, 0, 0.2);
+        }
+        
+        .profile-info-item:last-child {
+            border-bottom: none;
+        }
+        
+        .profile-info-label {
+            font-weight: bold;
+            min-width: 100px;
+        }
+        
+        .profile-info-value {
+            color: #ffd700;
+        }
+        
+        .form-buttons {
+            display: flex;
+            gap: 15px;
+        }
+        
+        .btn-neon.secondary {
+            background: transparent;
+            border: 2px solid #666;
+            color: #666;
+        }
+        
+        .btn-neon.secondary:hover {
+            border-color: #ffd700;
+            color: #ffd700;
+        }
+        
+        .tab-sub-nav {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .sub-tab-btn {
+            padding: 8px 16px;
+            background: transparent;
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            color: #ffd700;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+        
+        .sub-tab-btn:hover {
+            background: rgba(255, 215, 0, 0.1);
+        }
+        
+        .sub-tab-btn.active {
+            background: rgba(255, 215, 0, 0.2);
+            border-color: #ffd700;
+        }
+        
+        .pagination-controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            margin-top: 20px;
+            padding: 20px;
+            border-top: 1px solid rgba(255, 215, 0, 0.2);
+        }
+        
+        .btn-pagination {
+            padding: 8px 16px;
+            background: transparent;
+            border: 1px solid #ffd700;
+            color: #ffd700;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-pagination:hover:not(:disabled) {
+            background: rgba(255, 215, 0, 0.1);
+        }
+        
+        .btn-pagination:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .page-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #ffd700;
+        }
+        
+        .page-info input {
+            width: 60px;
+            padding: 5px 8px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid #ffd700;
+            border-radius: 3px;
+            color: #fff;
+            text-align: center;
+        }
+        
+        .neon-text.green {
+            color: #00ff88;
+        }
+        
+        .neon-text.red {
+            color: #ff4444;
+        }
+        
         .transactions-list,
         .checkin-list {
             max-height: 400px;
@@ -397,8 +543,12 @@
 
     <script src="../../js/effects.js"></script>
     <script>
-        // 不再使用本地数据库，改用MySQL数据库
         let currentUser = null;
+        let isEditMode = false;
+        let currentTransactionType = 'all';
+        let currentPage = 1;
+        let totalPages = 1;
+        const pageSize = 10;
 
         // 检查登录状态
         function checkLogin() {
@@ -420,23 +570,68 @@
             if (!currentUser) return;
 
             try {
-                const profile = await db.getUserProfile(currentUser.id);
+                const response = await fetch('../../server/api/users.php?action=profile', {
+                    method: 'GET',
+                    credentials: 'include'
+                });
                 
-                if (profile) {
-                    document.getElementById('profileAvatar').src = profile.avatar;
-                    document.getElementById('profileNickname').textContent = profile.nickname;
-                    document.getElementById('profileUsername').textContent = `@${currentUser.username}`;
-                    document.getElementById('profilePhone').textContent = currentUser.phone;
-                    document.getElementById('profileBalance').textContent = profile.balance;
+                const data = await response.json();
+                
+                if (data.success) {
+                    const user = data.user;
+                    
+                    // 设置头像
+                    document.getElementById('profileAvatar').src = user.avatar || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiByeD0iNTAiIGZpbGw9IiNmZmQ3MDAiLz4KPHN2ZyB4PSIyNSIgeT0iMjAiIHdpZHRoPSI1MCIgaGVpZ2h0PSI2MCI+CjxjaXJjbGUgY3g9IjI1IiBjeT0iMjAiIHI9IjE1IiBmaWxsPSIjMTExIi8+CjxlbGxpcHNlIGN4PSIyNSIgY3k9IjUwIiByeD0iMjAiIHJ5PSIxNSIgZmlsbD0iIzExMSIvPgo8L3N2Zz4KPC9zdmc+';
+                    
+                    // 设置基本信息
+                    document.getElementById('profileNickname').textContent = user.nickname || '未设置昵称';
+                    document.getElementById('profileUsername').textContent = `@${user.username}`;
+                    document.getElementById('profileBalance').textContent = `${user.balance || 0} 金币`;
+                    
+                    // 渲染资料信息
+                    renderProfileInfo(user);
                     
                     // 填充编辑表单
-                    document.getElementById('editNickname').value = profile.nickname;
-                    document.getElementById('editUsername').value = currentUser.username;
-                    document.getElementById('editPhone').value = currentUser.phone;
+                    document.getElementById('editNickname').value = user.nickname || '';
+                    document.getElementById('editUsername').value = user.username;
+                    document.getElementById('editEmail').value = user.email || '';
+                } else {
+                    console.error('获取用户资料失败:', data.error);
                 }
             } catch (error) {
                 console.error('加载用户资料失败:', error);
             }
+        }
+
+        // 渲染资料信息
+        function renderProfileInfo(user) {
+            const profileInfo = document.getElementById('profileInfo');
+            profileInfo.innerHTML = `
+                <div class="profile-info-item">
+                    <span class="profile-info-label neon-text">用户ID:</span>
+                    <span class="profile-info-value neon-text">${user.id}</span>
+                </div>
+                <div class="profile-info-item">
+                    <span class="profile-info-label neon-text">用户名:</span>
+                    <span class="profile-info-value neon-text">${user.username}</span>
+                </div>
+                <div class="profile-info-item">
+                    <span class="profile-info-label neon-text">昵称:</span>
+                    <span class="profile-info-value neon-text">${user.nickname || '未设置'}</span>
+                </div>
+                <div class="profile-info-item">
+                    <span class="profile-info-label neon-text">邮箱:</span>
+                    <span class="profile-info-value neon-text">${user.email || '未设置'}</span>
+                </div>
+                <div class="profile-info-item">
+                    <span class="profile-info-label neon-text">余额:</span>
+                    <span class="profile-info-value neon-text">${user.balance || 0} 金币</span>
+                </div>
+                <div class="profile-info-item">
+                    <span class="profile-info-label neon-text">注册时间:</span>
+                    <span class="profile-info-value neon-text">${user.created_at ? new Date(user.created_at).toLocaleDateString() : '未知'}</span>
+                </div>
+            `;
         }
 
         // 编辑头像
@@ -448,14 +643,40 @@
         document.getElementById('avatarInput').addEventListener('change', async function(e) {
             const file = e.target.files[0];
             if (file) {
+                // 检查文件大小（限制2MB）
+                if (file.size > 2 * 1024 * 1024) {
+                    alert('图片大小不能超过2MB！');
+                    return;
+                }
+                
+                // 检查文件类型
+                if (!file.type.startsWith('image/')) {
+                    alert('请选择图片文件！');
+                    return;
+                }
+                
                 const reader = new FileReader();
                 reader.onload = async function(e) {
                     const newAvatar = e.target.result;
                     
                     try {
-                        await db.updateUserProfile(currentUser.id, { avatar: newAvatar });
-                        document.getElementById('profileAvatar').src = newAvatar;
-                        alert('头像更新成功！');
+                        const response = await fetch('../../server/api/users.php?action=profile', {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            credentials: 'include',
+                            body: JSON.stringify({ avatar: newAvatar })
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            document.getElementById('profileAvatar').src = newAvatar;
+                            alert('头像更新成功！');
+                        } else {
+                            alert('头像更新失败: ' + data.error);
+                        }
                     } catch (error) {
                         console.error('头像更新失败:', error);
                         alert('头像更新失败！');
@@ -464,6 +685,32 @@
                 reader.readAsDataURL(file);
             }
         });
+
+        // 切换编辑模式
+        function toggleEditMode() {
+            isEditMode = !isEditMode;
+            
+            const profileInfo = document.getElementById('profileInfo');
+            const profileForm = document.getElementById('profileForm');
+            const editBtn = document.getElementById('editProfileBtn');
+            
+            if (isEditMode) {
+                profileInfo.style.display = 'none';
+                profileForm.style.display = 'block';
+                editBtn.style.display = 'none';
+            } else {
+                profileInfo.style.display = 'block';
+                profileForm.style.display = 'none';
+                editBtn.style.display = 'block';
+            }
+        }
+
+        // 取消编辑
+        function cancelEdit() {
+            toggleEditMode();
+            // 重新加载原始数据
+            loadProfile();
+        }
 
         // 显示标签页
         function showTab(tabName) {
@@ -487,94 +734,168 @@
             }
         }
 
+        // 显示交易记录类型
+        function showTransactionType(type) {
+            currentTransactionType = type;
+            currentPage = 1;
+            
+            // 更新按钮状态
+            document.querySelectorAll('.sub-tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            loadTransactions();
+        }
+
         // 加载交易记录
-        async function loadTransactions() {
+        async function loadTransactions(page = 1) {
             try {
-                const transactions = await db.getUserTransactions(currentUser.id);
-                const container = document.getElementById('transactionsList');
+                const response = await fetch(`../../server/api/users.php?action=transactions&type=${currentTransactionType}&page=${page}&limit=${pageSize}`, {
+                    method: 'GET',
+                    credentials: 'include'
+                });
                 
-                if (transactions.length === 0) {
-                    container.innerHTML = '<p class="neon-text" style="text-align: center; opacity: 0.6;">暂无交易记录</p>';
-                    return;
-                }
+                const data = await response.json();
                 
-                container.innerHTML = transactions.map(transaction => `
-                    <div class="transaction-item">
-                        <div>
-                            <div class="neon-text">${transaction.description}</div>
-                            <div style="font-size: 12px; opacity: 0.6; margin-top: 5px;">
-                                ${new Date(transaction.createdAt).toLocaleString()}
+                if (data.success) {
+                    const container = document.getElementById('transactionsList');
+                    const transactions = data.transactions;
+                    
+                    currentPage = page;
+                    totalPages = data.totalPages || 1;
+                    
+                    // 更新分页控件
+                    updatePaginationControls();
+                    
+                    if (transactions.length === 0) {
+                        container.innerHTML = '<p class="neon-text" style="text-align: center; opacity: 0.6;">暂无交易记录</p>';
+                        return;
+                    }
+                    
+                    container.innerHTML = transactions.map(transaction => {
+                        const date = new Date(transaction.created_at).toLocaleString();
+                        const amount = parseFloat(transaction.amount);
+                        const amountClass = amount > 0 ? 'green' : 'red';
+                        const amountText = amount > 0 ? `+${amount}` : amount;
+                        
+                        return `
+                            <div class="transaction-item">
+                                <div>
+                                    <div class="neon-text">${transaction.description}</div>
+                                    <div style="font-size: 12px; opacity: 0.6; margin-top: 5px;">
+                                        ${date}
+                                    </div>
+                                </div>
+                                <div class="neon-text ${amountClass}">
+                                    ${amountText} 金币
+                                </div>
                             </div>
-                        </div>
-                        <div class="neon-text ${transaction.amount > 0 ? 'green' : 'red'}">
-                            ${transaction.amount > 0 ? '+' : ''}${transaction.amount}
-                        </div>
-                    </div>
-                `).join('');
+                        `;
+                    }).join('');
+                } else {
+                    console.error('加载交易记录失败:', data.error);
+                }
             } catch (error) {
                 console.error('加载交易记录失败:', error);
+            }
+        }
+
+        // 更新分页控件
+        function updatePaginationControls() {
+            document.getElementById('pageInput').value = currentPage;
+            document.getElementById('totalPages').textContent = totalPages;
+            
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+            
+            prevBtn.disabled = currentPage <= 1;
+            nextBtn.disabled = currentPage >= totalPages;
+        }
+
+        // 上一页
+        function previousPage() {
+            if (currentPage > 1) {
+                loadTransactions(currentPage - 1);
+            }
+        }
+
+        // 下一页
+        function nextPage() {
+            if (currentPage < totalPages) {
+                loadTransactions(currentPage + 1);
+            }
+        }
+
+        // 跳转到指定页
+        function goToPage(page) {
+            const pageNum = parseInt(page);
+            if (pageNum >= 1 && pageNum <= totalPages && pageNum !== currentPage) {
+                loadTransactions(pageNum);
             }
         }
 
         // 加载签到记录
         async function loadCheckinRecords() {
             try {
-                const records = await db.getUserCheckinRecords(currentUser.id);
+                const response = await fetch('../../server/api/checkin.php?action=status', {
+                    method: 'GET',
+                    credentials: 'include'
+                });
                 
-                // 计算统计数据
-                const totalCheckins = records.length;
-                let consecutiveCheckins = 0;
-                const today = new Date();
-                const thisMonth = records.filter(record => {
-                    const recordDate = new Date(record.date);
-                    return recordDate.getMonth() === today.getMonth() && 
-                           recordDate.getFullYear() === today.getFullYear();
-                }).length;
+                const data = await response.json();
                 
-                // 计算连续签到天数
-                if (records.length > 0) {
-                    const sortedRecords = records.sort((a, b) => new Date(b.date) - new Date(a.date));
-                    let currentDate = new Date();
-                    currentDate.setHours(0, 0, 0, 0);
+                if (data.success) {
+                    // 更新统计显示
+                    document.getElementById('totalCheckins').textContent = data.totalDays || 0;
+                    document.getElementById('consecutiveCheckins').textContent = data.consecutiveDays || 0;
+                    document.getElementById('monthlyCheckins').textContent = data.monthlyDays || 0;
                     
-                    for (const record of sortedRecords) {
-                        const recordDate = new Date(record.date);
-                        recordDate.setHours(0, 0, 0, 0);
-                        
-                        if (recordDate.getTime() === currentDate.getTime()) {
-                            consecutiveCheckins++;
-                            currentDate.setDate(currentDate.getDate() - 1);
-                        } else {
-                            break;
-                        }
-                    }
+                    // 加载签到历史记录
+                    loadCheckinHistory();
+                } else {
+                    console.error('加载签到数据失败:', data.error);
                 }
-                
-                // 更新统计显示
-                document.getElementById('totalCheckins').textContent = totalCheckins;
-                document.getElementById('consecutiveCheckins').textContent = consecutiveCheckins;
-                document.getElementById('monthlyCheckins').textContent = thisMonth;
-                
-                // 显示签到记录
-                const container = document.getElementById('checkinList');
-                if (records.length === 0) {
-                    container.innerHTML = '<p class="neon-text" style="text-align: center; opacity: 0.6;">暂无签到记录</p>';
-                    return;
-                }
-                
-                container.innerHTML = records.slice(0, 20).map(record => `
-                    <div class="checkin-item">
-                        <div>
-                            <div class="neon-text">签到奖励</div>
-                            <div style="font-size: 12px; opacity: 0.6; margin-top: 5px;">
-                                ${new Date(record.date).toLocaleDateString()}
-                            </div>
-                        </div>
-                        <div class="neon-text gold">+${record.reward}</div>
-                    </div>
-                `).join('');
             } catch (error) {
                 console.error('加载签到记录失败:', error);
+            }
+        }
+
+        // 加载签到历史记录
+        async function loadCheckinHistory() {
+            try {
+                const response = await fetch('../../server/api/checkin.php?action=history', {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    const container = document.getElementById('checkinList');
+                    const records = data.records || [];
+                    
+                    if (records.length === 0) {
+                        container.innerHTML = '<p class="neon-text" style="text-align: center; opacity: 0.6;">暂无签到记录</p>';
+                        return;
+                    }
+                    
+                    container.innerHTML = records.slice(0, 20).map(record => `
+                        <div class="checkin-item">
+                            <div>
+                                <div class="neon-text">签到奖励</div>
+                                <div style="font-size: 12px; opacity: 0.6; margin-top: 5px;">
+                                    ${new Date(record.checkin_date).toLocaleDateString()}
+                                </div>
+                            </div>
+                            <div class="neon-text gold">+${record.reward_amount || 10} 金币</div>
+                        </div>
+                    `).join('');
+                } else {
+                    console.error('加载签到历史失败:', data.error);
+                }
+            } catch (error) {
+                console.error('加载签到历史失败:', error);
             }
         }
 
@@ -582,17 +903,33 @@
         document.getElementById('profileForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
-            const nickname = document.getElementById('editNickname').value;
+            const nickname = document.getElementById('editNickname').value.trim();
+            const email = document.getElementById('editEmail').value.trim();
             
-            if (!nickname.trim()) {
+            if (!nickname) {
                 alert('昵称不能为空！');
                 return;
             }
             
             try {
-                await db.updateUserProfile(currentUser.id, { nickname });
-                document.getElementById('profileNickname').textContent = nickname;
-                alert('资料更新成功！');
+                const response = await fetch('../../server/api/users.php?action=profile', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({ nickname, email })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('资料更新成功！');
+                    toggleEditMode();
+                    loadProfile(); // 重新加载资料
+                } else {
+                    alert('资料更新失败: ' + data.error);
+                }
             } catch (error) {
                 console.error('资料更新失败:', error);
                 alert('资料更新失败！');
@@ -623,13 +960,25 @@
             }
             
             try {
-                const success = await db.changePassword(currentUser.id, currentPassword, newPassword);
+                const response = await fetch('../../server/api/users.php?action=password', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        current_password: currentPassword,
+                        new_password: newPassword
+                    })
+                });
                 
-                if (success) {
+                const data = await response.json();
+                
+                if (data.success) {
                     alert('密码修改成功！');
                     document.getElementById('passwordForm').reset();
                 } else {
-                    alert('当前密码错误！');
+                    alert('密码修改失败: ' + data.error);
                 }
             } catch (error) {
                 console.error('密码修改失败:', error);

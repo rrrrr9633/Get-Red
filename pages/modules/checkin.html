@@ -13,7 +13,7 @@
     <!-- 导航栏 -->
     <nav class="navbar">
         <div class="nav-brand">
-            <h1 class="neon-text gold">幸运降临</h1>
+            <h1 class="neon-text gold" onclick="goToHome()" style="cursor: pointer;" title="返回主页">幸运降临</h1>
         </div>
         
         <div class="nav-user">
@@ -489,7 +489,6 @@
 
     <script src="../../js/effects.js"></script>
     <script>
-        // 不再使用本地数据库，改用MySQL数据库
         let currentUser = null;
 
         // 检查登录状态
@@ -512,27 +511,17 @@
             if (!currentUser) return;
 
             try {
-                const profile = await db.getUserProfile(currentUser.id);
+                const response = await fetch('../../server/api/users.php?action=profile');
+                const data = await response.json();
                 
-                if (profile) {
-                    document.getElementById('userAvatar').src = profile.avatar;
-                    document.getElementById('userNickname').textContent = profile.nickname;
-                    document.getElementById('userBalance').textContent = `余额: ${profile.balance}`;
+                if (data.success) {
+                    document.getElementById('userAvatar').src = data.user.avatar || '/images/default-avatar.png';
+                    document.getElementById('userNickname').textContent = data.user.nickname || data.user.username;
+                    document.getElementById('userBalance').textContent = `余额: ${data.user.balance}`;
                 }
             } catch (error) {
                 console.error('加载用户信息失败:', error);
             }
-        }
-
-        // 获取签到奖励金额
-        function getCheckinReward(consecutiveDays) {
-            if (consecutiveDays <= 0) return 10;
-            if (consecutiveDays === 1) return 15;
-            if (consecutiveDays === 2) return 20;
-            if (consecutiveDays === 3) return 25;
-            if (consecutiveDays === 4) return 30;
-            if (consecutiveDays === 5) return 40;
-            return 50; // 7天及以上
         }
 
         // 加载签到状态
@@ -540,79 +529,57 @@
             if (!currentUser) return;
 
             try {
-                const records = await db.getUserCheckinRecords(currentUser.id);
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
+                const response = await fetch('../../server/api/checkin.php?action=status');
+                const data = await response.json();
                 
-                // 检查今天是否已签到
-                const todayRecord = records.find(record => {
-                    const recordDate = new Date(record.date);
-                    recordDate.setHours(0, 0, 0, 0);
-                    return recordDate.getTime() === today.getTime();
-                });
-
-                const checkinBtn = document.getElementById('checkinBtn');
-                
-                if (todayRecord) {
-                    // 今天已签到
-                    checkinBtn.disabled = true;
-                    checkinBtn.querySelector('.btn-text').textContent = '今日已签到';
-                    checkinBtn.querySelector('.btn-reward').textContent = `已获得: ${todayRecord.reward} 金币`;
-                    checkinBtn.style.background = '#666';
-                }
-
-                // 计算连续签到天数
-                let consecutiveDays = 0;
-                if (records.length > 0) {
-                    const sortedRecords = records.sort((a, b) => new Date(b.date) - new Date(a.date));
-                    let currentDate = new Date();
-                    currentDate.setHours(0, 0, 0, 0);
+                if (data.success) {
+                    const checkinBtn = document.getElementById('checkinBtn');
                     
-                    for (const record of sortedRecords) {
-                        const recordDate = new Date(record.date);
-                        recordDate.setHours(0, 0, 0, 0);
-                        
-                        if (recordDate.getTime() === currentDate.getTime()) {
-                            consecutiveDays++;
-                            currentDate.setDate(currentDate.getDate() - 1);
-                        } else {
-                            break;
-                        }
+                    if (data.hasCheckedIn) {
+                        // 今天已签到
+                        checkinBtn.disabled = true;
+                        checkinBtn.querySelector('.btn-text').textContent = '今日已签到';
+                        checkinBtn.querySelector('.btn-reward').textContent = '已完成签到';
+                        checkinBtn.style.background = '#666';
+                        checkinBtn.style.cursor = 'not-allowed';
+                    } else {
+                        // 未签到，显示今日奖励
+                        document.getElementById('todayReward').textContent = data.todayReward;
                     }
+
+                    // 更新统计显示
+                    document.getElementById('consecutiveDays').textContent = `${data.consecutiveDays}天`;
+                    document.getElementById('monthlyDays').textContent = `${data.monthlyDays}天`;
+                    document.getElementById('totalDays').textContent = `${data.totalDays}天`;
+
+                    // 加载签到日历
+                    loadCheckinCalendar();
+                } else {
+                    console.error('获取签到状态失败:', data.error);
                 }
-
-                // 计算本月签到天数
-                const thisMonth = records.filter(record => {
-                    const recordDate = new Date(record.date);
-                    return recordDate.getMonth() === today.getMonth() && 
-                           recordDate.getFullYear() === today.getFullYear();
-                }).length;
-
-                // 更新显示
-                document.getElementById('consecutiveDays').textContent = `${consecutiveDays}天`;
-                document.getElementById('monthlyDays').textContent = `${thisMonth}天`;
-                document.getElementById('totalDays').textContent = `${records.length}天`;
-
-                // 更新今日奖励显示
-                if (!todayRecord) {
-                    const todayReward = getCheckinReward(consecutiveDays);
-                    document.getElementById('todayReward').textContent = todayReward;
-                }
-
-                // 生成日历
-                generateCalendar(records);
-
             } catch (error) {
                 console.error('加载签到状态失败:', error);
             }
         }
 
+        // 加载签到日历
+        async function loadCheckinCalendar() {
+            try {
+                const response = await fetch('../../server/api/checkin.php?action=calendar');
+                const data = await response.json();
+                
+                if (data.success) {
+                    generateCalendar(data.checkinDays, data.year, data.month);
+                }
+            } catch (error) {
+                console.error('加载签到日历失败:', error);
+            }
+        }
+
         // 生成签到日历
-        function generateCalendar(checkinRecords) {
+        function generateCalendar(checkinDays, year, month) {
             const calendarGrid = document.getElementById('calendarGrid');
             const today = new Date();
-            const year = today.getFullYear();
-            const month = today.getMonth();
             
             // 清空日历
             calendarGrid.innerHTML = '';
@@ -627,8 +594,8 @@
             });
             
             // 获取本月第一天和最后一天
-            const firstDay = new Date(year, month, 1);
-            const lastDay = new Date(year, month + 1, 0);
+            const firstDay = new Date(year, month - 1, 1);
+            const lastDay = new Date(year, month, 0);
             const startDate = new Date(firstDay);
             startDate.setDate(startDate.getDate() - firstDay.getDay());
             
@@ -640,19 +607,14 @@
                 const dayDiv = document.createElement('div');
                 dayDiv.className = 'calendar-day';
                 
-                if (currentDate.getMonth() === month) {
+                if (currentDate.getMonth() === month - 1) {
                     dayDiv.textContent = currentDate.getDate();
                     
                     // 检查是否签到过
-                    const isChecked = checkinRecords.some(record => {
-                        const recordDate = new Date(record.date);
-                        return recordDate.getDate() === currentDate.getDate() &&
-                               recordDate.getMonth() === currentDate.getMonth() &&
-                               recordDate.getFullYear() === currentDate.getFullYear();
-                    });
-                    
-                    if (isChecked) {
+                    const checkedDay = checkinDays.find(day => day.day == currentDate.getDate());
+                    if (checkedDay) {
                         dayDiv.classList.add('checked');
+                        dayDiv.title = `获得${checkedDay.reward_amount}金币`;
                     }
                     
                     // 标记今天
@@ -672,69 +634,47 @@
         async function performCheckin() {
             if (!currentUser) return;
 
+            const checkinBtn = document.getElementById('checkinBtn');
+            checkinBtn.disabled = true;
+            checkinBtn.querySelector('.btn-text').textContent = '签到中...';
+
             try {
-                const records = await db.getUserCheckinRecords(currentUser.id);
+                const response = await fetch('../../server/api/checkin.php?action=checkin', {
+                    method: 'POST'
+                });
+                const data = await response.json();
                 
-                // 计算连续签到天数
-                let consecutiveDays = 0;
-                if (records.length > 0) {
-                    const sortedRecords = records.sort((a, b) => new Date(b.date) - new Date(a.date));
-                    let currentDate = new Date();
-                    currentDate.setDate(currentDate.getDate() - 1); // 从昨天开始计算
-                    currentDate.setHours(0, 0, 0, 0);
-                    
-                    for (const record of sortedRecords) {
-                        const recordDate = new Date(record.date);
-                        recordDate.setHours(0, 0, 0, 0);
-                        
-                        if (recordDate.getTime() === currentDate.getTime()) {
-                            consecutiveDays++;
-                            currentDate.setDate(currentDate.getDate() - 1);
-                        } else {
-                            break;
-                        }
-                    }
-                }
-
-                // 计算奖励
-                const reward = getCheckinReward(consecutiveDays);
-                
-                // 添加签到记录
-                const success = await db.addCheckinRecord(currentUser.id, reward);
-                
-                if (success) {
-                    // 更新用户余额
-                    const profile = await db.getUserProfile(currentUser.id);
-                    await db.updateUserProfile(currentUser.id, { 
-                        balance: profile.balance + reward 
-                    });
-
-                    // 记录交易
-                    await db.addTransaction(currentUser.id, reward, '每日签到奖励');
-
+                if (data.success) {
                     // 显示成功弹窗
-                    showCheckinResult(reward, consecutiveDays + 1);
-
+                    showCheckinResult(data.reward, data.consecutiveDays, data.newBalance);
+                    
                     // 刷新页面状态
                     loadUserInfo();
                     loadCheckinStatus();
+                } else {
+                    alert('签到失败: ' + data.error);
+                    checkinBtn.disabled = false;
+                    checkinBtn.querySelector('.btn-text').textContent = '立即签到';
                 }
             } catch (error) {
                 console.error('签到失败:', error);
-                alert('签到失败，请稍后再试！');
+                alert('网络错误，请稍后再试！');
+                checkinBtn.disabled = false;
+                checkinBtn.querySelector('.btn-text').textContent = '立即签到';
             }
         }
 
         // 显示签到结果
-        function showCheckinResult(reward, consecutiveDays) {
+        function showCheckinResult(reward, consecutiveDays, newBalance) {
             const modal = document.getElementById('checkinModal');
             const result = document.getElementById('checkinResult');
             
             result.innerHTML = `
                 <div class="neon-text gold" style="font-size: 24px; margin: 15px 0;">获得奖励: ${reward} 金币</div>
                 <div class="neon-text" style="font-size: 18px;">连续签到: ${consecutiveDays} 天</div>
+                <div class="neon-text" style="font-size: 16px; margin: 10px 0;">当前余额: ${newBalance} 金币</div>
                 <div class="neon-text" style="font-size: 14px; opacity: 0.8; margin-top: 15px;">
-                    ${consecutiveDays >= 7 ? '已达到最高连续奖励！' : `明天签到可获得 ${getCheckinReward(consecutiveDays)} 金币`}
+                    ${consecutiveDays >= 7 ? '已达到最高连续奖励！' : `明天签到可获得更多奖励`}
                 </div>
             `;
             

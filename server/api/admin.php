@@ -33,6 +33,12 @@ switch ($action) {
     case 'add_user':
         addUser();
         break;
+    case 'update_user':
+        updateUser();
+        break;
+    case 'user_items':
+        getUserItems();
+        break;
     case 'add_prize':
         addPrize();
         break;
@@ -62,6 +68,9 @@ switch ($action) {
         break;
     case 'delete_lucky_page':
         deleteLuckyPage();
+        break;
+    case 'delete_user_item':
+        deleteUserItem();
         break;
     default:
         http_response_code(400);
@@ -409,6 +418,86 @@ function deleteUser() {
     }
 }
 
+function updateUser() {
+    global $db;
+    
+    $id = $_POST['id'] ?? null;
+    $username = $_POST['username'] ?? null;
+    $email = $_POST['email'] ?? null;
+    $balance = $_POST['balance'] ?? null;
+    
+    if (!$id) {
+        http_response_code(400);
+        echo json_encode(['error' => '缺少用户ID']);
+        return;
+    }
+    
+    try {
+        // 构建动态SQL
+        $fields = [];
+        $values = [];
+        
+        if ($username !== null) {
+            $fields[] = "username = ?";
+            $values[] = $username;
+        }
+        
+        if ($email !== null) {
+            $fields[] = "email = ?";
+            $values[] = $email;
+        }
+        
+        if ($balance !== null && is_numeric($balance)) {
+            $fields[] = "balance = ?";
+            $values[] = floatval($balance);
+        }
+        
+        if (empty($fields)) {
+            http_response_code(400);
+            echo json_encode(['error' => '没有需要更新的字段']);
+            return;
+        }
+        
+        $values[] = $id; // 添加WHERE条件的值
+        
+        $sql = "UPDATE users SET " . implode(', ', $fields) . " WHERE id = ?";
+        $stmt = $db->prepare($sql);
+        $stmt->execute($values);
+        
+        echo json_encode(['success' => true, 'message' => '用户信息更新成功']);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['error' => '更新用户失败: ' . $e->getMessage()]);
+    }
+}
+
+function getUserItems() {
+    global $db;
+    
+    $userId = $_GET['userId'] ?? null;
+    if (!$userId) {
+        http_response_code(400);
+        echo json_encode(['error' => '缺少用户ID']);
+        return;
+    }
+    
+    try {
+        $stmt = $db->prepare("
+            SELECT id, user_id, name as item_name, icon, value, rarity as item_type, obtained_at as created_at, 1 as quantity
+            FROM user_items 
+            WHERE user_id = ? AND decomposed = 0
+            ORDER BY obtained_at DESC
+        ");
+        $stmt->execute([$userId]);
+        $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        echo json_encode(['success' => true, 'items' => $items]);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['error' => '获取用户物品失败: ' . $e->getMessage()]);
+    }
+}
+
 function deletePrize() {
     global $db;
     
@@ -735,6 +824,79 @@ function extractPageTitle($filePath) {
         return null;
     } catch (Exception $e) {
         return null;
+    }
+}
+
+// 删除用户物品
+function deleteUserItem() {
+    global $db, $input;
+    
+    // 获取并验证参数
+    $userId = $input['user_id'] ?? null;
+    $itemId = $input['item_id'] ?? null;
+    
+    // 参数验证
+    if (!$userId || !$itemId) {
+        error_log("删除用户物品失败: 缺少参数 - userId: " . var_export($userId, true) . ", itemId: " . var_export($itemId, true));
+        error_log("接收到的完整输入: " . var_export($input, true));
+        http_response_code(400);
+        echo json_encode(['error' => '缺少用户ID或物品ID']);
+        return;
+    }
+    
+    // 确保参数是数字类型
+    $userId = intval($userId);
+    $itemId = intval($itemId);
+    
+    if ($userId <= 0 || $itemId <= 0) {
+        error_log("删除用户物品失败: 无效的ID - userId: $userId, itemId: $itemId");
+        http_response_code(400);
+        echo json_encode(['error' => '无效的用户ID或物品ID']);
+        return;
+    }
+    
+    try {
+        // 检查物品是否存在且属于指定用户
+        $stmt = $db->prepare("SELECT id, user_id, name as item_name FROM user_items WHERE id = ? AND user_id = ?");
+        $stmt->execute([$itemId, $userId]);
+        $item = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$item) {
+            error_log("删除用户物品失败: 物品不存在 - userId: $userId, itemId: $itemId");
+            http_response_code(404);
+            echo json_encode(['error' => '物品不存在或不属于指定用户']);
+            return;
+        }
+        
+        // 删除物品
+        $stmt = $db->prepare("DELETE FROM user_items WHERE id = ? AND user_id = ?");
+        $stmt->execute([$itemId, $userId]);
+        
+        if ($stmt->rowCount() > 0) {
+            // 记录操作日志
+            try {
+                $logStmt = $db->prepare("
+                    INSERT INTO admin_security_log (admin_id, action, target_type, target_id, details, ip_address, created_at) 
+                    VALUES (0, 'delete_user_item', 'user_item', ?, ?, ?, NOW())
+                ");
+                $logStmt->execute([
+                    $itemId,
+                    "删除用户ID {$userId} 的物品 '{$item['item_name']}' (ID: {$itemId})",
+                    $_SERVER['REMOTE_ADDR'] ?? 'unknown'
+                ]);
+            } catch (Exception $logError) {
+                error_log("记录删除日志失败: " . $logError->getMessage());
+                // 不影响主操作，继续执行
+            }
+            
+            echo json_encode(['success' => true, 'message' => '物品删除成功']);
+        } else {
+            echo json_encode(['success' => false, 'error' => '删除失败']);
+        }
+    } catch (Exception $e) {
+        error_log("删除用户物品异常: " . $e->getMessage());
+        http_response_code(500);
+        echo json_encode(['error' => '删除物品失败: ' . $e->getMessage()]);
     }
 }
 ?>

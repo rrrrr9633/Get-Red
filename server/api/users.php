@@ -56,6 +56,9 @@ switch($method) {
                 case 'balance':
                     getBalance();
                     break;
+                case 'transactions':
+                    getTransactions();
+                    break;
                 default:
                     http_response_code(400);
                     echo json_encode(['error' => '无效的操作']);
@@ -183,7 +186,7 @@ function getProfile() {
     $updateStmt = $db->prepare("UPDATE users SET last_activity = NOW() WHERE id = ?");
     $updateStmt->execute([$_SESSION['user_id']]);
     
-    $stmt = $db->prepare("SELECT id, username, nickname, avatar, balance FROM users WHERE id = ?");
+    $stmt = $db->prepare("SELECT id, username, nickname, email, avatar, balance, created_at, last_login FROM users WHERE id = ?");
     $stmt->execute([$_SESSION['user_id']]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
     
@@ -231,6 +234,11 @@ function updateProfile() {
     if(isset($input['nickname'])) {
         $updateFields[] = "nickname = ?";
         $params[] = $input['nickname'];
+    }
+    
+    if(isset($input['email'])) {
+        $updateFields[] = "email = ?";
+        $params[] = $input['email'];
     }
     
     if(isset($input['avatar'])) {
@@ -355,6 +363,82 @@ function handleOffline() {
     } else {
         http_response_code(500);
         echo json_encode(['error' => '设置离线状态失败']);
+    }
+}
+
+// 获取交易记录
+function getTransactions() {
+    session_start();
+    if(!isset($_SESSION['user_id'])) {
+        http_response_code(401);
+        echo json_encode(['error' => '未登录']);
+        return;
+    }
+    
+    global $db;
+    
+    $userId = $_SESSION['user_id'];
+    $type = $_GET['type'] ?? 'all';
+    $page = max(1, intval($_GET['page'] ?? 1));
+    $limit = max(1, min(50, intval($_GET['limit'] ?? 10)));
+    $offset = ($page - 1) * $limit;
+    
+    try {
+        $whereClause = "WHERE user_id = ?";
+        $params = [$userId];
+        
+        // 根据类型过滤
+        switch($type) {
+            case 'draws':
+                // 抽奖相关记录
+                $whereClause .= " AND (description LIKE '%抽奖%' OR description LIKE '%奖励%')";
+                break;
+            case 'decompose':
+                // 分解相关记录
+                $whereClause .= " AND description LIKE '%分解%'";
+                break;
+            case 'financial':
+                // 资金流水（排除抽奖和分解）
+                $whereClause .= " AND description NOT LIKE '%抽奖%' AND description NOT LIKE '%分解%'";
+                break;
+            case 'all':
+            default:
+                // 全部记录，不添加额外条件
+                break;
+        }
+        
+        // 获取总记录数
+        $countStmt = $db->prepare("SELECT COUNT(*) as total FROM transactions $whereClause");
+        $countStmt->execute($params);
+        $totalRecords = $countStmt->fetch()['total'];
+        $totalPages = ceil($totalRecords / $limit);
+        
+        // 获取分页记录
+        $stmt = $db->prepare("
+            SELECT id, amount, description, type, created_at 
+            FROM transactions 
+            $whereClause 
+            ORDER BY created_at DESC 
+            LIMIT $limit OFFSET $offset
+        ");
+        $stmt->execute($params);
+        $transactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        echo json_encode([
+            'success' => true,
+            'transactions' => $transactions,
+            'pagination' => [
+                'currentPage' => $page,
+                'totalPages' => $totalPages,
+                'totalRecords' => $totalRecords,
+                'limit' => $limit
+            ],
+            'totalPages' => $totalPages // 保持兼容性
+        ]);
+        
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['error' => '获取交易记录失败: ' . $e->getMessage()]);
     }
 }
 ?>

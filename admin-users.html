@@ -334,6 +334,148 @@
             color: #ffd700;
             font-weight: bold;
         }
+
+        /* 表单样式 */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            color: #ffd700;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ffd700;
+            border-radius: 5px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            font-size: 14px;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #ffd700, #ffed4e);
+            color: #000;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 25px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 215, 0, 0.4);
+        }
+
+        .btn-secondary {
+            background: #6b7280;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-secondary:hover {
+            background: #4b5563;
+        }
+
+        /* 仓库样式 */
+        .warehouse-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 15px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .warehouse-item {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid #444;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .warehouse-item:hover {
+            border-color: #ffd700;
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.2);
+        }
+
+        .warehouse-item-icon {
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+
+        .warehouse-item-name {
+            font-size: 14px;
+            color: #ffd700;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .warehouse-item-type {
+            font-size: 12px;
+            color: #4ade80;
+            margin-bottom: 5px;
+        }
+
+        .warehouse-item-count {
+            font-size: 12px;
+            color: #fff;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .warehouse-item-date {
+            font-size: 10px;
+            opacity: 0.7;
+            color: #999;
+        }
+
+        .warehouse-item-actions {
+            margin-top: 10px;
+        }
+
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+            padding: 4px 8px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+            transform: translateY(-1px);
+        }
     </style>
 </head>
 <body>
@@ -380,6 +522,61 @@
             <div class="modal-body">
                 <div id="userDetails" class="user-detail-grid">
                     <!-- 用户详情将通过JS生成 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 编辑用户弹窗 -->
+    <div id="editUserModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>编辑用户</h3>
+                <span class="close" onclick="closeEditUserModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="editUserForm">
+                    <input type="hidden" id="editUserId">
+                    
+                    <div class="form-group">
+                        <label for="editUsername">用户名</label>
+                        <input type="text" id="editUsername" readonly>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="editNickname">昵称</label>
+                        <input type="text" id="editNickname">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="editEmail">邮箱</label>
+                        <input type="email" id="editEmail">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="editBalance">账户余额</label>
+                        <input type="number" id="editBalance" step="0.01" min="0">
+                    </div>
+
+                    <div class="modal-actions">
+                        <button type="submit" class="btn-primary">保存修改</button>
+                        <button type="button" class="btn-secondary" onclick="closeEditUserModal()">取消</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 用户仓库弹窗 -->
+    <div id="warehouseModal" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h3>用户仓库</h3>
+                <span class="close" onclick="closeWarehouseModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div id="warehouseItems" class="warehouse-grid">
+                    <!-- 仓库物品将通过JS生成 -->
                 </div>
             </div>
         </div>
@@ -464,6 +661,7 @@
                         <div class="user-actions">
                             <button class="btn btn-view" onclick="viewUser(${user.id})">详情</button>
                             <button class="btn btn-edit" onclick="editUser(${user.id})">编辑</button>
+                            <button class="btn btn-view" onclick="viewWarehouse(${user.id})" style="background: #8b5cf6;">仓库</button>
                             <button class="btn btn-delete" onclick="deleteUser(${user.id})">删除</button>
                         </div>
                     </div>
@@ -530,8 +728,173 @@
 
         // 编辑用户
         function editUser(userId) {
-            alert('编辑功能开发中...');
+            const user = usersData.find(u => u.id == userId);
+            if (!user) return;
+
+            // 填充表单数据
+            document.getElementById('editUserId').value = user.id;
+            document.getElementById('editUsername').value = user.username;
+            document.getElementById('editNickname').value = user.nickname || '';
+            document.getElementById('editEmail').value = user.email || '';
+            document.getElementById('editBalance').value = user.balance;
+
+            // 显示编辑弹窗
+            document.getElementById('editUserModal').classList.add('show');
         }
+
+        // 查看用户仓库
+        async function viewWarehouse(userId) {
+            const user = usersData.find(u => u.id == userId);
+            if (!user) return;
+
+            try {
+                const response = await fetch(`server/api/admin.php?action=user_items&userId=${userId}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    renderWarehouse(data.items, user.username);
+                    document.getElementById('warehouseModal').classList.add('show');
+                } else {
+                    showError('获取仓库数据失败: ' + data.error);
+                }
+            } catch (error) {
+                console.error('获取仓库数据失败:', error);
+                showError('网络错误，请稍后重试');
+            }
+        }
+
+        // 渲染仓库内容
+        function renderWarehouse(items, username) {
+            const container = document.getElementById('warehouseItems');
+            document.querySelector('#warehouseModal .modal-header h3').textContent = `${username} 的仓库`;
+            
+            if (items.length === 0) {
+                container.innerHTML = '<div style="text-align: center; padding: 40px; opacity: 0.7;">仓库为空</div>';
+                return;
+            }
+
+            const itemsHtml = items.map(item => {
+                // 确保必要的字段存在
+                const userId = item.user_id || item.userId;
+                const itemId = item.id;
+                const itemName = item.item_name || item.name || '未知物品';
+                
+                console.log('渲染物品:', { userId, itemId, itemName, item });
+                
+                return `
+                    <div class="warehouse-item">
+                        <div class="warehouse-item-icon">${item.icon || '🎁'}</div>
+                        <div class="warehouse-item-name">${itemName}</div>
+                        <div class="warehouse-item-type">${item.item_type || item.rarity || '普通'}</div>
+                        <div class="warehouse-item-count">x${item.quantity || 1}</div>
+                        <div class="warehouse-item-date">${new Date(item.created_at || item.obtained_at).toLocaleDateString()}</div>
+                        <div class="warehouse-item-actions">
+                            <button class="btn-danger" onclick="deleteUserItem('${userId}', '${itemId}', '${itemName.replace(/'/g, '\\\'')}')">删除</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            container.innerHTML = itemsHtml;
+        }
+
+        // 关闭编辑用户弹窗
+        function closeEditUserModal() {
+            document.getElementById('editUserModal').classList.remove('show');
+        }
+
+        // 关闭仓库弹窗
+        function closeWarehouseModal() {
+            document.getElementById('warehouseModal').classList.remove('show');
+        }
+
+        // 删除用户物品
+        async function deleteUserItem(userId, itemId, itemName) {
+            console.log('删除物品参数:', { userId, itemId, itemName });
+            
+            // 参数验证
+            if (!userId || !itemId) {
+                showError('删除失败: 缺少必要参数');
+                return;
+            }
+            
+            if (!confirm(`确定要删除物品 "${itemName}" 吗？此操作不可恢复！`)) {
+                return;
+            }
+
+            try {
+                const requestData = {
+                    user_id: parseInt(userId),
+                    item_id: parseInt(itemId)
+                };
+                
+                console.log('发送删除请求:', requestData);
+                
+                const response = await fetch('server/api/admin.php?action=delete_user_item', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestData)
+                });
+
+                const data = await response.json();
+                console.log('删除响应:', data);
+                
+                if (data.success) {
+                    showSuccess('物品删除成功！');
+                    // 重新加载该用户的仓库
+                    const user = usersData.find(u => u.id == userId);
+                    if (user) {
+                        viewWarehouse(userId);
+                    }
+                } else {
+                    showError('删除失败: ' + data.error);
+                }
+            } catch (error) {
+                console.error('删除用户物品失败:', error);
+                showError('网络错误，请稍后重试');
+            }
+        }
+
+        // 处理编辑用户表单提交
+        document.addEventListener('DOMContentLoaded', function() {
+            loadUsers();
+            
+            // 每30秒刷新一次在线状态
+            setInterval(loadUsers, 30000);
+
+            // 编辑用户表单提交
+            document.getElementById('editUserForm').addEventListener('submit', async function(e) {
+                e.preventDefault();
+
+                const formData = new FormData();
+                formData.append('id', document.getElementById('editUserId').value);
+                formData.append('username', document.getElementById('editNickname').value);
+                formData.append('email', document.getElementById('editEmail').value);
+                formData.append('balance', document.getElementById('editBalance').value);
+
+                try {
+                    const response = await fetch('server/api/admin.php?action=update_user', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        showSuccess('用户信息更新成功！');
+                        closeEditUserModal();
+                        loadUsers(); // 重新加载用户列表
+                    } else {
+                        showError('更新失败: ' + data.error);
+                    }
+                } catch (error) {
+                    console.error('更新用户信息失败:', error);
+                    showError('网络错误，请稍后重试');
+                }
+            });
+        });
 
         // 删除用户
         async function deleteUser(userId) {
