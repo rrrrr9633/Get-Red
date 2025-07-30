@@ -410,12 +410,12 @@
     <script>
         async function checkSuperAdminAccess() {
             try {
-                const response = await fetch('server/api/super-admin.php?action=check');
+                const response = await fetch('../../server/api/super-admin.php?action=check');
                 const data = await response.json();
                 
                 if (!data.authenticated) {
                     alert('需要超级管理员权限访问此页面！请重新进行身份验证。');
-                    window.location.href = 'super-admin.html';
+                    window.location.href = '../../super-admin.html';
                     return false;
                 }
                 
@@ -423,7 +423,7 @@
             } catch (error) {
                 console.error('验证失败:', error);
                 alert('验证系统错误，请重新登录！');
-                window.location.href = 'super-admin.html';
+                window.location.href = '../../super-admin.html';
                 return false;
             }
         }
@@ -438,9 +438,9 @@
     <div class="admin-container">
         <div class="admin-nav">
             <a href="admin.html" class="nav-btn">返回后台</a>
-            <a href="admin-users.html" class="nav-btn">用户管理</a>
-            <a href="admin-prizes.html" class="nav-btn">奖品管理</a>
-            <a href="admin-draws.html" class="nav-btn active">抽奖记录</a>
+            <a href="users.html" class="nav-btn">用户管理</a>
+            <a href="prizes.html" class="nav-btn">奖品管理</a>
+            <a href="draws.html" class="nav-btn active">抽奖记录</a>
         </div>
 
         <div class="search-section">
@@ -522,7 +522,7 @@
         // 加载所有用户
         async function loadAllUsers() {
             try {
-                const response = await fetch('server/api/admin.php?action=users');
+                const response = await fetch('../../server/api/admin.php?action=users');
                 const data = await response.json();
                 
                 if (data.success) {
@@ -630,7 +630,7 @@
         async function showUserDetail(userId) {
             try {
                 // 获取用户详细信息
-                const response = await fetch('server/api/admin.php?action=user_details', {
+                const response = await fetch('../../server/api/admin.php?action=user_details', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -733,7 +733,7 @@
         // 加载抽奖记录
         async function loadDrawsRecords(page = 1) {
             try {
-                const response = await fetch('server/api/admin.php?action=user_draws', {
+                const response = await fetch('../../server/api/admin.php?action=user_draws', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -783,7 +783,7 @@
         // 加载交易记录
         async function loadTransactionsRecords(page = 1) {
             try {
-                const response = await fetch('server/api/admin.php?action=user_transactions', {
+                const response = await fetch('../../server/api/admin.php?action=user_transactions', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'

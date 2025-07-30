@@ -354,7 +354,7 @@
             }
 
             try {
-                const response = await fetch(`server/api/recharge.php?action=${action}`, options);
+                const response = await fetch(`../../server/api/recharge.php?action=${action}`, options);
                 return await response.json();
             } catch (error) {
                 console.error('API请求失败:', error);

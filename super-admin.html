@@ -265,7 +265,7 @@
                     showMessage('验证成功！正在跳转...', 'success');
                     // 不再使用本地存储，仅依赖服务器端会话
                     setTimeout(() => {
-                        window.location.href = 'admin.html';
+                        window.location.href = 'pages/admin/admin.html';
                     }, 1500);
                 } else {
                     showMessage('验证失败: ' + data.error);

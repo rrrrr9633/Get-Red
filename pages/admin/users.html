@@ -486,8 +486,8 @@
     <div class="admin-container">
         <div class="admin-nav">
             <a href="admin.html" class="nav-btn">管理首页</a>
-            <a href="admin-prizes.html" class="nav-btn">奖品管理</a>
-            <a href="admin-users.html" class="nav-btn active">用户管理</a>
+            <a href="prizes.html" class="nav-btn">奖品管理</a>
+            <a href="users.html" class="nav-btn active">用户管理</a>
         </div>
 
         <!-- 统计卡片 -->
@@ -596,7 +596,7 @@
         // 加载用户数据
         async function loadUsers() {
             try {
-                const response = await fetch('server/api/admin.php?action=users');
+                const response = await fetch('../../server/api/admin.php?action=users');
                 const data = await response.json();
                 
                 if (data.success) {
@@ -748,7 +748,7 @@
             if (!user) return;
 
             try {
-                const response = await fetch(`server/api/admin.php?action=user_items&userId=${userId}`);
+                const response = await fetch(`../../server/api/admin.php?action=user_items&userId=${userId}`);
                 const data = await response.json();
                 
                 if (data.success) {
@@ -830,7 +830,7 @@
                 
                 console.log('发送删除请求:', requestData);
                 
-                const response = await fetch('server/api/admin.php?action=delete_user_item', {
+                const response = await fetch('../../server/api/admin.php?action=delete_user_item', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -875,7 +875,7 @@
                 formData.append('balance', document.getElementById('editBalance').value);
 
                 try {
-                    const response = await fetch('server/api/admin.php?action=update_user', {
+                    const response = await fetch('../../server/api/admin.php?action=update_user', {
                         method: 'POST',
                         body: formData
                     });
@@ -906,7 +906,7 @@
             }
 
             try {
-                const response = await fetch(`server/api/admin.php?action=delete_user&id=${userId}`, {
+                const response = await fetch(`../../server/api/admin.php?action=delete_user&id=${userId}`, {
                     method: 'DELETE'
                 });
 
@@ -931,7 +931,7 @@
 
         // 返回主页
         function goToHome() {
-            window.location.href = '/';
+            window.location.href = '../../index.html';
         }
 
         // 显示错误消息

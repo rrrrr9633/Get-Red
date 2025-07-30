@@ -8,12 +8,12 @@
         // 超级管理员验证
         async function checkSuperAdminAccess() {
             try {
-                const response = await fetch('server/api/super-admin.php?action=check');
+                const response = await fetch('../../server/api/super-admin.php?action=check');
                 const data = await response.json();
                 
                 if (!data.authenticated) {
                     alert('需要超级管理员权限访问此页面！');
-                    window.location.href = 'super-admin.html';
+                    window.location.href = '../../super-admin.html';
                     return false;
                 }
                 
@@ -21,7 +21,7 @@
             } catch (error) {
                 console.error('验证失败:', error);
                 alert('验证系统错误，请重新登录！');
-                window.location.href = 'super-admin.html';
+                window.location.href = '../../super-admin.html';
                 return false;
             }
         }
@@ -392,9 +392,9 @@
     <div class="admin-container">
         <div class="admin-nav">
             <a href="admin.html" class="nav-btn">管理首页</a>
-            <a href="admin-prizes.html" class="nav-btn">奖品管理</a>
-            <a href="admin-users.html" class="nav-btn">用户管理</a>
-            <a href="admin-database.html" class="nav-btn active">数据库配置</a>
+            <a href="prizes.html" class="nav-btn">奖品管理</a>
+            <a href="users.html" class="nav-btn">用户管理</a>
+            <a href="database.html" class="nav-btn active">数据库配置</a>
         </div>
 
         <div class="database-grid">
@@ -470,7 +470,7 @@
         // 加载数据库状态
         async function loadDatabaseStatus() {
             try {
-                const response = await fetch('server/api/database.php?action=status');
+                const response = await fetch('../../server/api/database.php?action=status');
                 const data = await response.json();
                 
                 if (data.success) {
@@ -511,7 +511,7 @@
         // 加载数据表列表
         async function loadTablesList() {
             try {
-                const response = await fetch('server/api/database.php?action=tables');
+                const response = await fetch('../../server/api/database.php?action=tables');
                 const data = await response.json();
                 
                 if (data.success) {
@@ -605,7 +605,7 @@
             try {
                 showResults('正在执行 SQL 命令...', 'loading');
                 
-                const response = await fetch('server/api/database.php?action=execute', {
+                const response = await fetch('../../server/api/database.php?action=execute', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'

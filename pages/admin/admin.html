@@ -12,14 +12,14 @@
             localStorage.removeItem('superAdminVerified');
             
             try {
-                const response = await fetch('server/api/super-admin.php?action=check');
+                const response = await fetch('../../server/api/super-admin.php?action=check');
                 const data = await response.json();
                 
                 if (!data.authenticated) {
                     alert('需要超级管理员权限访问此页面！请重新进行身份验证。');
                     // 强制清除服务器端会话
                     await clearServerSession();
-                    window.location.href = 'super-admin.html';
+                    window.location.href = '../../super-admin.html';
                     return false;
                 }
                 
@@ -36,7 +36,7 @@
                 console.error('验证失败:', error);
                 alert('验证系统错误，请重新登录！');
                 await clearServerSession();
-                window.location.href = 'super-admin.html';
+                window.location.href = '../../super-admin.html';
                 return false;
             }
         }
@@ -44,7 +44,7 @@
         // 清除服务器端会话
         async function clearServerSession() {
             try {
-                await fetch('server/api/super-admin.php?action=logout', {
+                await fetch('../../server/api/super-admin.php?action=logout', {
                     method: 'POST'
                 });
             } catch (error) {
@@ -71,7 +71,7 @@
         async function logoutSuperAdmin() {
             if (confirm('确定要退出登录吗？退出后需要重新进行身份验证。')) {
                 try {
-                    await fetch('server/api/super-admin.php?action=logout', {
+                    await fetch('../../server/api/super-admin.php?action=logout', {
                         method: 'POST'
                     });
                     
@@ -80,7 +80,7 @@
                     localStorage.clear();
                     
                     alert('已安全退出！');
-                    window.location.href = 'super-admin.html';
+                    window.location.href = '../../super-admin.html';
                 } catch (error) {
                     console.error('退出登录失败:', error);
                     alert('退出登录失败，请重试！');
@@ -242,7 +242,7 @@
     </style>
 </head>
 <body>
-    <a href="/" class="back-btn">← 返回主页</a>
+    <a href="../../index.html" class="back-btn">← 返回主页</a>
 
     <div class="admin-header">
         <div class="header-content">
@@ -253,7 +253,7 @@
     </div>
 
     <div class="admin-menu">
-        <a href="admin-users.html" class="menu-card">
+        <a href="users.html" class="menu-card">
             <div class="menu-icon">👥</div>
             <div class="menu-title">用户管理</div>
             <div class="menu-description">
@@ -261,7 +261,7 @@
             </div>
         </a>
 
-        <a href="admin-draws.html" class="menu-card">
+        <a href="draws.html" class="menu-card">
             <div class="menu-icon">🎲</div>
             <div class="menu-title">抽奖记录</div>
             <div class="menu-description">
@@ -365,7 +365,7 @@
     </div>
 
 
-        <a href="admin-recharge.html" class="menu-card">
+        <a href="recharge.html" class="menu-card">
             <div class="menu-icon">💰</div>
             <div class="menu-title">充值信息</div>
             <div class="menu-description">
@@ -373,7 +373,7 @@
             </div>
         </a>
 
-        <a href="admin-database.html" class="menu-card">
+        <a href="database.html" class="menu-card">
             <div class="menu-icon">🗄️</div>
             <div class="menu-title">数据库配置</div>
             <div class="menu-description">
@@ -381,7 +381,7 @@
             </div>
         </a>
 
-        <a href="admin-settings.html" class="menu-card">
+        <a href="settings.html" class="menu-card">
             <div class="menu-icon">⚙️</div>
             <div class="menu-title">系统设置</div>
             <div class="menu-description">
@@ -392,7 +392,7 @@
 
     <script>
         function goToHome() {
-            window.location.href = '/';
+            window.location.href = '../../index.html';
         }
 
         // 弹窗显示奖品页面选择
@@ -409,7 +409,7 @@
                         btn.textContent = page.displayName || page.fileName;
                         btn.style = 'padding:12px 28px;margin:5px;border-radius:18px;background:#ffd700;color:#222;font-weight:bold;border:none;cursor:pointer;font-size:16px;';
                         btn.onclick = function() {
-                            window.location.href = `admin-prizes.html?page=${encodeURIComponent(page.fileName)}`;
+                            window.location.href = `prizes.html?page=${encodeURIComponent(page.fileName)}`;
                         };
                         list.appendChild(btn);
                     });
@@ -474,7 +474,7 @@
         // 检测pages目录下的lucky*.html页面
         async function fetchLuckyPages() {
             try {
-                const response = await fetch('/server/api/admin.php?action=list_lucky_pages');
+                const response = await fetch('../../server/api/admin.php?action=list_lucky_pages');
                 const data = await response.json();
                 if (data.success) {
                     return data.pages;
@@ -513,7 +513,7 @@
             }
 
             try {
-                const response = await fetch('/server/api/admin.php?action=create_lucky_page', {
+                const response = await fetch('../../server/api/admin.php?action=create_lucky_page', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -564,7 +564,7 @@
             }
 
             try {
-                const response = await fetch('/server/api/admin.php?action=rename_lucky_page', {
+                const response = await fetch('../../server/api/admin.php?action=rename_lucky_page', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -605,7 +605,7 @@
             }
 
             try {
-                const response = await fetch('/server/api/admin.php?action=delete_lucky_page', {
+                const response = await fetch('../../server/api/admin.php?action=delete_lucky_page', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
