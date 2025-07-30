@@ -81,6 +81,21 @@ switch ($action) {
     case 'user_transactions':
         getUserTransactions();
         break;
+    case 'check_auth':
+        checkAuth();
+        break;
+    case 'generate_access_token':
+        generateAccessToken();
+        break;
+    case 'get_theme_settings':
+        getThemeSettings();
+        break;
+    case 'update_theme_settings':
+        updateThemeSettings();
+        break;
+    case 'update_lucky_page_thumb':
+        updateLuckyPageThumb();
+        break;
     default:
         http_response_code(400);
         echo json_encode(['error' => '无效的操作']);
@@ -104,7 +119,9 @@ function getUsers() {
                 last_login,
                 last_activity,
                 created_at,
-                updated_at
+                updated_at,
+                user_type,
+                status
             FROM users 
             ORDER BY created_at DESC
         ");
@@ -695,10 +712,14 @@ function listLuckyPages() {
                     }
                 }
                 
+                // 检查是否有小图片
+                $thumbImage = getPageThumbImage($fileName);
+                
                 $pages[] = [
                     'fileName' => $fileName,
                     'displayName' => $displayName,
-                    'icon' => '🍎'
+                    'icon' => '🍎',
+                    'thumbImage' => $thumbImage
                 ];
             }
         }
@@ -716,10 +737,12 @@ function listLuckyPages() {
 }
 
 function createLuckyPage() {
-    global $input, $db;
+    global $db;
     
-    $fileName = $input['fileName'] ?? '';
-    $displayName = $input['displayName'] ?? '';
+    // 处理文件上传，使用$_POST和$_FILES而不是JSON输入
+    $fileName = $_POST['fileName'] ?? '';
+    $displayName = $_POST['displayName'] ?? '';
+    $description = $_POST['description'] ?? '';
     
     if (!$fileName || !$displayName) {
         http_response_code(400);
@@ -738,6 +761,7 @@ function createLuckyPage() {
         $pagesDir = dirname(__DIR__, 2) . '/pages/';
         $templateFile = dirname(__DIR__, 2) . '/luckytemp.html';
         $newFilePath = $pagesDir . $fileName;
+        $imagesDir = dirname(__DIR__, 2) . '/images/';
         
         // 检查文件是否已存在
         if (file_exists($newFilePath)) {
@@ -753,6 +777,43 @@ function createLuckyPage() {
             return;
         }
         
+        // 处理图片上传
+        $imageFileName = null;
+        if (isset($_FILES['gameImage']) && $_FILES['gameImage']['error'] === UPLOAD_ERR_OK) {
+            $uploadedFile = $_FILES['gameImage'];
+            
+            // 验证文件类型
+            $allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+            if (!in_array($uploadedFile['type'], $allowedTypes)) {
+                http_response_code(400);
+                echo json_encode(['error' => '不支持的图片格式']);
+                return;
+            }
+            
+            // 验证文件大小（最大2MB）
+            if ($uploadedFile['size'] > 2 * 1024 * 1024) {
+                http_response_code(400);
+                echo json_encode(['error' => '图片文件过大，请控制在2MB以内']);
+                return;
+            }
+            
+            // 生成唯一文件名
+            $ext = pathinfo($uploadedFile['name'], PATHINFO_EXTENSION);
+            $imageFileName = pathinfo($fileName, PATHINFO_FILENAME) . '_' . time() . '.' . $ext;
+            
+            // 确保images目录存在
+            if (!is_dir($imagesDir)) {
+                mkdir($imagesDir, 0755, true);
+            }
+            
+            // 移动上传的文件
+            if (!move_uploaded_file($uploadedFile['tmp_name'], $imagesDir . $imageFileName)) {
+                http_response_code(500);
+                echo json_encode(['error' => '图片上传失败']);
+                return;
+            }
+        }
+        
         // 读取模板文件内容
         $templateContent = file_get_contents($templateFile);
         
@@ -762,6 +823,38 @@ function createLuckyPage() {
             '<title>' . $displayName . ' - 幸运降临</title>',
             $templateContent
         );
+        
+        // 替换页面标题
+        $newContent = str_replace(
+            '<h2 class="neon-text rainbow">幸运掉落</h2>',
+            '<h2 class="neon-text rainbow">' . $displayName . '</h2>',
+            $newContent
+        );
+        
+        // 如果有描述，替换说明文字
+        if ($description) {
+            $newContent = str_replace(
+                '<p class="neon-text">神秘礼品等你来抽，运气决定一切！</p>',
+                '<p class="neon-text">' . htmlspecialchars($description) . '</p>',
+                $newContent
+            );
+        }
+        
+        // 如果有图片，添加背景图片样式
+        if ($imageFileName) {
+            // 添加自定义样式到头部
+            $customStyle = "<style>\n";
+            $customStyle .= ".game-container {\n";
+            $customStyle .= "    background-image: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url('../images/{$imageFileName}');\n";
+            $customStyle .= "    background-size: cover;\n";
+            $customStyle .= "    background-position: center;\n";
+            $customStyle .= "    background-repeat: no-repeat;\n";
+            $customStyle .= "}\n";
+            $customStyle .= "</style>\n";
+            
+            // 在</head>前插入样式
+            $newContent = str_replace('</head>', $customStyle . '</head>', $newContent);
+        }
         
         // 调整CSS路径（模板在根目录，新文件在pages目录）
         $newContent = str_replace('../../css/', '../css/', $newContent);
@@ -973,6 +1066,105 @@ function extractPageTitle($filePath) {
         return null;
     } catch (Exception $e) {
         return null;
+    }
+}
+
+// 辅助函数：获取页面小图片
+function getPageThumbImage($fileName) {
+    $imagesDir = dirname(__DIR__, 2) . '/images/thumbs/';
+    $pageBaseName = pathinfo($fileName, PATHINFO_FILENAME);
+    
+    // 查找对应的小图片文件
+    $extensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+    foreach ($extensions as $ext) {
+        $thumbPath = $imagesDir . $pageBaseName . '.' . $ext;
+        if (file_exists($thumbPath)) {
+            return 'images/thumbs/' . $pageBaseName . '.' . $ext;
+        }
+    }
+    
+    return null;
+}
+
+// 更新Lucky页面小图片
+function updateLuckyPageThumb() {
+    if (!isset($_POST['fileName'])) {
+        http_response_code(400);
+        echo json_encode(['error' => '缺少文件名参数']);
+        return;
+    }
+    
+    $fileName = $_POST['fileName'];
+    $pageBaseName = pathinfo($fileName, PATHINFO_FILENAME);
+    
+    // 验证文件名
+    if (!preg_match('/^lucky[a-zA-Z0-9_-]*$/', $pageBaseName)) {
+        http_response_code(400);
+        echo json_encode(['error' => '无效的文件名']);
+        return;
+    }
+    
+    try {
+        $thumbsDir = dirname(__DIR__, 2) . '/images/thumbs/';
+        
+        // 确保thumbs目录存在
+        if (!is_dir($thumbsDir)) {
+            mkdir($thumbsDir, 0755, true);
+        }
+        
+        // 处理图片上传
+        if (isset($_FILES['thumbImage']) && $_FILES['thumbImage']['error'] === UPLOAD_ERR_OK) {
+            $uploadedFile = $_FILES['thumbImage'];
+            
+            // 验证文件类型
+            $allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+            if (!in_array($uploadedFile['type'], $allowedTypes)) {
+                http_response_code(400);
+                echo json_encode(['error' => '不支持的图片格式']);
+                return;
+            }
+            
+            // 验证文件大小（最大1MB）
+            if ($uploadedFile['size'] > 1 * 1024 * 1024) {
+                http_response_code(400);
+                echo json_encode(['error' => '图片文件过大，请控制在1MB以内']);
+                return;
+            }
+            
+            // 删除旧的小图片
+            $extensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+            foreach ($extensions as $ext) {
+                $oldPath = $thumbsDir . $pageBaseName . '.' . $ext;
+                if (file_exists($oldPath)) {
+                    unlink($oldPath);
+                }
+            }
+            
+            // 生成新文件名
+            $ext = pathinfo($uploadedFile['name'], PATHINFO_EXTENSION);
+            $newFileName = $pageBaseName . '.' . $ext;
+            $newFilePath = $thumbsDir . $newFileName;
+            
+            // 移动上传的文件
+            if (!move_uploaded_file($uploadedFile['tmp_name'], $newFilePath)) {
+                http_response_code(500);
+                echo json_encode(['error' => '图片上传失败']);
+                return;
+            }
+            
+            echo json_encode([
+                'success' => true,
+                'message' => '小图片上传成功',
+                'thumbImage' => 'images/thumbs/' . $newFileName
+            ]);
+        } else {
+            http_response_code(400);
+            echo json_encode(['error' => '没有上传图片或上传失败']);
+        }
+        
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['error' => '更新小图片失败: ' . $e->getMessage()]);
     }
 }
 
@@ -1252,6 +1444,228 @@ function updateLegendaryProbabilities($tableName) {
         }
     } catch (Exception $e) {
         error_log("更新传说奖品概率失败: " . $e->getMessage());
+    }
+}
+
+// 检查用户权限
+function checkAuth() {
+    session_start();
+    
+    // 检查超级管理员权限
+    if (isset($_SESSION['super_admin_verified']) && $_SESSION['super_admin_verified'] === true) {
+        echo json_encode([
+            'success' => true,
+            'user_type' => 'super_admin',
+            'username' => $_SESSION['super_admin_username'] ?? ''
+        ]);
+        return;
+    }
+    
+    // 检查客服用户权限
+    if (isset($_SESSION['service_verified']) && $_SESSION['service_verified'] === true) {
+        echo json_encode([
+            'success' => true,
+            'user_type' => 'service',
+            'username' => $_SESSION['service_username'] ?? ''
+        ]);
+        return;
+    }
+    
+    // 未授权
+    echo json_encode([
+        'success' => false,
+        'message' => '未授权访问'
+    ]);
+}
+
+function generateAccessToken() {
+    session_start();
+    
+    // 验证超级管理员身份
+    if (!isset($_SESSION['super_admin_verified']) || $_SESSION['super_admin_verified'] !== true) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'error' => '未授权访问']);
+        return;
+    }
+    
+    // 生成访问token
+    $token = bin2hex(random_bytes(32));
+    $_SESSION['admin_access_token'] = $token;
+    $_SESSION['admin_verified'] = time();
+    
+    echo json_encode([
+        'success' => true,
+        'token' => $token
+    ]);
+}
+
+// 获取主题设置
+function getThemeSettings() {
+    global $db;
+    
+    session_start();
+    
+    // 验证超级管理员身份
+    if (!isset($_SESSION['super_admin_verified']) || $_SESSION['super_admin_verified'] !== true) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'error' => '未授权访问']);
+        return;
+    }
+    
+    try {
+        // 从system_settings表中获取主题设置
+        $stmt = $db->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'theme_name'");
+        $stmt->execute();
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        $themeName = $result ? $result['setting_value'] : '幸运降临';
+        
+        echo json_encode([
+            'success' => true,
+            'theme' => [
+                'name' => $themeName
+            ]
+        ]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+}
+
+// 更新主题设置
+function updateThemeSettings() {
+    global $input, $db;
+    
+    session_start();
+    
+    // 验证超级管理员身份
+    if (!isset($_SESSION['super_admin_verified']) || $_SESSION['super_admin_verified'] !== true) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'error' => '未授权访问']);
+        return;
+    }
+    
+    $themeName = $input['themeName'] ?? '';
+    
+    if (!$themeName) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => '缺少主题名称']);
+        return;
+    }
+    
+    try {
+        // 开始事务
+        $db->beginTransaction();
+        
+        // 更新数据库中的主题设置
+        $stmt = $db->prepare("
+            INSERT INTO system_settings (setting_key, setting_value) 
+            VALUES ('theme_name', ?) 
+            ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)
+        ");
+        $stmt->execute([$themeName]);
+        
+        // 获取项目根目录
+        $projectRoot = dirname(__DIR__, 2);
+        $updatedFiles = 0;
+        
+        // 需要更新的文件模式
+        $filesToUpdate = [
+            // 主页和根目录文件
+            $projectRoot . '/index.html',
+            $projectRoot . '/super-admin.html',
+            $projectRoot . '/create-super-admin.html',
+            $projectRoot . '/luckytemp.html',
+            
+            // 用户相关页面
+            $projectRoot . '/pages/main.html',
+            $projectRoot . '/pages/auth/login.html',
+            $projectRoot . '/pages/auth/register.html',
+            $projectRoot . '/pages/user/profile.html',
+            $projectRoot . '/pages/user/recharge.html',
+            $projectRoot . '/pages/modules/checkin.html',
+            $projectRoot . '/pages/modules/container.html',
+        ];
+        
+        // 管理员页面
+        $adminPages = glob($projectRoot . '/pages/admin/*.html');
+        $filesToUpdate = array_merge($filesToUpdate, $adminPages);
+        
+        // Lucky页面
+        $luckyPages = glob($projectRoot . '/pages/lucky*.html');
+        $filesToUpdate = array_merge($filesToUpdate, $luckyPages);
+        
+        // 更新每个文件
+        foreach ($filesToUpdate as $filePath) {
+            if (file_exists($filePath)) {
+                $content = file_get_contents($filePath);
+                
+                // 替换title标签中的主题名称
+                $patterns = [
+                    '/<title>([^<]*?)幸运降临([^<]*?)<\/title>/i',
+                    '/<title>([^<]*?)大红行动([^<]*?)<\/title>/i',
+                    '/<title>([^<]*?)幸运大抽奖([^<]*?)<\/title>/i',
+                    '/<title>([^<]*?)幸运转盘([^<]*?)<\/title>/i',
+                ];
+                
+                $replaced = false;
+                foreach ($patterns as $pattern) {
+                    if (preg_match($pattern, $content)) {
+                        $content = preg_replace($pattern, '<title>$1' . $themeName . '$2</title>', $content);
+                        $replaced = true;
+                        break;
+                    }
+                }
+                
+                // 如果没有找到匹配的模式，尝试替换包含"降临"的标题
+                if (!$replaced) {
+                    $content = preg_replace('/<title>([^<]*?)<\/title>/i', '<title>$1</title>', $content);
+                    $content = preg_replace('/<title>([^<]*?)([^<]*?)<\/title>/i', '<title>' . $themeName . '</title>', $content);
+                }
+                
+                // 替换导航栏中的品牌名称
+                $brandPatterns = [
+                    '/(<h1[^>]*?>)([^<]*?)幸运降临([^<]*?)(<\/h1>)/i',
+                    '/(<h1[^>]*?>)([^<]*?)大红行动([^<]*?)(<\/h1>)/i',
+                    '/(<div[^>]*?nav-brand[^>]*?>.*?<h1[^>]*?>)([^<]*?)幸运降临([^<]*?)(<\/h1>)/is',
+                ];
+                
+                foreach ($brandPatterns as $pattern) {
+                    if (preg_match($pattern, $content)) {
+                        $content = preg_replace($pattern, '$1$2' . $themeName . '$3$4', $content);
+                        break;
+                    }
+                }
+                
+                // 替换页面标题中的主题名称
+                $headerPatterns = [
+                    '/(<h[1-6][^>]*?>)([^<]*?)幸运降临([^<]*?)(<\/h[1-6]>)/i',
+                    '/(<h[1-6][^>]*?>)([^<]*?)大红行动([^<]*?)(<\/h[1-6]>)/i',
+                ];
+                
+                foreach ($headerPatterns as $pattern) {
+                    $content = preg_replace($pattern, '$1$2' . $themeName . '$3$4', $content);
+                }
+                
+                // 保存文件
+                if (file_put_contents($filePath, $content) !== false) {
+                    $updatedFiles++;
+                }
+            }
+        }
+        
+        // 提交事务
+        $db->commit();
+        
+        echo json_encode([
+            'success' => true,
+            'message' => '主题设置更新成功',
+            'updated_files' => $updatedFiles
+        ]);
+        
+    } catch (Exception $e) {
+        // 回滚事务
+        $db->rollback();
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
     }
 }
 ?>

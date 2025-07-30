@@ -188,7 +188,7 @@ function getProfile() {
     $updateStmt = $db->prepare("UPDATE users SET last_activity = NOW() WHERE id = ?");
     $updateStmt->execute([$_SESSION['user_id']]);
     
-    $stmt = $db->prepare("SELECT id, username, nickname, email, avatar, balance, created_at, last_login FROM users WHERE id = ?");
+    $stmt = $db->prepare("SELECT id, username, nickname, email, avatar, balance, created_at, last_login, user_type, status FROM users WHERE id = ?");
     $stmt->execute([$_SESSION['user_id']]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
     

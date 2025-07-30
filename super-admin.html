@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>超级管理员验证 - 幸运降临</title>
+    <title>超级管理员验证 - 大红行动</title>
     <style>
         * {
             margin: 0;
@@ -53,6 +53,71 @@
             margin-bottom: 20px;
         }
 
+        /* 用户类型选择样式 */
+        .user-type-selection {
+            margin-bottom: 30px;
+        }
+
+        .user-type-selection h3 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #00ffff;
+            font-size: 1.2em;
+            text-shadow: 0 0 10px #00ffff;
+        }
+
+        .login-type-cards {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+        }
+
+        .login-type-card {
+            background: rgba(0, 255, 255, 0.1);
+            border: 2px solid transparent;
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 140px;
+        }
+
+        .login-type-card:hover {
+            background: rgba(0, 255, 255, 0.2);
+            border-color: #00ffff;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+            transform: translateY(-3px);
+        }
+
+        .login-type-card.selected {
+            background: rgba(0, 255, 255, 0.3);
+            border-color: #00ffff;
+            box-shadow: 0 0 25px rgba(0, 255, 255, 0.5);
+        }
+
+        .type-icon {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .type-title {
+            font-size: 1.1em;
+            font-weight: bold;
+            color: #00ffff;
+            margin-bottom: 5px;
+        }
+
+        .type-desc {
+            font-size: 0.9em;
+            color: #fff;
+            opacity: 0.8;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
         .form-group label {
             display: block;
             color: #ffd700;
@@ -74,6 +139,30 @@
         .form-group input:focus {
             outline: none;
             box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
+        }
+
+        .btn-verify {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(45deg, #ffd700, #ffed4e);
+            border: none;
+            border-radius: 8px;
+            color: #000;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+        }
+
+        .btn-verify:hover {
+            background: linear-gradient(45deg, #ffed4e, #ffd700);
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+        }
+
+        .btn-verify:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
         }
 
         .security-info {
@@ -177,39 +266,40 @@
 <body>
     <div class="auth-container">
         <div class="auth-header">
-            <h1>🔐 超级管理员验证</h1>
-            <p>最高权限访问需要严格身份验证</p>
+            <h1 id="title">🔐 管理员登录</h1>
+            <p>选择登录方式进入管理后台</p>
         </div>
 
         <div class="security-info">
             <h4>安全要求</h4>
             <ul>
                 <li>需要超级管理员账户</li>
-                <li>需要安全密钥验证</li>
-                <li>仅限授权IP访问</li>
+                <li>需要身份码验证</li>
+                <li>仅限授权访问</li>
                 <li>所有操作记录在案</li>
             </ul>
         </div>
 
         <div id="message"></div>
 
-        <form id="superAdminForm">
-            <div class="form-group">
-                <label for="username">超级管理员用户名</label>
-                <input type="text" id="username" name="username" required>
+        <!-- 用户类型选择 -->
+        <div class="user-type-selection">
+            <h3>选择登录方式</h3>
+            <div class="login-type-cards">
+                <div class="login-type-card" onclick="selectLoginType('super_admin')">
+                    <div class="type-icon">🔐</div>
+                    <div class="type-title">超级管理员</div>
+                    <div class="type-desc">完整管理权限</div>
+                </div>
+                <div class="login-type-card" onclick="selectLoginType('service')">
+                    <div class="type-icon">👨‍💼</div>
+                    <div class="type-title">客服用户</div>
+                    <div class="type-desc">客服管理权限</div>
+                </div>
             </div>
+        </div>
 
-            <div class="form-group">
-                <label for="password">密码</label>
-                <input type="password" id="password" name="password" required>
-            </div>
-
-            <div class="form-group">
-                <label for="secretKey">安全密钥</label>
-                <input type="password" id="secretKey" name="secretKey" placeholder="请输入安全密钥" required>
-            </div>
-
-            <button type="submit" class="btn-verify" id="verifyBtn">验证并进入管理后台</button>
+        <form id="superAdminForm" style="display: none;">
         </form>
 
         <div class="ip-info">
@@ -222,6 +312,140 @@
     </div>
 
     <script>
+        let selectedLoginType = null;
+
+        function selectLoginType(type) {
+            selectedLoginType = type;
+            
+            // 更新选中状态
+            document.querySelectorAll('.login-type-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            
+            event.target.closest('.login-type-card').classList.add('selected');
+            
+            // 显示登录表单并更新标题
+            const form = document.getElementById('superAdminForm');
+            const titleElement = document.getElementById('title');
+            
+            form.style.display = 'block';
+            
+            if (type === 'super_admin') {
+                titleElement.textContent = '🔐 超级管理员登录';
+                showSuperAdminForm();
+            } else if (type === 'service') {
+                titleElement.textContent = '👨‍💼 客服用户登录';
+                showServiceForm();
+            }
+        }
+
+        function showSuperAdminForm() {
+            const form = document.getElementById('superAdminForm');
+            form.innerHTML = `
+                <div class="form-group">
+                    <label for="account">账户名</label>
+                    <input type="text" id="account" name="account" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">密码</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
+                <div class="form-group">
+                    <label for="identity_code">身份验证码</label>
+                    <input type="text" id="identity_code" name="identity_code" required>
+                </div>
+                <button type="submit" class="btn-verify">登录</button>
+            `;
+        }
+
+        function showServiceForm() {
+            const form = document.getElementById('superAdminForm');
+            form.innerHTML = `
+                <div class="form-group">
+                    <label for="account">账户名</label>
+                    <input type="text" id="account" name="account" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">密码</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
+                <button type="submit" class="btn-verify">登录</button>
+            `;
+        }
+
+        document.getElementById('superAdminForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            if (!selectedLoginType) {
+                showMessage('请先选择登录方式', 'error');
+                return;
+            }
+            
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.textContent;
+            submitBtn.disabled = true;
+            submitBtn.textContent = '登录中...';
+            
+            const formData = new FormData();
+            const account = document.getElementById('account').value;
+            const password = document.getElementById('password').value;
+            
+            if (selectedLoginType === 'super_admin') {
+                const identityCode = document.getElementById('identity_code').value;
+                
+                formData.append('action', 'verifySuperAdmin');
+                formData.append('account', account);
+                formData.append('password', password);
+                formData.append('identity_code', identityCode);
+            } else if (selectedLoginType === 'service') {
+                formData.append('action', 'verifyService');
+                formData.append('account', account);
+                formData.append('password', password);
+            }
+
+            try {
+                const response = await fetch('server/api/super-admin.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showMessage('登录成功！正在跳转...', 'success');
+                    
+                    // 根据用户类型跳转到不同页面
+                    setTimeout(() => {
+                        if (selectedLoginType === 'super_admin') {
+                            window.location.href = 'pages/admin/admin.html';
+                        } else if (selectedLoginType === 'service') {
+                            // 客服用户跳转到用户管理页面
+                            window.location.href = 'pages/admin/users.html';
+                        }
+                    }, 1500);
+                } else {
+                    showMessage(result.message || '登录失败', 'error');
+                }
+            } catch (error) {
+                console.error('登录错误:', error);
+                showMessage('登录过程中发生错误', 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
+            }
+        });
+
+        function showMessage(message, type) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.textContent = message;
+            messageDiv.className = type;
+            messageDiv.style.display = 'block';
+            
+            setTimeout(() => {
+                messageDiv.style.display = 'none';
+            }, 3000);
+        }
+
         // 获取当前IP
         async function getCurrentIP() {
             try {
@@ -232,52 +456,6 @@
                 document.getElementById('currentIP').textContent = '无法获取';
             }
         }
-
-        // 显示消息
-        function showMessage(message, type = 'error') {
-            const messageDiv = document.getElementById('message');
-            messageDiv.className = type;
-            messageDiv.textContent = message;
-        }
-
-        // 表单提交处理
-        document.getElementById('superAdminForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-
-            const verifyBtn = document.getElementById('verifyBtn');
-            verifyBtn.disabled = true;
-            verifyBtn.textContent = '验证中...';
-
-            const formData = new FormData();
-            formData.append('username', document.getElementById('username').value);
-            formData.append('password', document.getElementById('password').value);
-            formData.append('secretKey', document.getElementById('secretKey').value);
-
-            try {
-                const response = await fetch('server/api/super-admin.php?action=verify', {
-                    method: 'POST',
-                    body: formData
-                });
-
-                const data = await response.json();
-
-                if (data.success) {
-                    showMessage('验证成功！正在跳转...', 'success');
-                    // 不再使用本地存储，仅依赖服务器端会话
-                    setTimeout(() => {
-                        window.location.href = 'pages/admin/admin.html';
-                    }, 1500);
-                } else {
-                    showMessage('验证失败: ' + data.error);
-                }
-            } catch (error) {
-                console.error('验证失败:', error);
-                showMessage('网络错误，请稍后重试');
-            } finally {
-                verifyBtn.disabled = false;
-                verifyBtn.textContent = '验证并进入管理后台';
-            }
-        });
 
         // 页面加载时获取IP
         document.addEventListener('DOMContentLoaded', function() {

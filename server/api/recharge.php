@@ -60,6 +60,9 @@ switch ($action) {
     case 'get_user_recharge_options':
         getUserRechargeOptions($db);
         break;
+    case 'get_revenue_stats':
+        getRevenueStats($db);
+        break;
     default:
         echo json_encode(['success' => false, 'error' => '无效的操作']);
         break;
@@ -432,6 +435,52 @@ function getUserRechargeOptions($db) {
             'success' => true,
             'options' => $options,
             'coin_ratio' => $coinRatio
+        ]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+}
+
+// 获取收入统计数据
+function getRevenueStats($db) {
+    try {
+        // 总收入和总订单数
+        $stmt = $db->query("
+            SELECT 
+                COALESCE(SUM(amount), 0) as total_revenue,
+                COUNT(*) as total_orders
+            FROM recharge_history 
+            WHERE status = 'completed'
+        ");
+        $totalStats = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        // 今日收入
+        $stmt = $db->query("
+            SELECT COALESCE(SUM(amount), 0) as today_revenue
+            FROM recharge_history 
+            WHERE status = 'completed' 
+            AND DATE(created_at) = CURDATE()
+        ");
+        $todayStats = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        // 本月收入
+        $stmt = $db->query("
+            SELECT COALESCE(SUM(amount), 0) as month_revenue
+            FROM recharge_history 
+            WHERE status = 'completed' 
+            AND YEAR(created_at) = YEAR(CURDATE()) 
+            AND MONTH(created_at) = MONTH(CURDATE())
+        ");
+        $monthStats = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        echo json_encode([
+            'success' => true,
+            'stats' => [
+                'total_revenue' => $totalStats['total_revenue'],
+                'total_orders' => $totalStats['total_orders'],
+                'today_revenue' => $todayStats['today_revenue'],
+                'month_revenue' => $monthStats['month_revenue']
+            ]
         ]);
     } catch (Exception $e) {
         echo json_encode(['success' => false, 'error' => $e->getMessage()]);

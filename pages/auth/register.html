@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>注册 - 幸运降临</title>
+    <title>注册 - 大红行动</title>
     <link rel="stylesheet" href="../../css/style.css">
     <link rel="stylesheet" href="../../css/neon.css">
     <style>
@@ -602,13 +602,39 @@
             }
         });
 
-        // 检查是否已登录
-        if (api.isLoggedIn()) {
-            showMessage('您已登录，正在跳转...', 'success');
-            setTimeout(() => {
-                window.location.href = '../../index.html';
-            }, 1000);
+        // 检查是否已登录 - 改为更严格的检查
+        async function checkLoginStatus() {
+            try {
+                // 先检查本地存储
+                if (!api.isLoggedIn()) {
+                    return; // 未登录，正常显示注册页面
+                }
+                
+                // 如果本地显示已登录，验证服务器端状态
+                const profileResult = await api.getUserProfile();
+                if (profileResult.success && profileResult.user) {
+                    // 确实已登录，跳转到主页
+                    showMessage('您已登录，正在跳转...', 'success');
+                    setTimeout(() => {
+                        window.location.href = '../main.html';
+                    }, 1000);
+                } else {
+                    // 服务器端未登录，清除本地数据
+                    localStorage.removeItem('currentUser');
+                    localStorage.removeItem('isLoggedIn');
+                    api.currentUser = null;
+                }
+            } catch (error) {
+                // 网络错误或其他问题，清除本地数据
+                console.error('检查登录状态失败:', error);
+                localStorage.removeItem('currentUser');
+                localStorage.removeItem('isLoggedIn');
+                api.currentUser = null;
+            }
         }
+        
+        // 执行登录状态检查
+        checkLoginStatus();
 
         // 初始化粒子效果
         if (typeof createParticles === 'function') {

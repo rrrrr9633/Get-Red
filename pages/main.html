@@ -3,10 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>主界面 - 幸运降临</title>
+    <title>主界面 - 大红行动</title>
     <link rel="stylesheet" href="../css/style.css">
     <link rel="stylesheet" href="../css/neon.css">
+    <link rel="stylesheet" href="../css/customer-service.css">
     <script src="../js/api-client.js"></script>
+    <script src="../js/customer-service.js"></script>
 </head>
 <body>
     <div class="particles"></div>
@@ -14,7 +16,7 @@
     <!-- 导航栏 -->
     <nav class="navbar">
         <div class="nav-brand">
-            <h1 class="neon-text gold" onclick="goToHome()" style="cursor: pointer;" title="返回主页">幸运降临</h1>
+            <h1 class="neon-text gold" onclick="goToHome()" style="cursor: pointer;" title="返回主页">大红行动</h1>
         </div>
         
         <div class="nav-user">
@@ -45,7 +47,7 @@
 
     <div class="main-container">
         <div class="welcome-section">
-            <h2 class="neon-text rainbow">欢迎来到幸运降临</h2>
+            <h2 class="neon-text rainbow">欢迎来到大红行动</h2>
             <p class="neon-text">选择您喜欢的游戏模式，开始您的幸运之旅！</p>
         </div>
 
@@ -220,12 +222,31 @@
         }
         
         .card-icon {
-            font-size: 60px;
+            font-size: 80px;
             margin-bottom: 20px;
-            filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.5));
+            text-shadow: 0 0 20px currentColor;
         }
         
-        .game-card h3 {
+        .card-thumb {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 20px;
+            border-radius: 15px;
+            overflow: hidden;
+            border: 2px solid #ffd700;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+        }
+        
+        .card-thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.3s ease;
+        }
+        
+        .game-card:hover .card-thumb img {
+            transform: scale(1.1);
+        }        .game-card h3 {
             font-size: 24px;
             margin-bottom: 15px;
         }
@@ -412,13 +433,23 @@
                 gameCard.className = 'game-card';
                 gameCard.onclick = function() { navigateToGame(page.fileName); };
                 
-                gameCard.innerHTML = `
-                    <div class="card-icon">${page.icon || '🍎'}</div>
+                // 构建卡片内容
+                let cardContent = '';
+                
+                // 如果有小图片，显示小图片；否则显示icon
+                if (page.thumbImage) {
+                    cardContent += `<div class="card-thumb"><img src="../${page.thumbImage}" alt="${page.displayName}" /></div>`;
+                } else {
+                    cardContent += `<div class="card-icon">${page.icon || '🍎'}</div>`;
+                }
+                
+                cardContent += `
                     <h3 class="neon-text gold">${page.displayName || page.fileName}</h3>
                     <p class="neon-text">抽取心爱的大红</p>
                     <div class="card-glow"></div>
                 `;
                 
+                gameCard.innerHTML = cardContent;
                 gameGrid.appendChild(gameCard);
             });
         }

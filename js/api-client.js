@@ -85,9 +85,8 @@ class APIClient {
             method: 'POST'
         });
         
-        this.currentUser = null;
-        localStorage.removeItem('currentUser');
-        localStorage.removeItem('isLoggedIn');
+        // 清除所有用户数据
+        this.clearUserData();
         
         return result;
     }
@@ -185,11 +184,11 @@ class APIClient {
 
     // 检查登录状态 - 修改为更严格的检查
     isLoggedIn() {
-        // 不再依赖localStorage的isLoggedIn标记
-        // 只检查是否有有效的用户数据
+        // 首先检查本地存储的数据
         const currentUser = localStorage.getItem('currentUser');
+        const isLoggedInFlag = localStorage.getItem('isLoggedIn');
         
-        if (!currentUser) {
+        if (!currentUser || !isLoggedInFlag) {
             return false;
         }
         
@@ -203,11 +202,19 @@ class APIClient {
         } catch (e) {
             console.error('用户数据解析失败:', e);
             // 清除无效数据
-            localStorage.removeItem('currentUser');
-            localStorage.removeItem('isLoggedIn');
+            this.clearUserData();
         }
         
         return false;
+    }
+    
+    // 清除用户数据的辅助函数
+    clearUserData() {
+        this.currentUser = null;
+        localStorage.removeItem('currentUser');
+        localStorage.removeItem('isLoggedIn');
+        localStorage.removeItem('savedUsername');
+        localStorage.removeItem('savedPassword');
     }
 
     // 获取当前用户

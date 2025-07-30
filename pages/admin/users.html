@@ -3,7 +3,57 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>用户管理 - 幸运降临</title>
+    <title>用户管理 - 大红行动</title>
+    <script>
+        // 权限验证 - 支持超级管理员和客服人员
+        async function checkPageAccess() {
+            try {
+                // 检查是否通过admin页面访问（有token参数） - 超级管理员
+                const urlParams = new URLSearchParams(window.location.search);
+                const token = urlParams.get('token');
+                
+                if (token) {
+                    // 验证超级管理员token
+                    const response = await fetch('../../server/api/super-admin.php?action=verify_token', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ token: token })
+                    });
+                    
+                    const data = await response.json();
+                    if (data.success && data.authenticated) {
+                        window.userRole = 'admin';
+                        return true;
+                    }
+                }
+                
+                // 检查客服人员身份
+                const serviceResponse = await fetch('../../server/api/super-admin.php?action=check_service');
+                const serviceData = await serviceResponse.json();
+                
+                if (serviceData.success && serviceData.authenticated) {
+                    window.userRole = 'service';
+                    return true;
+                }
+                
+                // 都不是，拒绝访问
+                alert('访问被拒绝！请通过正确的方式登录。');
+                window.location.href = '../../auth/login.html';
+                return false;
+                
+            } catch (error) {
+                console.error('权限验证失败:', error);
+                alert('系统错误，请重新登录！');
+                window.location.href = '../../auth/login.html';
+                return false;
+            }
+        }
+        
+        // 页面加载时立即验证
+        checkPageAccess();
+    </script>
     <style>
         * {
             margin: 0;
@@ -29,7 +79,6 @@
             color: #ffd700;
             text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
             font-size: 32px;
-            cursor: pointer;
         }
 
         .admin-container {
@@ -480,14 +529,13 @@
 </head>
 <body>
     <div class="admin-header">
-        <h1 onclick="goToHome()">幸运降临 - 用户管理</h1>
+        <h1>大红行动 - 用户管理</h1>
     </div>
 
     <div class="admin-container">
         <div class="admin-nav">
-            <a href="admin.html" class="nav-btn">管理首页</a>
-            <a href="prizes.html" class="nav-btn">奖品管理</a>
             <a href="users.html" class="nav-btn active">用户管理</a>
+            <a href="draws.html" class="nav-btn">抽奖记录</a>
         </div>
 
         <!-- 统计卡片 -->
@@ -584,9 +632,108 @@
 
     <script>
         let usersData = [];
+        let currentUserType = null;
+
+        // 检查用户权限
+        async function checkUserPermission() {
+            try {
+                const response = await fetch('../../server/api/admin.php?action=check_auth');
+                const data = await response.json();
+                
+                if (!data.success) {
+                    // 未授权，跳转到登录页面
+                    alert('请先登录');
+                    window.location.href = '../../super-admin.html';
+                    return false;
+                }
+                
+                currentUserType = data.user_type;
+                
+                // 只有超级管理员和客服用户可以访问
+                if (currentUserType !== 'super_admin' && currentUserType !== 'service') {
+                    alert('您没有权限访问此页面');
+                    window.location.href = '../../index.html';
+                    return false;
+                }
+                
+                // 根据用户类型显示/隐藏功能
+                setupPermissions();
+                return true;
+                
+            } catch (error) {
+                console.error('权限检查失败:', error);
+                alert('权限验证失败，请重新登录');
+                window.location.href = '../../super-admin.html';
+                return false;
+            }
+        }
+
+        // 根据用户类型设置权限
+        function setupPermissions() {
+            if (currentUserType === 'service') {
+                // 客服用户隐藏删除用户按钮和编辑按钮
+                const style = document.createElement('style');
+                style.textContent = `
+                    .user-actions .btn-delete {
+                        display: none !important;
+                    }
+                    .user-actions .btn-edit {
+                        display: none !important;
+                    }
+                    .edit-user-actions .delete-user-btn {
+                        display: none !important;
+                    }
+                    .warehouse-item-actions .btn-danger {
+                        display: none !important;
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+        }
+
+        // 验证敏感操作权限（需要超级管理员身份验证）
+        async function verifySensitiveOperation(operation) {
+            if (currentUserType === 'super_admin') {
+                // 超级管理员需要输入身份验证码
+                const identityCode = prompt(`执行${operation}需要验证身份，请输入身份验证码：`);
+                if (!identityCode) {
+                    return false;
+                }
+                
+                try {
+                    const formData = new FormData();
+                    formData.append('action', 'verify_identity');
+                    formData.append('identity_code', identityCode);
+                    
+                    const response = await fetch('../../server/api/super-admin.php', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    const result = await response.json();
+                    if (!result.success) {
+                        alert('身份验证码错误');
+                        return false;
+                    }
+                    return true;
+                } catch (error) {
+                    console.error('身份验证失败:', error);
+                    alert('身份验证失败');
+                    return false;
+                }
+            } else if (currentUserType === 'service') {
+                alert('您没有权限执行此操作，请联系超级管理员');
+                return false;
+            }
+            return false;
+        }
 
         // 页面加载完成后执行
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', async function() {
+            // 先检查权限
+            const hasPermission = await checkUserPermission();
+            if (!hasPermission) return;
+            
             loadUsers();
             
             // 每30秒刷新一次在线状态
@@ -626,6 +773,22 @@
                 const lastLogin = user.last_login ? new Date(user.last_login).toLocaleString() : '从未登录';
                 const registerTime = new Date(user.created_at).toLocaleString();
                 
+                // 用户身份映射
+                const userTypeMap = {
+                    'user': '普通用户',
+                    'service': '客服用户',
+                    'super_admin': '超级管理员'
+                };
+                const userTypeName = userTypeMap[user.user_type] || '未知身份';
+                
+                // 用户身份颜色
+                const userTypeColor = {
+                    'user': '#00ffff',
+                    'service': '#00ff00',
+                    'super_admin': '#ff6b6b'
+                };
+                const typeColor = userTypeColor[user.user_type] || '#ccc';
+                
                 return `
                     <div class="user-card ${isOnline ? 'online' : ''}">
                         <div class="user-header">
@@ -640,6 +803,10 @@
                         </div>
                         
                         <div class="user-details">
+                            <div class="detail-item">
+                                <div class="detail-label">用户身份</div>
+                                <div class="detail-value" style="color: ${typeColor}; font-weight: bold;">${userTypeName}</div>
+                            </div>
                             <div class="detail-item">
                                 <div class="detail-label">余额</div>
                                 <div class="detail-value">¥${user.balance}</div>
@@ -728,6 +895,12 @@
 
         // 编辑用户
         function editUser(userId) {
+            // 检查权限
+            if (currentUserType === 'service') {
+                alert('您没有权限编辑用户信息，请联系超级管理员');
+                return;
+            }
+            
             const user = usersData.find(u => u.id == userId);
             if (!user) return;
 
@@ -810,6 +983,10 @@
 
         // 删除用户物品
         async function deleteUserItem(userId, itemId, itemName) {
+            // 验证敏感操作权限
+            const canProceed = await verifySensitiveOperation('删除仓库物品');
+            if (!canProceed) return;
+            
             console.log('删除物品参数:', { userId, itemId, itemName });
             
             // 参数验证
@@ -898,6 +1075,10 @@
 
         // 删除用户
         async function deleteUser(userId) {
+            // 验证敏感操作权限
+            const canProceed = await verifySensitiveOperation('删除用户');
+            if (!canProceed) return;
+            
             const user = usersData.find(u => u.id == userId);
             if (!user) return;
 
@@ -927,11 +1108,6 @@
         // 关闭用户详情弹窗
         function closeUserModal() {
             document.getElementById('userModal').classList.remove('show');
-        }
-
-        // 返回主页
-        function goToHome() {
-            window.location.href = '../../index.html';
         }
 
         // 显示错误消息

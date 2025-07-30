@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>客服工作台 - 幸运降临</title>
+    <link rel="stylesheet" href="../../css/style.css">
+    <link rel="stylesheet" href="../../css/neon.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #0f1419 0%, #1a1a2e 50%, #16213e 100%);
+            color: #fff;
+            min-height: 100vh;
+            font-family: 'Arial', sans-serif;
+        }
+        
+        .operator-header {
+            background: rgba(20, 30, 60, 0.9);
+            padding: 20px;
+            border-bottom: 2px solid #00ffff;
+            box-shadow: 0 2px 20px rgba(0, 255, 255, 0.3);
+        }
+        
+        .operator-title {
+            font-size: 28px;
+            background: linear-gradient(45deg, #00ffff, #ff00ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-align: center;
+            margin: 0;
+        }
+        
+        .operator-info {
+            text-align: center;
+            margin-top: 10px;
+            color: #ccc;
+        }
+        
+        .main-container {
+            display: flex;
+            height: calc(100vh - 120px);
+        }
+        
+        .chat-list {
+            width: 300px;
+            background: rgba(20, 30, 60, 0.8);
+            border-right: 2px solid #00ffff;
+            overflow-y: auto;
+        }
+        
+        .chat-list-header {
+            padding: 15px;
+            background: rgba(0, 255, 255, 0.1);
+            border-bottom: 1px solid #00ffff;
+            font-weight: bold;
+        }
+        
+        .chat-item {
+            padding: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        .chat-item:hover {
+            background: rgba(0, 255, 255, 0.1);
+        }
+        
+        .chat-item.active {
+            background: rgba(255, 0, 255, 0.2);
+            border-left: 4px solid #ff00ff;
+        }
+        
+        .chat-item.waiting {
+            border-left: 4px solid #ffd700;
+        }
+        
+        .chat-user {
+            font-weight: bold;
+            color: #00ffff;
+        }
+        
+        .chat-preview {
+            color: #ccc;
+            font-size: 14px;
+            margin-top: 5px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .chat-status {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 12px;
+        }
+        
+        .status-waiting { background: #ffd700; color: #000; }
+        .status-active { background: #00ff00; color: #000; }
+        .status-closed { background: #666; color: #fff; }
+        
+        .chat-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: rgba(30, 40, 70, 0.8);
+        }
+        
+        .chat-header {
+            padding: 15px;
+            background: rgba(0, 255, 255, 0.1);
+            border-bottom: 1px solid #00ffff;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: rgba(10, 20, 40, 0.5);
+        }
+        
+        .message {
+            margin-bottom: 15px;
+            padding: 10px 15px;
+            border-radius: 10px;
+            max-width: 70%;
+        }
+        
+        .message.user {
+            background: rgba(0, 255, 255, 0.2);
+            margin-left: auto;
+            text-align: right;
+        }
+        
+        .message.service {
+            background: rgba(255, 0, 255, 0.2);
+            margin-right: auto;
+        }
+        
+        .message-time {
+            font-size: 12px;
+            color: #999;
+            margin-top: 5px;
+        }
+        
+        .chat-input {
+            padding: 20px;
+            background: rgba(20, 30, 60, 0.9);
+            border-top: 1px solid #00ffff;
+        }
+        
+        .input-group {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .message-input {
+            flex: 1;
+            padding: 12px 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(0, 255, 255, 0.3);
+            border-radius: 8px;
+            color: #fff;
+            font-size: 16px;
+        }
+        
+        .message-input:focus {
+            outline: none;
+            border-color: #00ffff;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
+        }
+        
+        .send-btn, .close-btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        
+        .send-btn {
+            background: linear-gradient(45deg, #00ffff, #0088ff);
+            color: #fff;
+        }
+        
+        .send-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 255, 255, 0.4);
+        }
+        
+        .close-btn {
+            background: linear-gradient(45deg, #ff6b6b, #ff8e8e);
+            color: #fff;
+        }
+        
+        .close-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 107, 107, 0.4);
+        }
+        
+        .no-chat-selected {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            color: #666;
+            font-size: 18px;
+        }
+        
+        .stats-bar {
+            background: rgba(20, 30, 60, 0.9);
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-around;
+            border-top: 1px solid #00ffff;
+        }
+        
+        .stat-item {
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #00ffff;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #ccc;
+        }
+        
+        .logout-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            padding: 8px 15px;
+            background: rgba(255, 0, 0, 0.8);
+            border: none;
+            border-radius: 5px;
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .logout-btn:hover {
+            background: rgba(255, 0, 0, 1);
+            transform: translateY(-1px);
+        }
+    </style>
+</head>
+<body>
+    <div class="operator-header">
+        <h1 class="operator-title">客服工作台</h1>
+        <div class="operator-info">
+            <span id="operatorName">正在加载...</span> | 
+            <span id="onlineStatus">离线</span>
+        </div>
+        <button class="logout-btn" onclick="logout()">退出</button>
+    </div>
+    
+    <div class="main-container">
+        <div class="chat-list">
+            <div class="chat-list-header">
+                待处理会话 (<span id="chatCount">0</span>)
+            </div>
+            <div id="chatListContainer">
+                <!-- 聊天列表将在这里动态加载 -->
+            </div>
+        </div>
+        
+        <div class="chat-area">
+            <div id="noChatSelected" class="no-chat-selected">
+                请选择一个会话开始聊天
+            </div>
+            
+            <div id="chatInterface" style="display: none; height: 100%; display: flex; flex-direction: column;">
+                <div class="chat-header">
+                    <div>
+                        <strong id="currentUserName">用户名</strong>
+                        <span id="currentChatStatus" class="chat-status status-waiting">等待中</span>
+                    </div>
+                    <button class="close-btn" onclick="closeCurrentChat()">结束会话</button>
+                </div>
+                
+                <div class="chat-messages" id="chatMessages">
+                    <!-- 聊天消息将在这里显示 -->
+                </div>
+                
+                <div class="chat-input">
+                    <div class="input-group">
+                        <input type="text" id="messageInput" class="message-input" placeholder="输入您的回复..." maxlength="500">
+                        <button class="send-btn" onclick="sendMessage()">发送</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="stats-bar">
+        <div class="stat-item">
+            <div class="stat-number" id="todayChats">0</div>
+            <div class="stat-label">今日会话</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-number" id="activeChats">0</div>
+            <div class="stat-label">进行中</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-number" id="waitingChats">0</div>
+            <div class="stat-label">等待中</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-number" id="completedChats">0</div>
+            <div class="stat-label">已完成</div>
+        </div>
+    </div>
+
+    <script src="../../js/api-client.js"></script>
+    <script>
+        let currentChatSession = null;
+        let chatUpdateInterval = null;
+        
+        // 页面初始化
+        document.addEventListener('DOMContentLoaded', async function() {
+            // 检查客服用户身份
+            if (!await checkServiceUser()) {
+                alert('您没有访问客服工作台的权限！');
+                window.location.href = '../auth/login.html';
+                return;
+            }
+            
+            // 初始化页面
+            await loadOperatorInfo();
+            await loadChatList();
+            
+            // 设置定时更新
+            chatUpdateInterval = setInterval(loadChatList, 5000); // 每5秒更新一次
+            
+            // 设置回车发送消息
+            document.getElementById('messageInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    sendMessage();
+                }
+            });
+        });
+        
+        // 检查客服用户身份
+        async function checkServiceUser() {
+            try {
+                if (!api.isLoggedIn()) {
+                    return false;
+                }
+                
+                const userProfile = await api.getUserProfile();
+                if (!userProfile.success) {
+                    return false;
+                }
+                
+                // 检查用户类型是否为客服或管理员或超级管理员
+                const userType = userProfile.user.user_type;
+                return ['service', 'admin', 'super_admin'].includes(userType);
+            } catch (error) {
+                console.error('检查用户身份失败:', error);
+                return false;
+            }
+        }
+        
+        // 加载操作员信息
+        async function loadOperatorInfo() {
+            try {
+                const userProfile = await api.getUserProfile();
+                if (userProfile.success) {
+                    document.getElementById('operatorName').textContent = userProfile.user.nickname || userProfile.user.username;
+                    document.getElementById('onlineStatus').textContent = '在线';
+                    document.getElementById('onlineStatus').style.color = '#00ff00';
+                }
+            } catch (error) {
+                console.error('加载操作员信息失败:', error);
+            }
+        }
+        
+        // 加载聊天列表
+        async function loadChatList() {
+            try {
+                // 这里需要调用获取聊天会话列表的API
+                // 暂时使用模拟数据
+                const mockChats = [
+                    { id: 1, user_name: '用户001', status: 'waiting', last_message: '您好，我需要帮助...', time: '2分钟前' },
+                    { id: 2, user_name: '用户002', status: 'active', last_message: '谢谢您的帮助', time: '5分钟前' },
+                    { id: 3, user_name: '用户003', status: 'waiting', last_message: '我的账户出现问题', time: '10分钟前' }
+                ];
+                
+                renderChatList(mockChats);
+                updateStats(mockChats);
+            } catch (error) {
+                console.error('加载聊天列表失败:', error);
+            }
+        }
+        
+        // 渲染聊天列表
+        function renderChatList(chats) {
+            const container = document.getElementById('chatListContainer');
+            container.innerHTML = '';
+            
+            chats.forEach(chat => {
+                const chatItem = document.createElement('div');
+                chatItem.className = `chat-item ${chat.status}`;
+                chatItem.innerHTML = `
+                    <div class="chat-user">${chat.user_name}</div>
+                    <div class="chat-preview">${chat.last_message}</div>
+                    <div class="chat-status status-${chat.status}">${getStatusText(chat.status)}</div>
+                    <div style="font-size: 12px; color: #999; margin-top: 5px;">${chat.time}</div>
+                `;
+                chatItem.onclick = () => selectChat(chat);
+                container.appendChild(chatItem);
+            });
+            
+            document.getElementById('chatCount').textContent = chats.length;
+        }
+        
+        // 获取状态文本
+        function getStatusText(status) {
+            const statusMap = {
+                'waiting': '等待',
+                'active': '进行中',
+                'closed': '已结束'
+            };
+            return statusMap[status] || status;
+        }
+        
+        // 选择聊天
+        function selectChat(chat) {
+            currentChatSession = chat;
+            
+            // 更新UI
+            document.querySelectorAll('.chat-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            event.currentTarget.classList.add('active');
+            
+            // 显示聊天界面
+            document.getElementById('noChatSelected').style.display = 'none';
+            document.getElementById('chatInterface').style.display = 'flex';
+            
+            // 更新聊天头部信息
+            document.getElementById('currentUserName').textContent = chat.user_name;
+            document.getElementById('currentChatStatus').textContent = getStatusText(chat.status);
+            document.getElementById('currentChatStatus').className = `chat-status status-${chat.status}`;
+            
+            // 加载聊天消息
+            loadChatMessages(chat.id);
+        }
+        
+        // 加载聊天消息
+        function loadChatMessages(chatId) {
+            // 模拟聊天消息
+            const mockMessages = [
+                { type: 'user', content: '您好，我需要帮助', time: '10:30' },
+                { type: 'service', content: '您好！我是客服小助手，很高兴为您服务。请问有什么可以帮助您的？', time: '10:31' },
+                { type: 'user', content: '我的账户余额显示不正确', time: '10:32' },
+                { type: 'service', content: '我来帮您查看一下，请稍等...', time: '10:33' }
+            ];
+            
+            const messagesContainer = document.getElementById('chatMessages');
+            messagesContainer.innerHTML = '';
+            
+            mockMessages.forEach(msg => {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${msg.type}`;
+                messageDiv.innerHTML = `
+                    <div>${msg.content}</div>
+                    <div class="message-time">${msg.time}</div>
+                `;
+                messagesContainer.appendChild(messageDiv);
+            });
+            
+            // 滚动到底部
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+        
+        // 发送消息
+        function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+            
+            if (!message || !currentChatSession) {
+                return;
+            }
+            
+            // 添加消息到界面
+            const messagesContainer = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message service';
+            messageDiv.innerHTML = `
+                <div>${message}</div>
+                <div class="message-time">${new Date().toLocaleTimeString('zh-CN', {hour: '2-digit', minute: '2-digit'})}</div>
+            `;
+            messagesContainer.appendChild(messageDiv);
+            
+            // 清空输入框
+            input.value = '';
+            
+            // 滚动到底部
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            
+            // 这里应该调用API发送消息到服务器
+            console.log('发送消息:', message);
+        }
+        
+        // 结束当前会话
+        function closeCurrentChat() {
+            if (!currentChatSession) {
+                return;
+            }
+            
+            if (confirm('确定要结束这个会话吗？')) {
+                // 这里应该调用API结束会话
+                console.log('结束会话:', currentChatSession.id);
+                
+                // 重置界面
+                currentChatSession = null;
+                document.getElementById('noChatSelected').style.display = 'flex';
+                document.getElementById('chatInterface').style.display = 'none';
+                
+                // 重新加载聊天列表
+                loadChatList();
+            }
+        }
+        
+        // 更新统计信息
+        function updateStats(chats) {
+            const stats = {
+                today: chats.length,
+                active: chats.filter(c => c.status === 'active').length,
+                waiting: chats.filter(c => c.status === 'waiting').length,
+                completed: chats.filter(c => c.status === 'closed').length
+            };
+            
+            document.getElementById('todayChats').textContent = stats.today;
+            document.getElementById('activeChats').textContent = stats.active;
+            document.getElementById('waitingChats').textContent = stats.waiting;
+            document.getElementById('completedChats').textContent = stats.completed;
+        }
+        
+        // 退出登录
+        function logout() {
+            if (confirm('确定要退出客服工作台吗？')) {
+                if (chatUpdateInterval) {
+                    clearInterval(chatUpdateInterval);
+                }
+                api.logout();
+                window.location.href = '../auth/login.html';
+            }
+        }
+        
+        // 页面卸载时清理定时器
+        window.addEventListener('beforeunload', function() {
+            if (chatUpdateInterval) {
+                clearInterval(chatUpdateInterval);
+            }
+        });
+    </script>
+</body>
+</html>

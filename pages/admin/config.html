@@ -1,0 +1,1657 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>系统配置 - 大红行动</title>
+    <link rel="stylesheet" href="../../css/style.css">
+    <link rel="stylesheet" href="../../css/neon.css">
+    <script>
+        // 超级管理员权限验证
+        async function checkAdminAccess() {
+            try {
+                // 检查是否通过admin页面访问（有token参数）
+                const urlParams = new URLSearchParams(window.location.search);
+                const token = urlParams.get('token');
+                
+                if (!token) {
+                    alert('禁止直接访问！请通过管理后台进入。');
+                    window.location.href = 'admin.html';
+                    return false;
+                }
+                
+                // 验证token
+                const response = await fetch('../../server/api/super-admin.php?action=verify_token', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ token: token })
+                });
+                
+                const data = await response.json();
+                if (!data.success || !data.authenticated) {
+                    alert('访问权限验证失败！请重新登录。');
+                    window.location.href = 'admin.html';
+                    return false;
+                }
+                
+                return true;
+            } catch (error) {
+                console.error('权限验证失败:', error);
+                alert('系统错误，请重新访问！');
+                window.location.href = 'admin.html';
+                return false;
+            }
+        }
+        
+        // 页面加载时立即验证
+        checkAdminAccess();
+    </script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #0f1419 0%, #1a1a2e 50%, #16213e 100%);
+            color: #fff;
+            min-height: 100vh;
+            font-family: 'Arial', sans-serif;
+        }
+        
+        .admin-header {
+            background: rgba(20, 30, 60, 0.9);
+            padding: 20px;
+            border-bottom: 2px solid #ffd700;
+            box-shadow: 0 2px 20px rgba(255, 215, 0, 0.3);
+            text-align: center;
+        }
+        
+        .admin-title {
+            font-size: 32px;
+            background: linear-gradient(45deg, #ffd700, #ffff00);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 30px rgba(255, 215, 0, 0.5);
+            margin: 0;
+        }
+        
+        .config-container {
+            max-width: 1200px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+        
+        .config-section {
+            background: rgba(20, 30, 60, 0.8);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            border: 2px solid transparent;
+            background-clip: padding-box;
+            position: relative;
+        }
+        
+        .config-section::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(45deg, #ffd700, #00ffff, #ff00ff, #ffd700);
+            border-radius: 17px;
+            z-index: -1;
+            animation: borderGlow 3s linear infinite;
+        }
+        
+        @keyframes borderGlow {
+            0% { filter: hue-rotate(0deg); }
+            100% { filter: hue-rotate(360deg); }
+        }
+        
+        .section-title {
+            font-size: 24px;
+            color: #ffd700;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .section-icon {
+            font-size: 28px;
+        }
+        
+        .config-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+        }
+        
+        .config-card {
+            background: rgba(30, 40, 70, 0.8);
+            border-radius: 12px;
+            padding: 25px;
+            border: 2px solid rgba(255, 215, 0, 0.3);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .config-card:hover {
+            transform: translateY(-5px);
+            border-color: #ffd700;
+            box-shadow: 0 10px 30px rgba(255, 215, 0, 0.3);
+        }
+        
+        .config-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.1), transparent);
+            transition: left 0.5s;
+        }
+        
+        .config-card:hover::before {
+            left: 100%;
+        }
+        
+        .card-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+            display: block;
+        }
+        
+        .card-title {
+            font-size: 20px;
+            color: #ffd700;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        
+        .card-description {
+            color: #ccc;
+            line-height: 1.5;
+            margin-bottom: 15px;
+        }
+        
+        .card-button {
+            background: linear-gradient(45deg, #ffd700, #ffaa00);
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            color: #000;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+        
+        .card-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 215, 0, 0.4);
+        }
+        
+        .back-button {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            padding: 10px 20px;
+            background: rgba(0, 255, 255, 0.8);
+            border: none;
+            border-radius: 8px;
+            color: #000;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .back-button:hover {
+            background: rgba(0, 255, 255, 1);
+            transform: translateY(-2px);
+        }
+        
+        .status-indicator {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #00ff00;
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+        }
+        
+        .status-indicator.inactive {
+            background: #ff6b6b;
+            box-shadow: 0 0 10px rgba(255, 107, 107, 0.5);
+        }
+        
+        .feature-list {
+            list-style: none;
+            padding: 0;
+            margin: 10px 0;
+        }
+        
+        .feature-list li {
+            padding: 5px 0;
+            color: #aaa;
+            position: relative;
+            padding-left: 20px;
+        }
+        
+        .feature-list li::before {
+            content: '✓';
+            position: absolute;
+            left: 0;
+            color: #00ff00;
+            font-weight: bold;
+        }
+        
+        /* 客服配置表单样式 */
+        .service-config-form {
+            display: none;
+            background: rgba(30, 40, 70, 0.9);
+            border-radius: 12px;
+            padding: 25px;
+            margin-top: 20px;
+            border: 2px solid #00ffff;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-label {
+            display: block;
+            color: #00ffff;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+        
+        .form-input, .form-textarea, .form-select {
+            width: 100%;
+            padding: 12px 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(0, 255, 255, 0.3);
+            border-radius: 8px;
+            color: #fff;
+            font-size: 16px;
+        }
+        
+        .form-input:focus, .form-textarea:focus, .form-select:focus {
+            outline: none;
+            border-color: #00ffff;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
+        }
+        
+        .form-textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+        
+        .form-actions {
+            display: flex;
+            gap: 15px;
+            justify-content: flex-end;
+            margin-top: 25px;
+        }
+        
+        .btn-save, .btn-cancel {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-save {
+            background: linear-gradient(45deg, #00ff00, #00aa00);
+            color: #000;
+        }
+        
+                .btn-cancel {
+            background: linear-gradient(45deg, #ff6b6b, #ff8e8e);
+            color: #fff;
+        }
+        
+        /* 弹窗样式 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal.show {
+            display: flex;
+        }
+        
+        .modal-content {
+            background: rgba(20, 30, 60, 0.95);
+            border-radius: 15px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 80%;
+            overflow-y: auto;
+            border: 2px solid #ffd700;
+            box-shadow: 0 20px 60px rgba(255, 215, 0, 0.3);
+        }
+        
+        .modal-header {
+            padding: 20px 30px;
+            border-bottom: 2px solid rgba(255, 215, 0, 0.3);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(30, 40, 70, 0.8);
+        }
+        
+        .modal-header h2 {
+            color: #ffd700;
+            margin: 0;
+            font-size: 24px;
+        }
+        
+        .modal-close {
+            color: #ffd700;
+            font-size: 28px;
+            cursor: pointer;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+        
+        .modal-close:hover {
+            background: rgba(255, 215, 0, 0.2);
+            transform: rotate(90deg);
+        }
+        
+        .modal-body {
+            padding: 20px;
+        }
+        
+        .assignment-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(30, 40, 70, 0.5);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 215, 0, 0.3);
+        }
+        
+        .assignment-section h3 {
+            color: #ffd700;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+        
+        .assignment-form {
+            margin-top: 15px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #fff;
+            font-weight: bold;
+        }
+        
+        .form-select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid rgba(255, 215, 0, 0.3);
+            border-radius: 8px;
+            background: rgba(20, 30, 60, 0.9);
+            color: #fff;
+            font-size: 14px;
+        }
+        
+        .form-select:focus {
+            outline: none;
+            border-color: #ffd700;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+        }
+        
+        .form-select option {
+            background: rgba(20, 30, 60, 0.9);
+            color: #fff;
+            padding: 5px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(45deg, #ffd700, #ffb347);
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            color: #000;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary:hover {
+            background: linear-gradient(45deg, #ffb347, #ffd700);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 215, 0, 0.4);
+        }
+        
+        .assignment-stats {
+            background: rgba(0, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            margin-bottom: 20px;
+        }
+        
+        .assignment-stats h4 {
+            color: #00ffff;
+            margin-bottom: 10px;
+        }
+        
+        .assignment-stats p {
+            margin: 5px 0;
+            color: #fff;
+        }
+        
+        .assignment-details {
+            background: rgba(255, 0, 255, 0.1);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 0, 255, 0.3);
+        }
+        
+        .assignment-details h4 {
+            color: #ff00ff;
+            margin-bottom: 10px;
+        }
+        
+        .assignment-table th {
+            background: rgba(255, 215, 0, 0.2);
+            color: #ffd700;
+            font-weight: bold;
+        }
+        
+        .assignment-table td {
+            color: #fff;
+        }
+        
+        /* 搜索结果样式 */
+        .search-result-item {
+            padding: 8px;
+            margin: 5px 0;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            border-left: 4px solid;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        
+        .search-result-item:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+        
+        .search-result-item.assigned {
+            border-left-color: #ffa500;
+        }
+        
+        .search-result-item.unassigned {
+            border-left-color: #00ff00;
+        }
+        
+        .remove-assignment-btn {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            padding: 2px 8px;
+            font-size: 10px;
+            background: #ff6b6b;
+            border: none;
+            border-radius: 3px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .remove-assignment-btn:hover {
+            background: #ff5252;
+            transform: translateY(-50%) scale(1.05);
+        }        .assignment-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(30, 40, 70, 0.6);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 215, 0, 0.2);
+        }
+        
+        .assignment-section h3 {
+            color: #00ffff;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+        
+        .assignment-form {
+            margin-top: 15px;
+        }
+        
+        .assignment-status {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            color: #ccc;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(45deg, #00ffff, #0099cc);
+            color: #000;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 255, 255, 0.4);
+        }
+        
+        /* 主题设置预览列表样式 */
+        .preview-list {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 10px;
+        }
+        
+        .preview-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            margin-bottom: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            border-left: 3px solid #ffd700;
+        }
+        
+        .preview-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        .preview-icon {
+            font-size: 24px;
+            margin-right: 15px;
+            width: 40px;
+            text-align: center;
+        }
+        
+        .preview-content {
+            flex: 1;
+        }
+        
+        .preview-content strong {
+            color: #ffd700;
+            display: block;
+            margin-bottom: 4px;
+        }
+        
+        .preview-content p {
+            color: #ccc;
+            font-size: 14px;
+            margin: 0;
+        }
+        
+        .form-help {
+            display: block;
+            margin-top: 5px;
+            color: #999;
+            font-size: 12px;
+            font-style: italic;
+        }
+    </style>
+        
+        .btn-save:hover, .btn-cancel:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <a href="admin.html" class="back-button">← 返回管理中心</a>
+    
+    <div class="admin-header">
+        <h1 class="admin-title">系统配置中心</h1>
+    </div>
+    
+    <div class="config-container">
+        <!-- 用户管理配置 -->
+        <div class="config-section">
+            <h2 class="section-title">
+                <span class="section-icon">👥</span>
+                用户管理配置
+            </h2>
+            <div class="config-options">
+                <div class="config-card" onclick="goToUserManagement()">
+                    <div class="status-indicator"></div>
+                    <span class="card-icon">🔐</span>
+                    <h3 class="card-title">用户创建与管理</h3>
+                    <p class="card-description">
+                        创建和管理不同类型的用户账户，包括普通用户、客服用户、管理员和超级管理员。
+                    </p>
+                    <ul class="feature-list">
+                        <li>创建超级管理员（需要身份码验证）</li>
+                        <li>创建管理员账户</li>
+                        <li>创建客服用户账户</li>
+                        <li>创建普通用户账户</li>
+                        <li>用户权限管理</li>
+                    </ul>
+                    <button class="card-button">进入用户管理</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 客服系统配置 -->
+        <div class="config-section">
+            <h2 class="section-title">
+                <span class="section-icon">💬</span>
+                客服系统配置
+            </h2>
+            <div class="config-options">
+                <div class="config-card" onclick="showServiceAssignment()">
+                    <div class="status-indicator" id="onlineServiceStatus"></div>
+                    <span class="card-icon">👥</span>
+                    <h3 class="card-title">客服人员分配</h3>
+                    <p class="card-description">
+                        管理客服人员分配，将普通用户分配给客服账号进行管理。
+                    </p>
+                    <button class="card-button" onclick="showServiceAssignment()">管理客服分配</button>
+                </div>
+                
+                <div class="config-card" onclick="toggleServiceConfig('qq')">
+                    <div class="status-indicator" id="qqServiceStatus"></div>
+                    <span class="card-icon">🐧</span>
+                    <h3 class="card-title">QQ客服配置</h3>
+                    <p class="card-description">
+                        设置官方QQ客服号码和二维码，方便用户通过QQ联系客服。
+                    </p>
+                    <button class="card-button">配置QQ客服</button>
+                </div>
+                
+                <div class="config-card" onclick="toggleServiceConfig('wechat')">
+                    <div class="status-indicator" id="wechatServiceStatus"></div>
+                    <span class="card-icon">💬</span>
+                    <h3 class="card-title">微信客服配置</h3>
+                    <p class="card-description">
+                        设置官方微信客服号和二维码，方便用户通过微信联系客服。
+                    </p>
+                    <button class="card-button">配置微信客服</button>
+                </div>
+            </div>
+            
+            <!-- 客服配置表单 -->
+            <div id="serviceConfigForm" class="service-config-form">
+                <h3 id="configFormTitle">配置客服信息</h3>
+                <form id="configForm">
+                    <input type="hidden" id="serviceType" name="serviceType">
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="serviceTitle">客服标题</label>
+                        <input type="text" id="serviceTitle" name="title" class="form-input" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="serviceContent">描述内容</label>
+                        <textarea id="serviceContent" name="content" class="form-textarea" placeholder="请输入客服描述信息..."></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="contactInfo">联系方式</label>
+                        <input type="text" id="contactInfo" name="contact_info" class="form-input" placeholder="QQ号/微信号等">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="qrCodeUrl">二维码图片URL</label>
+                        <input type="url" id="qrCodeUrl" name="qr_code_url" class="form-input" placeholder="http://example.com/qr.png">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="isEnabled">启用状态</label>
+                        <select id="isEnabled" name="is_enabled" class="form-select">
+                            <option value="1">启用</option>
+                            <option value="0">禁用</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="button" class="btn-cancel" onclick="cancelConfig()">取消</button>
+                        <button type="button" class="btn-save" onclick="saveServiceConfig()">保存配置</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- 系统扩展配置 -->
+        <div class="config-section">
+            <h2 class="section-title">
+                <span class="section-icon">⚙️</span>
+                系统扩展配置
+            </h2>
+            <div class="config-options">
+                <div class="config-card" onclick="showSecretKeyChange()">
+                    <div class="status-indicator active"></div>
+                    <span class="card-icon">🔐</span>
+                    <h3 class="card-title">超级管理员身份码</h3>
+                    <p class="card-description">
+                        更改超级管理员身份码，需要输入当前身份码和账号密码进行验证。
+                    </p>
+                    <button class="card-button">更改身份码</button>
+                </div>
+                
+                <div class="config-card">
+                    <div class="status-indicator active"></div>
+                    <span class="card-icon">🎨</span>
+                    <h3 class="card-title">网站主题设置</h3>
+                    <p class="card-description">
+                        修改整个网站的主题名称，更改后将应用到所有页面。
+                    </p>
+                    <ul class="feature-list">
+                        <li>网站标题修改</li>
+                        <li>品牌名称设置</li>
+                        <li>页面标题统一更新</li>
+                        <li>导航栏品牌名修改</li>
+                        <li>全站主题名称同步</li>
+                    </ul>
+                    <button class="card-button" onclick="openThemeSettingsModal()">配置主题设置</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 客服分配弹窗 -->
+    <div id="serviceAssignmentModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>客服人员分配管理</h2>
+                <span class="modal-close" onclick="closeServiceAssignmentModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="assignment-section">
+                    <h3>自动平均分配</h3>
+                    <p>将所有普通用户平均分配给现有客服人员</p>
+                    <button class="btn-primary" onclick="autoAssignUsers()">执行自动分配</button>
+                </div>
+                
+                <div class="assignment-section">
+                    <h3>手动分配用户</h3>
+                    <div class="assignment-form">
+                        <div class="form-group">
+                            <label>选择客服人员</label>
+                            <select id="serviceUserSelect" class="form-select">
+                                <option value="">加载中...</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>选择普通用户</label>
+                            <div style="margin-bottom: 10px;">
+                                <input type="text" id="userSearchInput" class="form-input" placeholder="搜索用户名或昵称..." style="margin-bottom: 5px;">
+                                <button class="btn-primary" onclick="searchUser()" style="padding: 8px 16px; font-size: 12px;">搜索用户</button>
+                                <button class="btn-primary" onclick="clearSearch()" style="padding: 8px 16px; font-size: 12px; margin-left: 5px; background: linear-gradient(45deg, #6c757d, #495057);">清空搜索</button>
+                            </div>
+                            <select id="regularUserSelect" class="form-select" multiple size="5">
+                                <option value="">加载中...</option>
+                            </select>
+                            <div id="searchResult" style="margin-top: 10px; padding: 10px; background: rgba(0, 0, 0, 0.3); border-radius: 5px; display: none;"></div>
+                        </div>
+                        <button class="btn-primary" onclick="manualAssignUsers()">执行手动分配</button>
+                        <button class="btn-primary" onclick="removeSelectedAssignments()" style="background: linear-gradient(45deg, #ff6b6b, #ff8e8e); margin-left: 10px;">移除选中分配</button>
+                    </div>
+                </div>
+                
+                <div class="assignment-section">
+                    <h3>当前分配情况</h3>
+                    <button class="btn-primary" onclick="loadAssignmentStatus()" style="float: right; margin-top: -35px;">刷新数据</button>
+                    <div id="assignmentStatus" class="assignment-status">
+                        <p>加载中...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 身份码更改弹窗 -->
+    <div id="secretKeyModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>更改超级管理员身份码</h2>
+                <span class="modal-close" onclick="closeSecretKeyModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="secretKeyForm">
+                    <div class="form-group">
+                        <label for="currentSecretKey">当前身份码</label>
+                        <input type="password" id="currentSecretKey" class="form-input" required placeholder="请输入当前身份码">
+                    </div>
+                    <div class="form-group">
+                        <label for="newSecretKey">新身份码</label>
+                        <input type="password" id="newSecretKey" class="form-input" required placeholder="请输入新身份码">
+                    </div>
+                    <div class="form-group">
+                        <label for="confirmSecretKey">确认新身份码</label>
+                        <input type="password" id="confirmSecretKey" class="form-input" required placeholder="请再次输入新身份码">
+                    </div>
+                    <div class="form-group">
+                        <label for="adminPassword">超级管理员密码</label>
+                        <input type="password" id="adminPassword" class="form-input" required placeholder="请输入超级管理员账号密码">
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn-cancel" onclick="closeSecretKeyModal()">取消</button>
+                        <button type="submit" class="btn-save">更改身份码</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 主题设置弹窗 -->
+    <div id="themeSettingsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>网站主题设置</h2>
+                <span class="modal-close" onclick="closeThemeSettingsModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="themeSettingsForm">
+                    <div class="form-group">
+                        <label for="currentThemeName">当前主题名称</label>
+                        <input type="text" id="currentThemeName" class="form-input" readonly placeholder="加载中...">
+                        <small class="form-help">当前网站使用的主题名称</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="newThemeName">新主题名称</label>
+                        <input type="text" id="newThemeName" class="form-input" required placeholder="请输入新的主题名称" maxlength="20">
+                        <small class="form-help">建议使用简洁易记的名称，如"大红行动"、"幸运大抽奖"等</small>
+                    </div>
+                    <div class="form-group">
+                        <label>影响范围预览</label>
+                        <div class="preview-list">
+                            <div class="preview-item">
+                                <span class="preview-icon">🏠</span>
+                                <div class="preview-content">
+                                    <strong>主页标题</strong>
+                                    <p>网站标题栏和导航栏品牌名称</p>
+                                </div>
+                            </div>
+                            <div class="preview-item">
+                                <span class="preview-icon">🎮</span>
+                                <div class="preview-content">
+                                    <strong>游戏页面</strong>
+                                    <p>所有Lucky页面的页面标题</p>
+                                </div>
+                            </div>
+                            <div class="preview-item">
+                                <span class="preview-icon">👥</span>
+                                <div class="preview-content">
+                                    <strong>用户中心</strong>
+                                    <p>个人中心、登录注册页面标题</p>
+                                </div>
+                            </div>
+                            <div class="preview-item">
+                                <span class="preview-icon">⚙️</span>
+                                <div class="preview-content">
+                                    <strong>管理后台</strong>
+                                    <p>所有管理页面的标题和品牌显示</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="confirmThemeChange" required style="margin-right: 8px;">
+                            我确认要修改所有页面的主题名称，并理解此操作将影响整个网站
+                        </label>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn-cancel" onclick="closeThemeSettingsModal()">取消</button>
+                        <button type="submit" class="btn-save">应用新主题</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="../../js/api-client.js"></script>
+    <script>
+        let serviceConfigs = {};
+        
+        // 超级管理员验证 - 与admin.html保持一致
+        async function checkSuperAdminAccess() {
+            try {
+                const response = await fetch('../../server/api/super-admin.php?action=check');
+                const data = await response.json();
+                
+                if (!data.authenticated) {
+                    alert('需要超级管理员权限访问此页面！请重新进行身份验证。');
+                    window.location.href = '../../super-admin.html';
+                    return false;
+                }
+                
+                return true;
+            } catch (error) {
+                console.error('验证失败:', error);
+                alert('验证系统错误，请重新登录！');
+                window.location.href = '../../super-admin.html';
+                return false;
+            }
+        }
+        
+        // 页面初始化
+        document.addEventListener('DOMContentLoaded', async function() {
+            // 先检查超级管理员权限
+            const hasAccess = await checkSuperAdminAccess();
+            if (hasAccess) {
+                loadServiceConfigs();
+            }
+        });
+        
+        // 检查管理员权限 - 已弃用，改为使用checkSuperAdminAccess
+        async function checkAdminPermission() {
+            // 这个函数已被checkSuperAdminAccess替代
+            return await checkSuperAdminAccess();
+        }
+        
+        // 加载客服配置
+        async function loadServiceConfigs() {
+            try {
+                // 这里应该调用API获取客服配置
+                // 暂时使用默认配置
+                serviceConfigs = {
+                    online: {
+                        title: '在线客服',
+                        content: '24小时在线客服为您服务',
+                        contact_info: '',
+                        qr_code_url: '',
+                        is_enabled: 1
+                    },
+                    qq: {
+                        title: 'QQ客服',
+                        content: '官方QQ客服',
+                        contact_info: '123456789',
+                        qr_code_url: '',
+                        is_enabled: 1
+                    },
+                    wechat: {
+                        title: '微信客服',
+                        content: '官方微信客服',
+                        contact_info: 'lucky_service',
+                        qr_code_url: '',
+                        is_enabled: 1
+                    }
+                };
+                
+                updateServiceStatus();
+            } catch (error) {
+                console.error('加载客服配置失败:', error);
+            }
+        }
+        
+        // 更新客服状态指示器
+        function updateServiceStatus() {
+            ['online', 'qq', 'wechat'].forEach(type => {
+                const indicator = document.getElementById(type + 'ServiceStatus');
+                const config = serviceConfigs[type];
+                if (indicator) {
+                    if (config && config.is_enabled) {
+                        indicator.classList.remove('inactive');
+                    } else {
+                        indicator.classList.add('inactive');
+                    }
+                }
+            });
+        }
+        
+        // 前往用户管理页面
+        function goToUserManagement() {
+            window.location.href = '../../create-super-admin.html';
+        }
+        
+        // 切换客服配置表单
+        function toggleServiceConfig(type) {
+            const form = document.getElementById('serviceConfigForm');
+            const title = document.getElementById('configFormTitle');
+            
+            // 设置表单标题
+            const titles = {
+                online: '配置在线客服',
+                qq: '配置QQ客服',
+                wechat: '配置微信客服'
+            };
+            title.textContent = titles[type];
+            
+            // 填充表单数据
+            const config = serviceConfigs[type] || {};
+            document.getElementById('serviceType').value = type;
+            document.getElementById('serviceTitle').value = config.title || '';
+            document.getElementById('serviceContent').value = config.content || '';
+            document.getElementById('contactInfo').value = config.contact_info || '';
+            document.getElementById('qrCodeUrl').value = config.qr_code_url || '';
+            document.getElementById('isEnabled').value = config.is_enabled || 1;
+            
+            // 显示表单
+            form.style.display = 'block';
+            form.scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        // 取消配置
+        function cancelConfig() {
+            document.getElementById('serviceConfigForm').style.display = 'none';
+        }
+        
+        // 保存客服配置
+        async function saveServiceConfig() {
+            try {
+                const form = document.getElementById('configForm');
+                const formData = new FormData(form);
+                const serviceType = formData.get('serviceType');
+                
+                const config = {
+                    service_type: serviceType,
+                    title: formData.get('title'),
+                    content: formData.get('content'),
+                    contact_info: formData.get('contact_info'),
+                    qr_code_url: formData.get('qr_code_url'),
+                    is_enabled: parseInt(formData.get('is_enabled'))
+                };
+                
+                // 这里应该调用API保存配置
+                console.log('保存客服配置:', config);
+                
+                // 更新本地配置
+                serviceConfigs[serviceType] = config;
+                updateServiceStatus();
+                
+                // 隐藏表单
+                document.getElementById('serviceConfigForm').style.display = 'none';
+                
+                // 显示成功消息
+                showMessage('配置保存成功！', 'success');
+                
+            } catch (error) {
+                console.error('保存配置失败:', error);
+                showMessage('保存配置失败：' + error.message, 'error');
+            }
+        }
+        
+        // 客服分配相关函数
+        function showServiceAssignment() {
+            document.getElementById('serviceAssignmentModal').classList.add('show');
+            loadServiceUsers();
+            loadRegularUsers();
+            loadAssignmentStatus();
+        }
+        
+        function closeServiceAssignmentModal() {
+            document.getElementById('serviceAssignmentModal').classList.remove('show');
+        }
+        
+        async function loadServiceUsers() {
+            try {
+                const response = await fetch('../../server/api/service-assignment.php?action=get_service_users');
+                const data = await response.json();
+                
+                const select = document.getElementById('serviceUserSelect');
+                select.innerHTML = '<option value="">请选择客服人员</option>';
+                
+                if (data.success && data.service_users) {
+                    data.service_users.forEach(user => {
+                        const option = document.createElement('option');
+                        option.value = user.id;
+                        option.textContent = `${user.nickname || user.username} (已分配: ${user.assigned_count}人)`;
+                        select.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('加载客服用户失败:', error);
+                showMessage('加载客服用户失败', 'error');
+            }
+        }
+        
+        async function loadRegularUsers() {
+            try {
+                const response = await fetch('../../server/api/service-assignment.php?action=get_regular_users');
+                const data = await response.json();
+                
+                const select = document.getElementById('regularUserSelect');
+                select.innerHTML = '';
+                
+                if (data.success && data.regular_users) {
+                    data.regular_users.forEach(user => {
+                        const option = document.createElement('option');
+                        option.value = user.id;
+                        const status = user.is_assigned ? ` [已分配给: ${user.service_username}]` : ' [未分配]';
+                        option.textContent = `${user.nickname || user.username}${status}`;
+                        option.style.color = user.is_assigned ? '#ffa500' : '#00ff00';
+                        select.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('加载普通用户失败:', error);
+                showMessage('加载普通用户失败', 'error');
+            }
+        }
+        
+        async function loadAssignmentStatus() {
+            try {
+                const response = await fetch('../../server/api/service-assignment.php?action=get_assignment_status');
+                const data = await response.json();
+                
+                const statusDiv = document.getElementById('assignmentStatus');
+                
+                if (data.success) {
+                    let html = '<div class="assignment-stats">';
+                    html += `<h4>分配统计</h4>`;
+                    html += `<p>总普通用户: ${data.stats.total_regular_users} | 总客服: ${data.stats.total_service_users}</p>`;
+                    html += `<p>已分配: ${data.stats.total_assigned} | 未分配: ${data.stats.unassigned_users}</p>`;
+                    html += '</div>';
+                    
+                    html += '<div class="assignment-details">';
+                    html += '<h4>客服分配统计</h4>';
+                    
+                    if (data.assignments && data.assignments.length > 0) {
+                        html += '<table class="assignment-table" style="width: 100%; border-collapse: collapse; margin-top: 10px;">';
+                        html += '<tr style="background: rgba(255, 215, 0, 0.2);"><th style="padding: 8px; border: 1px solid #ffd700;">客服</th><th style="padding: 8px; border: 1px solid #ffd700;">分配用户数</th></tr>';
+                        
+                        data.assignments.forEach(assignment => {
+                            html += '<tr style="border-bottom: 1px solid rgba(255, 215, 0, 0.3);">';
+                            html += `<td style="padding: 8px; border: 1px solid rgba(255, 215, 0, 0.3);">${assignment.service_nickname || assignment.service_username}</td>`;
+                            html += `<td style="padding: 8px; border: 1px solid rgba(255, 215, 0, 0.3); text-align: center;">${assignment.assigned_count}</td>`;
+                            html += '</tr>';
+                        });
+                        
+                        html += '</table>';
+                        html += '<p style="margin-top: 10px; color: #aaa; font-size: 12px;">💡 提示: 使用上方搜索功能查询特定用户的分配情况</p>';
+                    } else {
+                        html += '<p>暂无客服分配数据</p>';
+                    }
+                    
+                    html += '</div>';
+                    statusDiv.innerHTML = html;
+                } else {
+                    statusDiv.innerHTML = '<p style="color: #ff6b6b;">加载分配状态失败</p>';
+                }
+            } catch (error) {
+                console.error('加载分配状态失败:', error);
+                document.getElementById('assignmentStatus').innerHTML = '<p style="color: #ff6b6b;">加载分配状态失败</p>';
+            }
+        }
+        
+        async function autoAssignUsers() {
+            if (!confirm('确定要执行自动平均分配吗？此操作将把未分配的用户平均分配给所有客服。')) {
+                return;
+            }
+            
+            // 询问是否重新分配所有用户
+            const reassign = confirm('是否重新分配所有用户？\n\n选择"确定"将清空现有分配并重新分配所有用户\n选择"取消"将只分配未分配的用户');
+            
+            try {
+                showMessage('正在执行自动分配...', 'success');
+                
+                const response = await fetch('../../server/api/service-assignment.php?action=auto_assign', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        reassign: reassign,
+                        admin_id: getCurrentUserId() // 需要实现获取当前管理员ID的函数
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showMessage(data.message, 'success');
+                    // 刷新显示
+                    loadServiceUsers();
+                    loadRegularUsers();
+                    loadAssignmentStatus();
+                } else {
+                    showMessage('自动分配失败：' + data.error, 'error');
+                }
+            } catch (error) {
+                console.error('自动分配失败:', error);
+                showMessage('自动分配失败：' + error.message, 'error');
+            }
+        }
+        
+        async function manualAssignUsers() {
+            const serviceUserId = document.getElementById('serviceUserSelect').value;
+            const selectedUsers = Array.from(document.getElementById('regularUserSelect').selectedOptions).map(opt => opt.value);
+            
+            if (!serviceUserId) {
+                showMessage('请选择客服人员', 'error');
+                return;
+            }
+            
+            if (selectedUsers.length === 0) {
+                showMessage('请选择要分配的用户', 'error');
+                return;
+            }
+            
+            try {
+                showMessage('正在执行手动分配...', 'success');
+                
+                const response = await fetch('../../server/api/service-assignment.php?action=manual_assign', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        service_user_id: serviceUserId,
+                        regular_user_ids: selectedUsers,
+                        admin_id: getCurrentUserId() // 需要实现获取当前管理员ID的函数
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showMessage(data.message, 'success');
+                    // 刷新显示
+                    loadServiceUsers();
+                    loadRegularUsers();
+                    loadAssignmentStatus();
+                    // 清空选择
+                    document.getElementById('serviceUserSelect').value = '';
+                    document.getElementById('regularUserSelect').selectedIndex = -1;
+                } else {
+                    showMessage('手动分配失败：' + data.error, 'error');
+                }
+            } catch (error) {
+                console.error('手动分配失败:', error);
+                showMessage('手动分配失败：' + error.message, 'error');
+            }
+        }
+        
+        // 移除选中用户的分配
+        async function removeSelectedAssignments() {
+            const selectedUsers = Array.from(document.getElementById('regularUserSelect').selectedOptions).map(opt => opt.value);
+            
+            if (selectedUsers.length === 0) {
+                showMessage('请选择要移除分配的用户', 'error');
+                return;
+            }
+            
+            if (!confirm(`确定要移除选中的 ${selectedUsers.length} 个用户的分配吗？`)) {
+                return;
+            }
+            
+            try {
+                let removedCount = 0;
+                
+                for (const userId of selectedUsers) {
+                    const response = await fetch('../../server/api/service-assignment.php?action=remove_assignment', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            regular_user_id: userId
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    if (data.success) {
+                        removedCount++;
+                    }
+                }
+                
+                showMessage(`成功移除 ${removedCount} 个用户的分配`, 'success');
+                
+                // 刷新显示
+                loadServiceUsers();
+                loadRegularUsers();
+                loadAssignmentStatus();
+                
+                // 清空选择
+                document.getElementById('regularUserSelect').selectedIndex = -1;
+                
+            } catch (error) {
+                console.error('移除分配失败:', error);
+                showMessage('移除分配失败：' + error.message, 'error');
+            }
+        }
+        
+        // 搜索用户功能
+        async function searchUser() {
+            const searchTerm = document.getElementById('userSearchInput').value.trim();
+            const resultDiv = document.getElementById('searchResult');
+            
+            if (!searchTerm) {
+                showMessage('请输入搜索关键词', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch('../../server/api/service-assignment.php?action=search_user', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        search_term: searchTerm
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    resultDiv.style.display = 'block';
+                    
+                    if (data.users && data.users.length > 0) {
+                        let html = '<h5 style="color: #00ffff; margin-bottom: 10px;">搜索结果:</h5>';
+                        
+                        data.users.forEach(user => {
+                            const isAssigned = user.is_assigned;
+                            const statusClass = isAssigned ? 'assigned' : 'unassigned';
+                            const statusColor = isAssigned ? '#ffa500' : '#00ff00';
+                            const statusText = isAssigned ? `已分配给: ${user.service_username}` : '未分配';
+                            
+                            html += `<div class="search-result-item ${statusClass}">`;
+                            html += `<strong>${user.nickname || user.username}</strong> (ID: ${user.id})`;
+                            html += `<br><span style="color: ${statusColor}; font-size: 12px;">${statusText}</span>`;
+                            if (isAssigned) {
+                                html += `<button class="remove-assignment-btn" onclick="removeUserAssignment(${user.id})" title="移除分配">移除</button>`;
+                            }
+                            html += `</div>`;
+                        });
+                        
+                        resultDiv.innerHTML = html;
+                    } else {
+                        resultDiv.innerHTML = '<p style="color: #ff6b6b;">未找到匹配的用户</p>';
+                    }
+                } else {
+                    resultDiv.innerHTML = '<p style="color: #ff6b6b;">搜索失败: ' + data.error + '</p>';
+                }
+            } catch (error) {
+                console.error('搜索用户失败:', error);
+                resultDiv.innerHTML = '<p style="color: #ff6b6b;">搜索出错: ' + error.message + '</p>';
+            }
+        }
+        
+        // 清空搜索
+        function clearSearch() {
+            document.getElementById('userSearchInput').value = '';
+            document.getElementById('searchResult').style.display = 'none';
+        }
+        
+        // 为搜索输入框添加回车键支持
+        document.addEventListener('DOMContentLoaded', function() {
+            // 搜索输入框回车事件
+            document.addEventListener('keydown', function(e) {
+                if (e.target.id === 'userSearchInput' && e.key === 'Enter') {
+                    e.preventDefault();
+                    searchUser();
+                }
+            });
+        });
+        
+        // 移除单个用户的分配
+        async function removeUserAssignment(userId) {
+            if (!confirm('确定要移除这个用户的分配吗？')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('../../server/api/service-assignment.php?action=remove_assignment', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        regular_user_id: userId
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showMessage('成功移除用户分配', 'success');
+                    // 重新搜索以更新结果
+                    searchUser();
+                    // 刷新其他显示
+                    loadServiceUsers();
+                    loadRegularUsers();
+                    loadAssignmentStatus();
+                } else {
+                    showMessage('移除分配失败：' + data.error, 'error');
+                }
+            } catch (error) {
+                console.error('移除分配失败:', error);
+                showMessage('移除分配失败：' + error.message, 'error');
+            }
+        }
+        
+        // 获取当前用户ID的辅助函数
+        function getCurrentUserId() {
+            // 这里应该从session或localStorage获取当前登录的管理员ID
+            // 暂时返回null，实际使用时需要根据具体的认证方式实现
+            return null;
+        }
+        
+        // 身份码更改相关函数
+        function showSecretKeyChange() {
+            document.getElementById('secretKeyModal').classList.add('show');
+        }
+        
+        function closeSecretKeyModal() {
+            document.getElementById('secretKeyModal').classList.remove('show');
+            document.getElementById('secretKeyForm').reset();
+        }
+        
+        // 处理身份码更改表单提交
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('secretKeyForm').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const currentSecretKey = document.getElementById('currentSecretKey').value;
+                const newSecretKey = document.getElementById('newSecretKey').value;
+                const confirmSecretKey = document.getElementById('confirmSecretKey').value;
+                const adminPassword = document.getElementById('adminPassword').value;
+                
+                if (newSecretKey !== confirmSecretKey) {
+                    showMessage('新身份码两次输入不一致', 'error');
+                    return;
+                }
+                
+                if (newSecretKey.length < 3) {
+                    showMessage('新身份码长度至少3位', 'error');
+                    return;
+                }
+                
+                try {
+                    const response = await fetch('../../server/api/super-admin.php?action=changeSecretKey', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            currentSecretKey: currentSecretKey,
+                            newSecretKey: newSecretKey,
+                            adminPassword: adminPassword
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        showMessage('身份码更改成功！', 'success');
+                        closeSecretKeyModal();
+                    } else {
+                        showMessage('更改失败：' + data.error, 'error');
+                    }
+                } catch (error) {
+                    console.error('更改身份码失败:', error);
+                    showMessage('更改身份码失败：' + error.message, 'error');
+                }
+            });
+        });
+        
+        // 显示消息提示
+        function showMessage(text, type = 'success') {
+            // 创建消息元素
+            const message = document.createElement('div');
+            message.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 15px 25px;
+                border-radius: 8px;
+                color: #fff;
+                font-weight: bold;
+                z-index: 9999;
+                animation: slideIn 0.3s ease;
+                ${type === 'success' ? 'background: linear-gradient(45deg, #00ff00, #00aa00);' : 'background: linear-gradient(45deg, #ff6b6b, #ff8e8e);'}
+            `;
+            message.textContent = text;
+            
+            // 添加动画样式
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes slideIn {
+                    from { transform: translateX(100%); opacity: 0; }
+                    to { transform: translateX(0); opacity: 1; }
+                }
+            `;
+            document.head.appendChild(style);
+            
+            document.body.appendChild(message);
+            
+            // 3秒后移除消息
+            setTimeout(() => {
+                message.style.animation = 'slideIn 0.3s ease reverse';
+                setTimeout(() => {
+                    document.body.removeChild(message);
+                    document.head.removeChild(style);
+                }, 300);
+            }, 3000);
+        }
+
+        // 主题设置相关函数
+        async function openThemeSettingsModal() {
+            await loadCurrentTheme();
+            document.getElementById('themeSettingsModal').style.display = 'flex';
+        }
+
+        function closeThemeSettingsModal() {
+            document.getElementById('themeSettingsModal').style.display = 'none';
+            document.getElementById('themeSettingsForm').reset();
+        }
+
+        // 加载当前主题名称
+        async function loadCurrentTheme() {
+            try {
+                const response = await fetch('../../server/api/admin.php?action=get_theme_settings');
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('currentThemeName').value = data.theme.name || '幸运降临';
+                } else {
+                    document.getElementById('currentThemeName').value = '幸运降临';
+                }
+            } catch (error) {
+                console.error('加载当前主题失败:', error);
+                document.getElementById('currentThemeName').value = '幸运降临';
+            }
+        }
+
+        // 处理主题设置表单提交
+        document.getElementById('themeSettingsForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const newThemeName = document.getElementById('newThemeName').value.trim();
+            const confirmCheckbox = document.getElementById('confirmThemeChange');
+            
+            if (!newThemeName) {
+                showMessage('请输入新的主题名称！', 'error');
+                return;
+            }
+            
+            if (!confirmCheckbox.checked) {
+                showMessage('请确认您要修改所有页面的主题名称！', 'error');
+                return;
+            }
+            
+            if (newThemeName === document.getElementById('currentThemeName').value) {
+                showMessage('新主题名称与当前名称相同！', 'error');
+                return;
+            }
+            
+            // 确认对话框
+            if (!confirm(`确定要将网站主题名称从"${document.getElementById('currentThemeName').value}"更改为"${newThemeName}"吗？\n\n此操作将影响所有页面，包括：\n• 网站标题和导航栏\n• 所有游戏页面标题\n• 用户中心页面\n• 管理后台页面\n\n更改后需要等待几秒钟完成全站更新。`)) {
+                return;
+            }
+            
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            const originalText = submitBtn.textContent;
+            
+            try {
+                submitBtn.disabled = true;
+                submitBtn.textContent = '正在应用主题...';
+                
+                const response = await fetch('../../server/api/admin.php?action=update_theme_settings', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        themeName: newThemeName
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showMessage(`主题已成功更改为"${newThemeName}"！\n更新了${data.updated_files || 0}个文件。`, 'success');
+                    closeThemeSettingsModal();
+                    
+                    // 3秒后刷新页面以显示新主题
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 3000);
+                } else {
+                    showMessage('主题更新失败：' + (data.error || '未知错误'), 'error');
+                }
+                
+            } catch (error) {
+                console.error('更新主题失败:', error);
+                showMessage('网络错误，请稍后重试！', 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
+            }
+        });
+    </script>
+</body>
+</html>

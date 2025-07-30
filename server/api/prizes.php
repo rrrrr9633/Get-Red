@@ -213,17 +213,17 @@ function drawPrizes($gameType, $count, $userId, $page = '') {
         // 将抽到的物品添加到用户仓库
         $stmt = $pdo->prepare("INSERT INTO user_items (user_id, prize_id, name, icon, image_url, value, rarity) VALUES (?, ?, ?, ?, ?, ?, ?)");
         foreach ($results as $prize) {
-            // 对于非主奖品表的物品，prize_id设为NULL以避免外键约束问题
-            $prizeIdForStorage = ($tableName === 'prizes') ? $prize['id'] : null;
+            // 允许prize_id为NULL，如果不存在或为null则保持null
+            $prizeIdForStorage = isset($prize['id']) && $prize['id'] !== null ? $prize['id'] : null;
             
             $stmt->execute([
                 $userId, 
-                $prizeIdForStorage, 
-                $prize['name'], 
-                $prize['icon'], 
-                $prize['image_url'], 
-                $prize['value'], 
-                $prize['rarity']
+                $prizeIdForStorage,
+                $prize['name'],
+                $prize['icon'] ?? '🎁',
+                $prize['image_url'] ?? '',
+                $prize['value'] ?? 0,
+                $prize['rarity'] ?? 'common'
             ]);
         }
         

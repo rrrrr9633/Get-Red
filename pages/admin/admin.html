@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>管理后台 - 幸运降临</title>
+    <title>管理后台 - 大红行动</title>
     <script>
         // 超级管理员验证 - 每次访问都需要重新认证
         async function checkSuperAdminAccess() {
@@ -253,21 +253,21 @@
     </div>
 
     <div class="admin-menu">
-        <a href="users.html" class="menu-card">
+        <div onclick="navigateToPage('users.html')" class="menu-card" style="cursor: pointer;">
             <div class="menu-icon">👥</div>
             <div class="menu-title">用户管理</div>
             <div class="menu-description">
                 管理用户账户、查看用户信息、编辑用户资料和权限设置
             </div>
-        </a>
+        </div>
 
-        <a href="draws.html" class="menu-card">
+        <div onclick="navigateToPage('draws.html')" class="menu-card" style="cursor: pointer;">
             <div class="menu-icon">🎲</div>
             <div class="menu-title">抽奖记录</div>
             <div class="menu-description">
                 查看所有用户的抽奖记录、余额变动和详细交易信息
             </div>
-        </a>
+        </div>
 
         <div class="menu-card" onclick="showPrizePageSelector()">
             <div class="menu-icon">🎁</div>
@@ -282,9 +282,10 @@
             <h2 style="color:#ffd700;text-align:center;margin-bottom:20px;">Lucky页面管理</h2>
             
             <!-- 管理按钮 -->
-            <div style="display:flex;gap:10px;justify-content:center;margin-bottom:20px;">
+            <div style="display:flex;gap:10px;justify-content:center;margin-bottom:20px;flex-wrap:wrap;">
                 <button onclick="showCreateLuckyModal()" style="padding:8px 16px;border-radius:15px;background:#4ade80;color:#000;font-weight:bold;border:none;cursor:pointer;">创建新Lucky</button>
                 <button onclick="showRenameLuckyModal()" style="padding:8px 16px;border-radius:15px;background:#f59e0b;color:#000;font-weight:bold;border:none;cursor:pointer;">重命名Lucky</button>
+                <button onclick="showThumbImageModal()" style="padding:8px 16px;border-radius:15px;background:#8b5cf6;color:#fff;font-weight:bold;border:none;cursor:pointer;">设置小图片</button>
                 <button onclick="showDeleteLuckyModal()" style="padding:8px 16px;border-radius:15px;background:#ef4444;color:#fff;font-weight:bold;border:none;cursor:pointer;">删除Lucky</button>
             </div>
             
@@ -305,9 +306,22 @@
                     <input type="text" id="luckyFileName" placeholder="例如: lucky5" style="width:100%;padding:8px;border-radius:5px;border:1px solid #4ade80;background:#333;color:#fff;" required>
                     <small style="color:#ccc;">将自动添加.html后缀</small>
                 </div>
-                <div style="margin-bottom:20px;">
+                <div style="margin-bottom:15px;">
                     <label style="color:#fff;display:block;margin-bottom:5px;">页面显示名称:</label>
                     <input type="text" id="luckyDisplayName" placeholder="例如: 大红行动5" style="width:100%;padding:8px;border-radius:5px;border:1px solid #4ade80;background:#333;color:#fff;" required>
+                </div>
+                <div style="margin-bottom:15px;">
+                    <label style="color:#fff;display:block;margin-bottom:5px;">展示图片:</label>
+                    <div style="display:flex;gap:10px;align-items:center;">
+                        <input type="file" id="luckyImage" accept="image/*" style="width:60%;padding:8px;border-radius:5px;border:1px solid #4ade80;background:#333;color:#fff;">
+                        <button type="button" onclick="previewImage('luckyImage', 'imagePreview')" style="padding:6px 12px;border-radius:5px;background:#ffd700;color:#000;border:none;cursor:pointer;font-size:12px;">预览</button>
+                    </div>
+                    <small style="color:#ccc;">支持 PNG、JPG、GIF、WebP 格式</small>
+                    <div id="imagePreview" style="margin-top:10px;text-align:center;"></div>
+                </div>
+                <div style="margin-bottom:20px;">
+                    <label style="color:#fff;display:block;margin-bottom:5px;">游戏说明:</label>
+                    <textarea id="luckyDescription" placeholder="输入游戏玩法说明..." style="width:100%;padding:8px;border-radius:5px;border:1px solid #4ade80;background:#333;color:#fff;height:60px;resize:vertical;"></textarea>
                 </div>
                 <div style="text-align:center;gap:10px;display:flex;justify-content:center;">
                     <button type="submit" style="padding:10px 20px;border-radius:15px;background:#4ade80;color:#000;font-weight:bold;border:none;cursor:pointer;">创建</button>
@@ -364,30 +378,64 @@
         </div>
     </div>
 
+    <!-- Lucky页面小图片设置弹窗 -->
+    <div id="thumbImageModal" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.8);z-index:2100;align-items:center;justify-content:center;">
+        <div style="background:#222;padding:30px;border-radius:20px;max-width:600px;width:90%;box-shadow:0 0 30px #8b5cf6;">
+            <h2 style="color:#8b5cf6;text-align:center;margin-bottom:20px;">设置Lucky页面小图片</h2>
+            <form id="thumbImageForm">
+                <div style="margin-bottom:15px;">
+                    <label style="color:#fff;display:block;margin-bottom:5px;">选择Lucky页面:</label>
+                    <select id="thumbSelectPage" style="width:100%;padding:8px;border-radius:5px;border:1px solid #8b5cf6;background:#333;color:#fff;" required>
+                        <option value="">请选择页面</option>
+                    </select>
+                </div>
+                <div style="margin-bottom:15px;">
+                    <label style="color:#fff;display:block;margin-bottom:5px;">当前小图片:</label>
+                    <div id="currentThumbImage" style="text-align:center;padding:15px;border:1px dashed #8b5cf6;border-radius:8px;color:#ccc;">
+                        未选择页面
+                    </div>
+                </div>
+                <div style="margin-bottom:15px;">
+                    <label style="color:#fff;display:block;margin-bottom:5px;">上传新小图片:</label>
+                    <div style="display:flex;gap:10px;align-items:center;">
+                        <input type="file" id="thumbImageFile" accept="image/*" style="width:70%;padding:8px;border-radius:5px;border:1px solid #8b5cf6;background:#333;color:#fff;">
+                        <button type="button" onclick="previewThumbImage()" style="padding:6px 12px;border-radius:5px;background:#ffd700;color:#000;border:none;cursor:pointer;font-size:12px;">预览</button>
+                    </div>
+                    <small style="color:#ccc;">建议尺寸 120x120px，支持 PNG、JPG、GIF、WebP 格式，最大1MB</small>
+                    <div id="thumbImagePreview" style="margin-top:10px;text-align:center;"></div>
+                </div>
+                <div style="text-align:center;gap:10px;display:flex;justify-content:center;">
+                    <button type="submit" style="padding:10px 20px;border-radius:15px;background:#8b5cf6;color:#fff;font-weight:bold;border:none;cursor:pointer;">上传设置</button>
+                    <button type="button" onclick="closeThumbImageModal()" style="padding:10px 20px;border-radius:15px;background:#6b7280;color:#fff;font-weight:bold;border:none;cursor:pointer;">取消</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
-        <a href="recharge.html" class="menu-card">
+
+                <div onclick="navigateToPage('recharge.html')" class="menu-card" style="cursor: pointer;">
             <div class="menu-icon">💰</div>
             <div class="menu-title">充值信息</div>
             <div class="menu-description">
                 管理充值比例设置、查看用户充值记录和配置支付方式
             </div>
-        </a>
+        </div>
 
-        <a href="database.html" class="menu-card">
+        <div onclick="navigateToPage('database.html')" class="menu-card" style="cursor: pointer;">
             <div class="menu-icon">🗄️</div>
             <div class="menu-title">数据库配置</div>
             <div class="menu-description">
                 查看数据库状态、执行SQL命令和管理数据表
             </div>
-        </a>
+        </div>
 
-        <a href="settings.html" class="menu-card">
+        <div onclick="navigateToPage('config.html')" class="menu-card" style="cursor: pointer;">
             <div class="menu-icon">⚙️</div>
             <div class="menu-title">信息设置</div>
             <div class="menu-description">
                 信息设置和管理员安排
             </div>
-        </a>
+        </div>
     </div>
 
     <script>
@@ -409,7 +457,7 @@
                         btn.textContent = page.displayName || page.fileName;
                         btn.style = 'padding:12px 28px;margin:5px;border-radius:18px;background:#ffd700;color:#222;font-weight:bold;border:none;cursor:pointer;font-size:16px;';
                         btn.onclick = function() {
-                            window.location.href = `prizes.html?page=${encodeURIComponent(page.fileName)}`;
+                            navigateToPage(`prizes.html?page=${encodeURIComponent(page.fileName)}`);
                         };
                         list.appendChild(btn);
                     });
@@ -494,12 +542,30 @@
             }
         }
 
+        // 图片预览函数
+        function previewImage(inputId, previewId) {
+            const input = document.getElementById(inputId);
+            const preview = document.getElementById(previewId);
+            
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    preview.innerHTML = `<img src="${e.target.result}" style="max-width:200px;max-height:150px;border-radius:10px;border:2px solid #ffd700;">`;
+                };
+                reader.readAsDataURL(input.files[0]);
+            } else {
+                preview.innerHTML = '';
+            }
+        }
+
         // 创建新Lucky页面
         document.getElementById('createLuckyForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
             const fileName = document.getElementById('luckyFileName').value.trim();
             const displayName = document.getElementById('luckyDisplayName').value.trim();
+            const description = document.getElementById('luckyDescription').value.trim();
+            const imageFile = document.getElementById('luckyImage').files[0];
             
             // 验证文件名
             if (!fileName.startsWith('lucky')) {
@@ -513,15 +579,18 @@
             }
 
             try {
+                // 准备FormData以支持文件上传
+                const formData = new FormData();
+                formData.append('fileName', fileName + '.html');
+                formData.append('displayName', displayName);
+                formData.append('description', description);
+                if (imageFile) {
+                    formData.append('gameImage', imageFile);
+                }
+
                 const response = await fetch('../../server/api/admin.php?action=create_lucky_page', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        fileName: fileName + '.html',
-                        displayName: displayName
-                    })
+                    body: formData  // 不设置Content-Type，让浏览器自动设置
                 });
 
                 const data = await response.json();
@@ -627,6 +696,133 @@
             } catch (error) {
                 console.error('删除Lucky页面失败:', error);
                 alert('网络错误，请稍后重试');
+            }
+        }
+
+        // 显示Lucky页面小图片设置弹窗
+        function showThumbImageModal() {
+            fetchLuckyPages().then(function(pages) {
+                const select = document.getElementById('thumbSelectPage');
+                select.innerHTML = '<option value="">请选择页面</option>';
+                pages.forEach(function(page) {
+                    const option = document.createElement('option');
+                    option.value = page.fileName;
+                    option.textContent = page.displayName || page.fileName;
+                    option.dataset.thumbImage = page.thumbImage || '';
+                    select.appendChild(option);
+                });
+                document.getElementById('thumbImageModal').style.display = 'flex';
+            });
+        }
+
+        function closeThumbImageModal() {
+            document.getElementById('thumbImageModal').style.display = 'none';
+            document.getElementById('thumbImageForm').reset();
+            document.getElementById('currentThumbImage').innerHTML = '未选择页面';
+            document.getElementById('thumbImagePreview').innerHTML = '';
+        }
+
+        // 选择页面时显示当前小图片
+        document.getElementById('thumbSelectPage').addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            const currentThumbDiv = document.getElementById('currentThumbImage');
+            
+            if (selectedOption.dataset.thumbImage) {
+                currentThumbDiv.innerHTML = `<img src="../../${selectedOption.dataset.thumbImage}" style="max-width:120px;max-height:120px;border-radius:8px;" alt="当前小图片">`;
+            } else {
+                currentThumbDiv.innerHTML = '<div style="color:#666;">该页面暂无小图片</div>';
+            }
+        });
+
+        // 预览小图片
+        function previewThumbImage() {
+            const fileInput = document.getElementById('thumbImageFile');
+            const previewDiv = document.getElementById('thumbImagePreview');
+            
+            if (fileInput.files && fileInput.files[0]) {
+                const file = fileInput.files[0];
+                
+                // 检查文件大小
+                if (file.size > 1024 * 1024) {
+                    alert('图片文件过大，请控制在1MB以内');
+                    return;
+                }
+                
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    previewDiv.innerHTML = `
+                        <div style="display:inline-block;text-align:center;margin-top:10px;">
+                            <img src="${e.target.result}" style="max-width:120px;max-height:120px;border-radius:8px;border:2px solid #8b5cf6;" alt="预览图片">
+                            <div style="color:#8b5cf6;font-size:12px;margin-top:5px;">预览图片</div>
+                        </div>
+                    `;
+                };
+                reader.readAsDataURL(file);
+            } else {
+                previewDiv.innerHTML = '';
+            }
+        }
+
+        // 提交小图片上传
+        document.getElementById('thumbImageForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const fileName = document.getElementById('thumbSelectPage').value;
+            const fileInput = document.getElementById('thumbImageFile');
+            
+            if (!fileName) {
+                alert('请选择Lucky页面！');
+                return;
+            }
+            
+            if (!fileInput.files || !fileInput.files[0]) {
+                alert('请选择要上传的图片！');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('fileName', fileName);
+            formData.append('thumbImage', fileInput.files[0]);
+            
+            try {
+                const response = await fetch('../../server/api/admin.php?action=update_lucky_page_thumb', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    alert('小图片设置成功！');
+                    closeThumbImageModal();
+                    // 刷新页面列表
+                    showPrizePageSelector();
+                } else {
+                    alert('设置失败: ' + data.error);
+                }
+            } catch (error) {
+                console.error('上传小图片失败:', error);
+                alert('网络错误，请稍后重试');
+            }
+        });
+
+        // 安全导航函数 - 生成访问token并跳转
+        async function navigateToPage(pagePath) {
+            try {
+                // 生成访问token
+                const response = await fetch('../../server/api/admin.php?action=generate_access_token', {
+                    method: 'POST'
+                });
+                
+                const data = await response.json();
+                if (data.success && data.token) {
+                    // 使用token跳转
+                    window.location.href = `${pagePath}${pagePath.includes('?') ? '&' : '?'}token=${data.token}`;
+                } else {
+                    alert('生成访问授权失败！');
+                }
+            } catch (error) {
+                console.error('导航失败:', error);
+                alert('导航失败，请重试！');
             }
         }
     </script>

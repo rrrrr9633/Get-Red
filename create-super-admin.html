@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>创建超级管理员 - 幸运降临</title>
+    <title>用户管理中心 - 大红行动</title>
     <style>
         * {
             margin: 0;
@@ -27,7 +27,7 @@
             border-radius: 20px;
             padding: 40px;
             width: 100%;
-            max-width: 500px;
+            max-width: 600px;
             box-shadow: 0 0 30px rgba(255, 215, 0, 0.3);
         }
 
@@ -46,7 +46,51 @@
         .create-header p {
             opacity: 0.8;
             font-size: 14px;
-            color: #ff6b6b;
+            color: #00ffff;
+        }
+        
+        .user-type-selector {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .user-type-card {
+            background: rgba(30, 30, 50, 0.8);
+            border: 2px solid rgba(255, 215, 0, 0.3);
+            border-radius: 12px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+        
+        .user-type-card:hover {
+            border-color: #ffd700;
+            transform: translateY(-2px);
+        }
+        
+        .user-type-card.selected {
+            border-color: #ffd700;
+            background: rgba(255, 215, 0, 0.1);
+        }
+        
+        .user-type-icon {
+            font-size: 32px;
+            margin-bottom: 10px;
+            display: block;
+        }
+        
+        .user-type-title {
+            color: #ffd700;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .user-type-desc {
+            font-size: 12px;
+            color: #ccc;
         }
 
         .warning {
@@ -158,30 +202,57 @@
 <body>
     <div class="create-container">
         <div class="create-header">
-            <h1>🔐 创建超级管理员</h1>
-            <p>仅限本地主机使用</p>
+            <h1>� 用户管理中心</h1>
+            <p>创建和管理不同类型的用户账户</p>
         </div>
 
-        <div class="warning">
+        <!-- 用户类型选择器 -->
+        <div class="user-type-selector">
+            <div class="user-type-card" onclick="selectUserType('user')">
+                <span class="user-type-icon">👤</span>
+                <div class="user-type-title">普通用户</div>
+                <div class="user-type-desc">基础用户权限</div>
+            </div>
+            <div class="user-type-card" onclick="selectUserType('service')">
+                <span class="user-type-icon">💬</span>
+                <div class="user-type-title">客服用户</div>
+                <div class="user-type-desc">客服工作台权限</div>
+            </div>
+            <div class="user-type-card" onclick="selectUserType('super_admin')">
+                <span class="user-type-icon">🔐</span>
+                <div class="user-type-title">超级管理员</div>
+                <div class="user-type-desc">最高系统权限</div>
+            </div>
+        </div>
+
+        <div class="warning" id="userTypeWarning" style="display: none;">
             <h4>⚠️ 重要提醒</h4>
-            <p>超级管理员拥有系统最高权限，请妥善保管账户信息。创建后请立即修改默认配置并备份安全密钥。</p>
+            <p id="warningText"></p>
         </div>
 
         <div id="message"></div>
 
-        <form id="createSuperAdminForm">
+        <form id="createUserForm" style="display: none;">
+            <input type="hidden" id="selectedUserType" name="userType">
+            
             <div class="form-group">
                 <label for="username">用户名</label>
                 <input type="text" id="username" name="username" required 
-                       placeholder="建议使用复杂的用户名">
+                       placeholder="请输入用户名">
+            </div>
+            
+            <div class="form-group">
+                <label for="nickname">昵称</label>
+                <input type="text" id="nickname" name="nickname" required 
+                       placeholder="请输入昵称">
             </div>
 
             <div class="form-group">
                 <label for="password">密码</label>
                 <input type="password" id="password" name="password" required
-                       placeholder="请输入强密码">
-                <div class="password-requirements">
-                    密码要求：至少12位，包含大小写字母、数字和特殊字符
+                       placeholder="请输入密码">
+                <div class="password-requirements" id="passwordReq">
+                    密码要求：至少6位字符
                 </div>
             </div>
 
@@ -191,44 +262,236 @@
                        placeholder="请再次输入密码">
             </div>
 
-            <div class="form-group">
-                <label for="secretKey">安全密钥</label>
-                <input type="password" id="secretKey" name="secretKey" required
-                       placeholder="请设置安全密钥">
+            <!-- 超级管理员专用字段 -->
+            <div class="form-group" id="superAdminFields" style="display: none;">
+                <label for="secretKey">超级管理员身份码</label>
+                <input type="password" id="secretKey" name="secretKey"
+                       placeholder="请输入超级管理员身份码进行验证">
+                <div class="password-requirements">
+                    需要当前超级管理员身份码验证（默认：admin）
+                </div>
             </div>
 
             <div class="form-group">
-                <label for="ipWhitelist">IP白名单 (可选)</label>
-                <textarea id="ipWhitelist" name="ipWhitelist" 
-                          placeholder="留空允许所有IP，多个IP用逗号分隔，如：127.0.0.1,192.168.1.100"></textarea>
+                <label for="email">邮箱（可选）</label>
+                <input type="email" id="email" name="email" 
+                       placeholder="请输入邮箱地址">
             </div>
 
-            <button type="submit" class="btn-create" id="createBtn">创建超级管理员</button>
+            <button type="submit" class="btn-create" id="createBtn">
+                创建用户
+            </button>
         </form>
 
-        <div class="ip-info">
-            当前IP: <span id="currentIP">检测中...</span>
+        <div class="ip-info" id="ipInfo">
+            当前IP: <span id="currentIP">获取中...</span>
         </div>
     </div>
-
     <script>
-        // 检查是否为本地主机
-        function checkLocalhost() {
-            const hostname = window.location.hostname;
-            if (hostname !== 'localhost' && hostname !== '127.0.0.1' && hostname !== '::1') {
-                document.body.innerHTML = `
-                    <div style="display: flex; align-items: center; justify-content: center; height: 100vh; text-align: center;">
-                        <div style="color: #ff6b6b; font-size: 24px;">
-                            <h1>🚫 访问被拒绝</h1>
-                            <p>此页面仅限本地主机访问</p>
-                        </div>
-                    </div>
-                `;
+        let selectedUserType = null;
+        
+        // 页面初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            getCurrentIP();
+            
+            // 绑定表单提交事件
+            document.getElementById('createUserForm').addEventListener('submit', handleFormSubmit);
+        });
+        
+        // 选择用户类型
+        function selectUserType(type) {
+            selectedUserType = type;
+            
+            // 更新选择状态
+            document.querySelectorAll('.user-type-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            event.currentTarget.classList.add('selected');
+            
+            // 设置隐藏字段
+            document.getElementById('selectedUserType').value = type;
+            
+            // 显示对应的警告和要求
+            showUserTypeWarning(type);
+            
+            // 显示表单
+            document.getElementById('createUserForm').style.display = 'block';
+            
+            // 更新表单字段显示
+            updateFormFields(type);
+        }
+        
+        // 显示用户类型警告
+        function showUserTypeWarning(type) {
+            const warningDiv = document.getElementById('userTypeWarning');
+            const warningText = document.getElementById('warningText');
+            
+            const warnings = {
+                user: '普通用户只能访问基础功能，无法进入管理后台。',
+                service: '客服用户可以访问客服工作台，处理用户咨询和问题。',
+                admin: '管理员拥有管理后台的大部分权限，可以管理用户、奖品、订单等。',
+                super_admin: '超级管理员拥有系统最高权限，包括创建其他管理员、修改系统核心配置等。请妥善保管账户信息！'
+            };
+            
+            warningText.textContent = warnings[type];
+            warningDiv.style.display = 'block';
+        }
+        
+        // 更新表单字段显示
+        function updateFormFields(type) {
+            const superAdminFields = document.getElementById('superAdminFields');
+            const passwordReq = document.getElementById('passwordReq');
+            const createBtn = document.getElementById('createBtn');
+            
+            if (type === 'super_admin') {
+                superAdminFields.style.display = 'block';
+                passwordReq.textContent = '密码要求：至少6位字符';
+                createBtn.textContent = '创建超级管理员';
+                document.getElementById('secretKey').required = true;
+            } else {
+                superAdminFields.style.display = 'none';
+                passwordReq.textContent = '密码要求：至少6位字符';
+                createBtn.textContent = '创建' + getUserTypeName(type);
+                document.getElementById('secretKey').required = false;
+            }
+        }
+        
+        // 获取用户类型中文名
+        function getUserTypeName(type) {
+            const names = {
+                user: '普通用户',
+                service: '客服用户', 
+                super_admin: '超级管理员'
+            };
+            return names[type] || '用户';
+        }
+        
+        // 处理表单提交
+        async function handleFormSubmit(e) {
+            e.preventDefault();
+            
+            if (!selectedUserType) {
+                showMessage('请先选择用户类型！', 'error');
+                return;
+            }
+            
+            const formData = new FormData(e.target);
+            const userData = {
+                userType: selectedUserType,
+                username: formData.get('username'),
+                nickname: formData.get('nickname'),
+                password: formData.get('password'),
+                confirmPassword: formData.get('confirmPassword'),
+                email: formData.get('email') || null
+            };
+            
+            // 验证密码
+            if (userData.password !== userData.confirmPassword) {
+                showMessage('两次输入的密码不一致！', 'error');
+                return;
+            }
+            
+            // 验证密码强度
+            if (!validatePassword(userData.password, selectedUserType)) {
+                return;
+            }
+            
+            // 超级管理员需要额外验证
+            if (selectedUserType === 'super_admin') {
+                const secretKey = formData.get('secretKey');
+                
+                if (!secretKey) {
+                    showMessage('创建超级管理员需要输入当前超级管理员身份码！', 'error');
+                    return;
+                }
+                
+                userData.secretKey = secretKey;
+            }
+            
+            // 提交创建请求
+            await createUser(userData);
+        }
+        
+        // 验证密码强度
+        function validatePassword(password, userType) {
+            if (password.length < 6) {
+                showMessage('密码至少需要6位字符！', 'error');
                 return false;
             }
+            
             return true;
         }
-
+        
+        // 创建用户
+        async function createUser(userData) {
+            try {
+                const createBtn = document.getElementById('createBtn');
+                const originalText = createBtn.textContent;
+                
+                // 显示加载状态
+                createBtn.textContent = '创建中...';
+                createBtn.disabled = true;
+                
+                // 调用API创建用户
+                const formData = new FormData();
+                formData.append('userType', userData.userType);
+                formData.append('username', userData.username);
+                formData.append('nickname', userData.nickname);
+                formData.append('password', userData.password);
+                formData.append('email', userData.email || '');
+                
+                if (userData.secretKey) {
+                    formData.append('secretKey', userData.secretKey);
+                }
+                
+                const response = await fetch('server/api/super-admin.php?action=createUser', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showMessage(`${getUserTypeName(userData.userType)}创建成功！`, 'success');
+                    
+                    // 清空表单
+                    document.getElementById('createUserForm').reset();
+                    document.getElementById('createUserForm').style.display = 'none';
+                    document.getElementById('userTypeWarning').style.display = 'none';
+                    
+                    // 清除选择状态
+                    document.querySelectorAll('.user-type-card').forEach(card => {
+                        card.classList.remove('selected');
+                    });
+                    selectedUserType = null;
+                } else {
+                    showMessage('创建失败：' + result.error, 'error');
+                }
+                
+            } catch (error) {
+                console.error('创建用户失败:', error);
+                showMessage('创建用户失败：' + error.message, 'error');
+            } finally {
+                // 恢复按钮状态
+                const createBtn = document.getElementById('createBtn');
+                createBtn.textContent = originalText;
+                createBtn.disabled = false;
+            }
+        }
+        
+        // 显示消息
+        function showMessage(text, type = 'success') {
+            const messageDiv = document.getElementById('message');
+            messageDiv.className = type;
+            messageDiv.textContent = text;
+            messageDiv.style.display = 'block';
+            
+            // 3秒后隐藏消息
+            setTimeout(() => {
+                messageDiv.style.display = 'none';
+            }, 3000);
+        }
+        
         // 获取当前IP
         async function getCurrentIP() {
             try {
@@ -239,100 +502,13 @@
                 document.getElementById('currentIP').textContent = '无法获取';
             }
         }
-
-        // 显示消息
-        function showMessage(message, type = 'error') {
-            const messageDiv = document.getElementById('message');
-            messageDiv.className = type;
-            messageDiv.textContent = message;
-        }
-
-        // 验证密码强度
-        function validatePassword(password) {
-            if (password.length < 12) {
-                return '密码长度至少需要12位';
-            }
-            
-            if (!/(?=.*[a-z])/.test(password)) {
-                return '密码必须包含小写字母';
-            }
-            
-            if (!/(?=.*[A-Z])/.test(password)) {
-                return '密码必须包含大写字母';
-            }
-            
-            if (!/(?=.*\d)/.test(password)) {
-                return '密码必须包含数字';
-            }
-            
-            if (!/(?=.*[@$!%*?&])/.test(password)) {
-                return '密码必须包含特殊字符';
-            }
-            
-            return null;
-        }
-
-        // 表单提交处理
-        document.getElementById('createSuperAdminForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-
-            const createBtn = document.getElementById('createBtn');
-            const username = document.getElementById('username').value;
-            const password = document.getElementById('password').value;
-            const confirmPassword = document.getElementById('confirmPassword').value;
-            const secretKey = document.getElementById('secretKey').value;
-            const ipWhitelist = document.getElementById('ipWhitelist').value;
-
-            // 验证密码
-            const passwordError = validatePassword(password);
-            if (passwordError) {
-                showMessage(passwordError);
-                return;
-            }
-
-            // 验证密码确认
-            if (password !== confirmPassword) {
-                showMessage('两次输入的密码不一致');
-                return;
-            }
-
-            createBtn.disabled = true;
-            createBtn.textContent = '创建中...';
-
-            const formData = new FormData();
-            formData.append('username', username);
-            formData.append('password', password);
-            formData.append('secretKey', secretKey);
-            formData.append('ipWhitelist', ipWhitelist);
-
-            try {
-                const response = await fetch('server/api/super-admin.php?action=create', {
-                    method: 'POST',
-                    body: formData
-                });
-
-                const data = await response.json();
-
-                if (data.success) {
-                    showMessage('超级管理员创建成功！请妥善保管登录信息。', 'success');
-                    document.getElementById('createSuperAdminForm').reset();
-                } else {
-                    showMessage('创建失败: ' + data.error);
-                }
-            } catch (error) {
-                console.error('创建失败:', error);
-                showMessage('网络错误，请稍后重试');
-            } finally {
-                createBtn.disabled = false;
-                createBtn.textContent = '创建超级管理员';
-            }
-        });
-
-        // 页面加载时检查
+        
+        // 页面加载时初始化
         document.addEventListener('DOMContentLoaded', function() {
-            if (checkLocalhost()) {
-                getCurrentIP();
-            }
+            getCurrentIP();
+            
+            // 绑定表单提交事件
+            document.getElementById('createUserForm').addEventListener('submit', handleFormSubmit);
         });
     </script>
 </body>

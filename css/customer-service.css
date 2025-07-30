@@ -1,0 +1,372 @@
+/* 客服弹窗组件样式 */
+.customer-service-widget {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    z-index: 9999;
+}
+
+.service-trigger {
+    width: 60px;
+    height: 60px;
+    background: linear-gradient(45deg, #00ffff, #0099cc);
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 4px 20px rgba(0, 255, 255, 0.4);
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    color: #fff;
+    animation: pulse 2s infinite;
+}
+
+.service-trigger:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 25px rgba(0, 255, 255, 0.6);
+}
+
+@keyframes pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(0, 255, 255, 0.7);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(0, 255, 255, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(0, 255, 255, 0);
+    }
+}
+
+.service-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+}
+
+.service-modal.show {
+    display: flex;
+}
+
+.service-content {
+    background: linear-gradient(135deg, #1a1a2e, #16213e);
+    border-radius: 20px;
+    width: 90%;
+    max-width: 800px;
+    max-height: 80%;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0, 255, 255, 0.3);
+    border: 2px solid #00ffff;
+    position: relative;
+}
+
+.service-header {
+    background: linear-gradient(45deg, #00ffff, #0099cc);
+    color: #fff;
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.service-title {
+    font-size: 24px;
+    font-weight: bold;
+    margin: 0;
+}
+
+.service-close {
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 28px;
+    cursor: pointer;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+.service-close:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: rotate(90deg);
+}
+
+.service-tabs {
+    display: flex;
+    background: rgba(30, 40, 70, 0.9);
+    border-bottom: 2px solid #00ffff;
+}
+
+.service-tab {
+    flex: 1;
+    padding: 15px 20px;
+    background: none;
+    border: none;
+    color: #ccc;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 16px;
+    border-right: 1px solid rgba(0, 255, 255, 0.3);
+}
+
+.service-tab:last-child {
+    border-right: none;
+}
+
+.service-tab.active {
+    background: rgba(0, 255, 255, 0.2);
+    color: #00ffff;
+    font-weight: bold;
+}
+
+.service-tab:hover {
+    background: rgba(0, 255, 255, 0.1);
+    color: #00ffff;
+}
+
+.service-body {
+    height: 500px;
+    overflow-y: auto;
+    position: relative;
+}
+
+.service-panel {
+    display: none;
+    height: 100%;
+    padding: 20px;
+    color: #fff;
+}
+
+.service-panel.active {
+    display: block;
+}
+
+/* 在线客服样式 */
+.online-service {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.chat-messages {
+    flex: 1;
+    background: rgba(10, 20, 40, 0.5);
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 15px;
+    overflow-y: auto;
+    max-height: 350px;
+}
+
+.chat-message {
+    margin-bottom: 15px;
+    padding: 10px 15px;
+    border-radius: 10px;
+    max-width: 70%;
+    word-wrap: break-word;
+}
+
+.chat-message.user {
+    background: rgba(0, 255, 255, 0.2);
+    margin-left: auto;
+    text-align: right;
+}
+
+.chat-message.service {
+    background: rgba(255, 0, 255, 0.2);
+    margin-right: auto;
+}
+
+.message-time {
+    font-size: 12px;
+    color: #999;
+    margin-top: 5px;
+}
+
+.chat-input-area {
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+}
+
+.chat-input {
+    flex: 1;
+    padding: 12px 15px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(0, 255, 255, 0.3);
+    border-radius: 8px;
+    color: #fff;
+    font-size: 16px;
+    resize: none;
+    min-height: 20px;
+    max-height: 100px;
+}
+
+.chat-input:focus {
+    outline: none;
+    border-color: #00ffff;
+    box-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
+}
+
+.chat-send {
+    padding: 12px 20px;
+    background: linear-gradient(45deg, #00ffff, #0099cc);
+    border: none;
+    border-radius: 8px;
+    color: #fff;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.chat-send:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 255, 255, 0.4);
+}
+
+.service-status {
+    text-align: center;
+    padding: 20px;
+    color: #ccc;
+    font-style: italic;
+}
+
+/* QQ和微信客服样式 */
+.contact-service {
+    text-align: center;
+    padding: 40px 20px;
+}
+
+.contact-icon {
+    font-size: 80px;
+    margin-bottom: 20px;
+    display: block;
+}
+
+.contact-title {
+    font-size: 28px;
+    color: #00ffff;
+    margin-bottom: 15px;
+}
+
+.contact-description {
+    font-size: 16px;
+    color: #ccc;
+    margin-bottom: 30px;
+    line-height: 1.6;
+}
+
+.contact-info {
+    background: rgba(30, 40, 70, 0.8);
+    border-radius: 12px;
+    padding: 25px;
+    margin-bottom: 20px;
+    border: 2px solid rgba(0, 255, 255, 0.3);
+}
+
+.contact-number {
+    font-size: 24px;
+    color: #ffd700;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+.contact-qr {
+    width: 150px;
+    height: 150px;
+    background: #fff;
+    border-radius: 10px;
+    margin: 20px auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #666;
+    font-size: 14px;
+}
+
+.contact-qr img {
+    max-width: 100%;
+    max-height: 100%;
+    border-radius: 8px;
+}
+
+.copy-button {
+    background: linear-gradient(45deg, #ffd700, #ffaa00);
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    color: #000;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-top: 10px;
+}
+
+.copy-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(255, 215, 0, 0.4);
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .service-content {
+        width: 95%;
+        max-height: 90%;
+    }
+    
+    .service-body {
+        height: 400px;
+    }
+    
+    .service-tab {
+        padding: 12px 10px;
+        font-size: 14px;
+    }
+    
+    .contact-icon {
+        font-size: 60px;
+    }
+    
+    .contact-title {
+        font-size: 24px;
+    }
+}
+
+/* 加载动画 */
+.loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 200px;
+    color: #00ffff;
+    font-size: 18px;
+}
+
+.loading::after {
+    content: '';
+    width: 20px;
+    height: 20px;
+    border: 2px solid #00ffff;
+    border-top: 2px solid transparent;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-left: 10px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
