@@ -464,17 +464,30 @@
 
                 <div class="form-group">
                     <label for="prizeProbability">中奖概率 (%)</label>
-                    <input type="number" id="prizeProbability" min="0" max="100" step="0.01" required>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <input type="number" id="prizeProbability" min="0" max="100" step="0.01" required style="flex: 1;">
+                        <button type="button" id="restoreProbabilityBtn" onclick="restoreOriginalProbability()" 
+                                style="display: none; padding: 8px 12px; background: #ffd700; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; white-space: nowrap;">
+                            恢复上次概率
+                        </button>
+                    </div>
+                    <small id="probabilityHint" style="color: #888; display: none; margin-top: 5px;"></small>
                 </div>
 
                 <div class="form-group">
                     <label for="prizeRarity">稀有度</label>
-                    <select id="prizeRarity" required>
+                    <select id="prizeRarity" required onchange="handleRarityChange()">
                         <option value="common">普通</option>
                         <option value="rare">稀有</option>
                         <option value="epic">史诗</option>
                         <option value="legendary">传说</option>
                     </select>
+                </div>
+
+                <div class="form-group" id="quantityGroup" style="display: none;">
+                    <label for="prizeQuantity">数量限制</label>
+                    <input type="number" id="prizeQuantity" min="1" placeholder="输入传说物品数量">
+                    <small style="color: #ccc; font-size: 12px;">仅传说物品需要设置数量限制</small>
                 </div>
 
                 <div class="form-group">
@@ -580,12 +593,25 @@
                             </div>
                             <div class="prize-detail">
                                 <span>概率:</span>
-                                <span>${prize.probability}%</span>
+                                <span>${prize.probability}%${
+                                    prize.rarity === 'legendary' && 
+                                    parseFloat(prize.probability) === 0 && 
+                                    prize.original_probability !== null && 
+                                    parseFloat(prize.original_probability) > 0 
+                                    ? ` <small style="color: #ffd700;">(可恢复至${prize.original_probability}%)</small>` 
+                                    : ''
+                                }</span>
                             </div>
                             <div class="prize-detail">
                                 <span>稀有度:</span>
                                 <span>${getRarityText(prize.rarity)}</span>
                             </div>
+                            ${prize.rarity === 'legendary' && prize.quantity !== null ? 
+                                `<div class="prize-detail">
+                                    <span>数量:</span>
+                                    <span style="color: ${prize.quantity <= 0 ? '#ff4444' : '#44ff44'}">${prize.quantity}</span>
+                                </div>` : ''
+                            }
                             <div class="prize-detail">
                                 <span>状态:</span>
                                 <span>${prize.active ? '启用' : '禁用'}</span>
@@ -699,6 +725,41 @@
             }
         }
 
+        // 处理稀有度变化
+        function handleRarityChange() {
+            const rarity = document.getElementById('prizeRarity').value;
+            const quantityGroup = document.getElementById('quantityGroup');
+            const restoreBtn = document.getElementById('restoreProbabilityBtn');
+            const probabilityHint = document.getElementById('probabilityHint');
+            
+            if (rarity === 'legendary') {
+                quantityGroup.style.display = 'block';
+                document.getElementById('prizeQuantity').required = true;
+                
+                // 如果是编辑模式且有原始概率，显示恢复选项
+                if (editingPrizeId) {
+                    const prize = prizes.find(p => p.id == editingPrizeId);
+                    if (prize && prize.original_probability !== null && prize.original_probability !== undefined) {
+                        const originalProb = parseFloat(prize.original_probability);
+                        if (originalProb > 0) {
+                            restoreBtn.style.display = 'block';
+                            restoreBtn.dataset.originalProbability = originalProb;
+                            probabilityHint.style.display = 'block';
+                            probabilityHint.textContent = `提示：该传说物品的原始概率为 ${originalProb}%`;
+                        }
+                    }
+                }
+            } else {
+                quantityGroup.style.display = 'none';
+                document.getElementById('prizeQuantity').required = false;
+                document.getElementById('prizeQuantity').value = '';
+                
+                // 非传说物品隐藏概率恢复功能
+                restoreBtn.style.display = 'none';
+                probabilityHint.style.display = 'none';
+            }
+        }
+
         // 显示添加奖品模态框
         function showAddPrizeModal() {
             editingPrizeId = null;
@@ -706,6 +767,11 @@
             document.getElementById('prizeForm').reset();
             document.getElementById('prizeId').value = '';
             document.getElementById('imagePreview').innerHTML = '';
+            
+            // 隐藏概率恢复相关元素
+            document.getElementById('restoreProbabilityBtn').style.display = 'none';
+            document.getElementById('probabilityHint').style.display = 'none';
+            
             document.getElementById('prizeModal').classList.add('show');
         }
 
@@ -724,6 +790,46 @@
             document.getElementById('prizeProbability').value = prize.probability;
             document.getElementById('prizeRarity').value = prize.rarity;
             document.getElementById('prizeActive').value = prize.active;
+            
+            // 处理传说物品的概率恢复功能
+            const restoreBtn = document.getElementById('restoreProbabilityBtn');
+            const probabilityHint = document.getElementById('probabilityHint');
+            
+            if (prize.rarity === 'legendary' && prize.original_probability !== null && prize.original_probability !== undefined) {
+                const originalProb = parseFloat(prize.original_probability);
+                const currentProb = parseFloat(prize.probability);
+                
+                // 如果当前概率为0且有原始概率，显示恢复按钮
+                if (currentProb === 0 && originalProb > 0) {
+                    restoreBtn.style.display = 'block';
+                    restoreBtn.dataset.originalProbability = originalProb;
+                    probabilityHint.style.display = 'block';
+                    probabilityHint.textContent = `提示：该传说物品的上次概率为 ${originalProb}%，可点击按钮快速恢复`;
+                } else if (originalProb > 0 && originalProb !== currentProb) {
+                    // 如果有原始概率且与当前概率不同，也显示恢复选项
+                    restoreBtn.style.display = 'block';
+                    restoreBtn.dataset.originalProbability = originalProb;
+                    probabilityHint.style.display = 'block';
+                    probabilityHint.textContent = `提示：该传说物品的原始概率为 ${originalProb}%`;
+                } else {
+                    restoreBtn.style.display = 'none';
+                    probabilityHint.style.display = 'none';
+                }
+            } else {
+                restoreBtn.style.display = 'none';
+                probabilityHint.style.display = 'none';
+            }
+            
+            // 处理数量字段
+            if (prize.rarity === 'legendary') {
+                document.getElementById('quantityGroup').style.display = 'block';
+                document.getElementById('prizeQuantity').value = prize.quantity || '';
+                document.getElementById('prizeQuantity').required = true;
+            } else {
+                document.getElementById('quantityGroup').style.display = 'none';
+                document.getElementById('prizeQuantity').value = '';
+                document.getElementById('prizeQuantity').required = false;
+            }
 
             // 显示图片预览
             if (prize.image_url) {
@@ -734,9 +840,26 @@
             document.getElementById('prizeModal').classList.add('show');
         }
 
+        // 恢复原始概率
+        function restoreOriginalProbability() {
+            const restoreBtn = document.getElementById('restoreProbabilityBtn');
+            const originalProbability = restoreBtn.dataset.originalProbability;
+            
+            if (originalProbability) {
+                document.getElementById('prizeProbability').value = originalProbability;
+                // 隐藏提示，因为已经恢复了
+                document.getElementById('probabilityHint').textContent = `已恢复到原始概率 ${originalProbability}%，您也可以手动修改`;
+            }
+        }
+
         // 关闭奖品模态框
         function closePrizeModal() {
             document.getElementById('prizeModal').classList.remove('show');
+            
+            // 重置概率恢复相关元素
+            document.getElementById('restoreProbabilityBtn').style.display = 'none';
+            document.getElementById('probabilityHint').style.display = 'none';
+            document.getElementById('probabilityHint').textContent = '';
         }
 
         // 保存奖品
@@ -751,6 +874,16 @@
                 rarity: document.getElementById('prizeRarity').value,
                 active: parseInt(document.getElementById('prizeActive').value)
             };
+            
+            // 如果是传说物品，添加数量字段
+            if (formData.rarity === 'legendary') {
+                const quantity = document.getElementById('prizeQuantity').value;
+                if (!quantity || quantity < 1) {
+                    showError('传说物品必须设置数量，且数量必须大于0');
+                    return;
+                }
+                formData.quantity = parseInt(quantity);
+            }
 
             // 验证概率
             if (formData.active) {

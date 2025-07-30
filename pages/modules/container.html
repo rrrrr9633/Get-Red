@@ -833,13 +833,48 @@
             const info = document.getElementById('decomposeInfo');
             
             const totalValue = pendingDecompose.reduce((sum, item) => sum + parseFloat(item.value || 0), 0);
-            const itemNames = pendingDecompose.map(item => item.name).join('、');
+            const itemCount = pendingDecompose.length;
             
-            info.innerHTML = `
-                <div class="neon-text">即将分解以下物品:</div>
-                <div style="margin: 15px 0; padding: 15px; background: rgba(0,0,0,0.5); border-radius: 10px;">
-                    <div class="neon-text gold">${itemNames}</div>
-                </div>
+            // 生成物品统计信息
+            const itemStats = {};
+            pendingDecompose.forEach(item => {
+                if (itemStats[item.name]) {
+                    itemStats[item.name]++;
+                } else {
+                    itemStats[item.name] = 1;
+                }
+            });
+            
+            // 构建显示内容
+            let displayContent = '';
+            
+            if (itemCount <= 10) {
+                // 10件以下显示具体物品名称
+                const itemNames = pendingDecompose.map(item => item.name).join('、');
+                displayContent = `
+                    <div class="neon-text">即将分解以下物品:</div>
+                    <div style="margin: 15px 0; padding: 15px; background: rgba(0,0,0,0.5); border-radius: 10px;">
+                        <div class="neon-text gold">${itemNames}</div>
+                    </div>
+                `;
+            } else {
+                // 10件以上显示统计信息
+                const statsDisplay = Object.entries(itemStats)
+                    .map(([name, count]) => `${name} x${count}`)
+                    .join('、');
+                
+                displayContent = `
+                    <div class="neon-text">即将分解 ${itemCount} 件物品:</div>
+                    <div style="margin: 15px 0; padding: 15px; background: rgba(0,0,0,0.5); border-radius: 10px;">
+                        <div class="neon-text gold">${statsDisplay}</div>
+                    </div>
+                    <div style="margin: 10px 0; padding: 10px; background: rgba(255,165,0,0.2); border-radius: 8px; border-left: 4px solid #ffa500;">
+                        <div class="neon-text" style="color: #ffa500;">⚠️ 确认要分解这么多物品吗？此操作不可撤销！</div>
+                    </div>
+                `;
+            }
+            
+            info.innerHTML = displayContent + `
                 <div class="neon-text">将获得金币: <span class="neon-text green">¥${totalValue.toFixed(2)}</span></div>
             `;
             
@@ -856,6 +891,16 @@
         async function confirmDecompose() {
             try {
                 console.log('开始分解，待分解物品:', pendingDecompose);
+                
+                const itemCount = pendingDecompose.length;
+                
+                // 如果物品数量大于10，需要额外确认
+                if (itemCount > 10) {
+                    const confirmMessage = `您即将分解 ${itemCount} 件物品，这是一个较大的批量操作。\n\n确定要继续吗？此操作不可撤销！`;
+                    if (!confirm(confirmMessage)) {
+                        return; // 用户取消操作
+                    }
+                }
                 
                 const totalValue = pendingDecompose.reduce((sum, item) => sum + parseFloat(item.value), 0);
                 const itemIds = pendingDecompose.map(item => String(item.id));
@@ -887,7 +932,7 @@
                     updateBatchButtons();
                     loadUserInfo(); // 刷新用户余额
                     
-                    alert(`成功分解物品，获得 ¥${totalValue.toFixed(2)} 金币！`);
+                    alert(`成功分解 ${itemCount} 件物品，获得 ¥${totalValue.toFixed(2)} 金币！`);
                 } else {
                     alert('分解失败: ' + (result.message || '未知错误'));
                 }

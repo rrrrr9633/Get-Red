@@ -336,6 +336,13 @@ function checkBalance($userId, $amount) {
 
 function deductBalance($userId, $amount, $description) {
     global $db;
+    
+    // 限制描述长度，避免超过数据库字段限制(varchar(255))
+    // 使用字节长度检查，确保兼容性
+    if (strlen($description) > 250) {
+        $description = substr($description, 0, 250) . '...';
+    }
+    
     $stmt = $db->prepare("UPDATE users SET balance = balance - ? WHERE id = ?");
     $stmt->execute([$amount, $userId]);
     
@@ -345,6 +352,13 @@ function deductBalance($userId, $amount, $description) {
 
 function addBalance($userId, $amount, $description) {
     global $db;
+    
+    // 限制描述长度，避免超过数据库字段限制(varchar(255))
+    // 使用字节长度检查，确保兼容性
+    if (strlen($description) > 250) {
+        $description = substr($description, 0, 250) . '...';
+    }
+    
     $stmt = $db->prepare("UPDATE users SET balance = balance + ? WHERE id = ?");
     $stmt->execute([$amount, $userId]);
     

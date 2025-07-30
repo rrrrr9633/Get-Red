@@ -115,11 +115,10 @@ function deletePrize($id) {
     }
 }
 
-function performDraw($userId, $gameType, $count = 1, $page = null) {
+function drawPrizes($gameType, $count, $userId, $page = '') {
     global $pdo;
     
     try {
-        // 开始事务
         $pdo->beginTransaction();
         
         // 检查用户余额
@@ -131,47 +130,71 @@ function performDraw($userId, $gameType, $count = 1, $page = null) {
             throw new Exception('用户不存在');
         }
         
-        $cost = $count * 10; // 每次抽奖10金币
+        $cost = $count * 10; // 每次抽奖消耗10
         if ($user['balance'] < $cost) {
             throw new Exception('余额不足');
         }
         
-        // 根据页面参数确定表名
-        $tableName = 'prizes'; // 默认表名
+        // 确定奖品表名
+        $tableName = 'prizes';
         if ($page) {
-            // 从 lucky1.html -> lucky1_prizes
-            $pageBase = str_replace('.html', '', $page);
-            if (preg_match('/^lucky\d+$/', $pageBase)) {
-                $tableName = $pageBase . '_prizes';
+            $tableName = str_replace('.html', '_prizes', $page);
+            $tableName = str_replace('-', '_', $tableName);
+            
+            // 检查表是否存在
+            $checkTableSQL = "SHOW TABLES LIKE '{$tableName}'";
+            $result = $pdo->query($checkTableSQL);
+            if ($result->rowCount() == 0) {
+                $tableName = 'prizes';
             }
         }
         
-        // 获取奖品列表
-        $stmt = $pdo->prepare("SELECT * FROM `{$tableName}` WHERE active = 1 ORDER BY probability ASC");
+        // 获取可用奖品（概率大于0的奖品）
+        $stmt = $pdo->prepare("SELECT * FROM `{$tableName}` WHERE active = 1 AND probability > 0 ORDER BY probability ASC");
         $stmt->execute();
-        $prizes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $availablePrizes = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
-        if (empty($prizes)) {
-            // 如果指定表没有数据，回退到默认表
-            if ($tableName !== 'prizes') {
-                $stmt = $pdo->prepare("SELECT * FROM prizes WHERE game_type = ? AND active = 1 ORDER BY probability ASC");
-                $stmt->execute([$gameType]);
-                $prizes = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            }
-            
-            if (empty($prizes)) {
-                throw new Exception('暂无可抽取的奖品');
-            }
+        if (empty($availablePrizes)) {
+            throw new Exception('暂无可抽取的奖品');
         }
         
         $results = [];
         $totalValue = 0;
         
-        // 执行抽奖
+        // 执行抽奖 - 每次抽奖后立即更新数量和概率
         for ($i = 0; $i < $count; $i++) {
-            $prize = selectPrizeByProbability($prizes);
+            // 重新获取当前可用奖品列表（因为可能有概率变化）
+            $stmt = $pdo->prepare("SELECT * FROM `{$tableName}` WHERE active = 1 AND probability > 0 ORDER BY probability ASC");
+            $stmt->execute();
+            $currentPrizes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            if (empty($currentPrizes)) {
+                throw new Exception('抽奖过程中奖品已耗尽');
+            }
+            
+            // 进行抽奖
+            $prize = selectPrizeByProbability($currentPrizes);
             $results[] = $prize;
             $totalValue += $prize['value'];
+            
+            // 如果是传说物品且有数量限制，扣减数量
+            if ($prize['rarity'] === 'legendary' && isset($prize['quantity']) && $prize['quantity'] !== null) {
+                $newQuantity = $prize['quantity'] - 1;
+                
+                // 更新数量
+                $stmt = $pdo->prepare("UPDATE `{$tableName}` SET quantity = ? WHERE id = ?");
+                $stmt->execute([$newQuantity, $prize['id']]);
+                
+                // 如果数量变为0，将概率设为0
+                if ($newQuantity <= 0) {
+                    $stmt = $pdo->prepare("UPDATE `{$tableName}` SET probability = 0 WHERE id = ?");
+                    $stmt->execute([$prize['id']]);
+                }
+            }
+            
+            // 记录抽奖日志
+            $stmt = $pdo->prepare("INSERT INTO prize_draw_log (user_id, prize_table, prize_id, prize_name, rarity) VALUES (?, ?, ?, ?, ?)");
+            $stmt->execute([$userId, $tableName, $prize['id'], $prize['name'], $prize['rarity']]);
         }
         
         // 扣除费用
@@ -183,16 +206,19 @@ function performDraw($userId, $gameType, $count = 1, $page = null) {
         $stmt = $pdo->prepare("INSERT INTO transactions (user_id, amount, description, type) VALUES (?, ?, ?, 'expense')");
         $stmt->execute([$userId, $cost, "抽奖消费({$gameType}{$pageInfo})x{$count}"]);
         
-        // 记录抽奖结果 - 不在game_type中包含页面信息
+        // 记录抽奖结果
         $stmt = $pdo->prepare("INSERT INTO lottery_records (user_id, game_type, cost, reward, result) VALUES (?, ?, ?, ?, ?)");
         $stmt->execute([$userId, $gameType, $cost, $totalValue, json_encode($results)]);
         
         // 将抽到的物品添加到用户仓库
         $stmt = $pdo->prepare("INSERT INTO user_items (user_id, prize_id, name, icon, image_url, value, rarity) VALUES (?, ?, ?, ?, ?, ?, ?)");
         foreach ($results as $prize) {
+            // 对于非主奖品表的物品，prize_id设为NULL以避免外键约束问题
+            $prizeIdForStorage = ($tableName === 'prizes') ? $prize['id'] : null;
+            
             $stmt->execute([
                 $userId, 
-                $prize['id'], 
+                $prizeIdForStorage, 
                 $prize['name'], 
                 $prize['icon'], 
                 $prize['image_url'], 
@@ -201,14 +227,13 @@ function performDraw($userId, $gameType, $count = 1, $page = null) {
             ]);
         }
         
-        // 不再直接添加余额，物品需要通过分解才能获得余额
-        
         // 提交事务
         $pdo->commit();
         
         return [
             'success' => true,
             'results' => $results,
+            'prizes' => $results, // 兼容前端
             'total_value' => $totalValue,
             'cost' => $cost
         ];
@@ -271,7 +296,7 @@ switch ($method) {
                         break;
                     }
                     
-                    echo json_encode(performDraw($userId, $gameType, $count, $page));
+                    echo json_encode(drawPrizes($gameType, $count, $userId, $page));
                     break;
                 default:
                     echo json_encode(['success' => false, 'message' => '未知操作']);

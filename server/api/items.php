@@ -68,8 +68,17 @@ function decomposeItems($userId, $itemIds, $totalValue) {
         
         // 记录交易
         $itemNames = implode('、', array_column($items, 'name'));
+        $description = "物品分解: {$itemNames}";
+        
+        // 限制描述长度，避免超过数据库字段限制(varchar(255))
+        // 使用字节长度检查，确保兼容性
+        if (strlen($description) > 250) {
+            // 安全截断，避免截断多字节字符
+            $description = substr($description, 0, 230) . '...(共' . count($items) . '件)';
+        }
+        
         $stmt = $pdo->prepare("INSERT INTO transactions (user_id, amount, description, type) VALUES (?, ?, ?, 'income')");
-        $stmt->execute([$userId, $totalValue, "物品分解: {$itemNames}"]);
+        $stmt->execute([$userId, $totalValue, $description]);
         
         // 提交事务
         $pdo->commit();

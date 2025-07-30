@@ -536,6 +536,11 @@
                 if (data.success) {
                     const checkinBtn = document.getElementById('checkinBtn');
                     
+                    // 更新当前日期显示（使用服务器网络时间）
+                    if (data.currentTime) {
+                        updateCurrentDateFromServer(data.currentTime);
+                    }
+                    
                     if (data.hasCheckedIn) {
                         // 今天已签到
                         checkinBtn.disabled = true;
@@ -696,7 +701,26 @@
             }
         }
 
-        // 更新当前日期显示
+        // 更新当前日期显示（使用服务器网络时间）
+        function updateCurrentDateFromServer(serverTime) {
+            try {
+                const serverDate = new Date(serverTime);
+                const options = { 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric',
+                    weekday: 'long'
+                };
+                const dateString = serverDate.toLocaleDateString('zh-CN', options);
+                const timeString = serverDate.toLocaleTimeString('zh-CN');
+                document.getElementById('currentDate').innerHTML = `${dateString}<br><small style="color: #888;">网络时间: ${timeString}</small>`;
+            } catch (error) {
+                console.error('解析服务器时间失败:', error);
+                updateCurrentDate(); // 备用方案
+            }
+        }
+
+        // 更新当前日期显示（备用方案：本地时间）
         function updateCurrentDate() {
             const now = new Date();
             const options = { 
@@ -705,7 +729,9 @@
                 day: 'numeric',
                 weekday: 'long'
             };
-            document.getElementById('currentDate').textContent = now.toLocaleDateString('zh-CN', options);
+            const dateString = now.toLocaleDateString('zh-CN', options);
+            const timeString = now.toLocaleTimeString('zh-CN');
+            document.getElementById('currentDate').innerHTML = `${dateString}<br><small style="color: #ff6b6b;">本地时间: ${timeString}</small>`;
         }
 
         // 绑定签到按钮

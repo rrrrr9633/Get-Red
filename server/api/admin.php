@@ -284,18 +284,37 @@ function addPrize() {
             $tableName = 'prizes';
         }
         
-        $stmt = $db->prepare("INSERT INTO `{$tableName}` (name, icon, image_url, value, probability, rarity, active) VALUES (?, ?, ?, ?, ?, ?, ?)");
+        // 处理数量字段
+        $quantity = null;
+        if (isset($input['quantity']) && $input['quantity'] !== '' && $input['quantity'] !== null) {
+            $quantity = intval($input['quantity']);
+        }
+        
+        // 如果是传说物品，保存原始概率
+        $originalProbability = null;
+        if (isset($input['rarity']) && $input['rarity'] === 'legendary') {
+            $originalProbability = $input['probability'];
+        }
+        
+        $stmt = $db->prepare("INSERT INTO `{$tableName}` (name, icon, image_url, value, probability, original_probability, rarity, quantity, active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
         $stmt->execute([
             $input['name'],
             $input['icon'],
             $input['image_url'] ?? null,
             $input['value'],
             $input['probability'],
+            $originalProbability,
             $input['rarity'] ?? 'common',
+            $quantity,
             $input['active'] ?? 1
         ]);
         
         echo json_encode(['success' => true, 'message' => '奖品添加成功']);
+        
+        // 如果添加的是传说奖品，检查并更新概率状态
+        if (isset($input['rarity']) && $input['rarity'] === 'legendary') {
+            updateLegendaryProbabilities($tableName);
+        }
     } catch (Exception $e) {
         http_response_code(500);
         echo json_encode(['error' => '添加奖品失败: ' . $e->getMessage()]);
@@ -353,19 +372,51 @@ function updatePrize() {
             $tableName = 'prizes';
         }
         
-        $stmt = $db->prepare("UPDATE `{$tableName}` SET name = ?, icon = ?, image_url = ?, value = ?, probability = ?, rarity = ?, active = ? WHERE id = ?");
+        // 处理数量字段
+        $quantity = null;
+        if (isset($input['quantity']) && $input['quantity'] !== '' && $input['quantity'] !== null) {
+            $quantity = intval($input['quantity']);
+        }
+        
+        // 获取当前奖品的稀有度
+        $stmt = $db->prepare("SELECT rarity, original_probability FROM `{$tableName}` WHERE id = ?");
+        $stmt->execute([$input['id']]);
+        $currentPrize = $stmt->fetch(PDO::FETCH_ASSOC);
+        $currentRarity = $currentPrize['rarity'];
+        
+        // 处理概率逻辑
+        $originalProbability = null;
+        if (isset($input['rarity']) && $input['rarity'] === 'legendary') {
+            // 如果是传说奖品，始终使用用户输入的概率作为原始概率
+            $originalProbability = $input['probability'];
+        } else if ($currentRarity === 'legendary' && $input['rarity'] !== 'legendary') {
+            // 从传说变为非传说，清除original_probability
+            $originalProbability = null;
+        } else if ($currentRarity !== 'legendary') {
+            // 非传说物品，不设置original_probability
+            $originalProbability = null;
+        }
+        
+        $stmt = $db->prepare("UPDATE `{$tableName}` SET name = ?, icon = ?, image_url = ?, value = ?, probability = ?, original_probability = ?, rarity = ?, quantity = ?, active = ? WHERE id = ?");
         $stmt->execute([
             $input['name'],
             $input['icon'],
             $input['image_url'] ?? null,
             $input['value'],
             $input['probability'],
+            $originalProbability,
             $input['rarity'] ?? 'common',
+            $quantity,
             $input['active'] ?? 1,
             $input['id']
         ]);
         
         echo json_encode(['success' => true, 'message' => '奖品更新成功']);
+        
+        // 如果修改了传说奖品的数量，检查并更新概率状态
+        if ((isset($input['rarity']) && $input['rarity'] === 'legendary') || $currentRarity === 'legendary') {
+            updateLegendaryProbabilities($tableName);
+        }
     } catch (Exception $e) {
         http_response_code(500);
         echo json_encode(['error' => '更新奖品失败: ' . $e->getMessage()]);
@@ -532,6 +583,38 @@ function deletePrize() {
             $tableName = 'prizes';
         }
         
+        // 获取要删除的奖品信息
+        $stmt = $db->prepare("SELECT rarity FROM `{$tableName}` WHERE id = ?");
+        $stmt->execute([$id]);
+        $prizeToDelete = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$prizeToDelete) {
+            http_response_code(404);
+            echo json_encode(['error' => '奖品不存在']);
+            return;
+        }
+        
+        // 只有当要删除普通奖品且存在传说奖品时才进行限制
+        if ($prizeToDelete['rarity'] !== 'legendary') {
+            // 检查是否存在传说奖品
+            $stmt = $db->prepare("SELECT COUNT(*) as count FROM `{$tableName}` WHERE rarity = 'legendary' AND active = 1");
+            $stmt->execute();
+            $legendaryCount = $stmt->fetchColumn();
+            
+            if ($legendaryCount > 0) {
+                // 检查删除后是否还有其他普通奖品
+                $stmt = $db->prepare("SELECT COUNT(*) as count FROM `{$tableName}` WHERE rarity != 'legendary' AND active = 1 AND id != ?");
+                $stmt->execute([$id]);
+                $remainingNormalCount = $stmt->fetchColumn();
+                
+                if ($remainingNormalCount == 0) {
+                    http_response_code(400);
+                    echo json_encode(['error' => '不能删除最后一个普通奖品！当存在传说奖品时，必须保留至少一个普通奖品以确保抽奖系统正常运行。']);
+                    return;
+                }
+            }
+        }
+        
         $stmt = $db->prepare("DELETE FROM `{$tableName}` WHERE id = ?");
         $stmt->execute([$id]);
         
@@ -656,6 +739,8 @@ function createLuckyPage() {
             `value` decimal(10,2) DEFAULT 0.00 COMMENT '奖品价值',
             `probability` decimal(5,2) DEFAULT 0.00 COMMENT '中奖概率(%)',
             `rarity` enum('common','rare','epic','legendary') DEFAULT 'common' COMMENT '稀有度',
+            `quantity` int(11) DEFAULT NULL COMMENT '奖品数量，NULL表示无限制',
+            `original_probability` decimal(10,4) DEFAULT NULL COMMENT '原始概率，用于恢复',
             `active` tinyint(1) DEFAULT 1 COMMENT '是否启用',
             `created_at` timestamp DEFAULT CURRENT_TIMESTAMP,
             `updated_at` timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -666,17 +751,25 @@ function createLuckyPage() {
         
         // 插入默认奖品数据
         $defaultPrizes = [
-            ['name' => '大红', 'icon' => '🍎', 'value' => 10.00, 'probability' => 30.00, 'rarity' => 'common'],
-            ['name' => '钻石', 'icon' => '💎', 'value' => 100.00, 'probability' => 5.00, 'rarity' => 'legendary'],
-            ['name' => '金币', 'icon' => '🪙', 'value' => 1.00, 'probability' => 50.00, 'rarity' => 'common'],
-            ['name' => '空奖', 'icon' => '❌', 'value' => 0.00, 'probability' => 15.00, 'rarity' => 'common']
+            ['name' => '大红', 'icon' => '🍎', 'value' => 10.00, 'probability' => 30.00, 'rarity' => 'common', 'quantity' => null, 'original_probability' => 30.00],
+            ['name' => '钻石', 'icon' => '💎', 'value' => 100.00, 'probability' => 5.00, 'rarity' => 'legendary', 'quantity' => 3, 'original_probability' => 5.00],
+            ['name' => '金币', 'icon' => '🪙', 'value' => 1.00, 'probability' => 50.00, 'rarity' => 'common', 'quantity' => null, 'original_probability' => 50.00],
+            ['name' => '空奖', 'icon' => '❌', 'value' => 0.00, 'probability' => 15.00, 'rarity' => 'common', 'quantity' => null, 'original_probability' => 15.00]
         ];
         
-        $insertSQL = "INSERT INTO `{$tableName}` (name, icon, value, probability, rarity) VALUES (?, ?, ?, ?, ?)";
+        $insertSQL = "INSERT INTO `{$tableName}` (name, icon, value, probability, rarity, quantity, original_probability) VALUES (?, ?, ?, ?, ?, ?, ?)";
         $stmt = $db->prepare($insertSQL);
         
         foreach ($defaultPrizes as $prize) {
-            $stmt->execute([$prize['name'], $prize['icon'], $prize['value'], $prize['probability'], $prize['rarity']]);
+            $stmt->execute([
+                $prize['name'], 
+                $prize['icon'], 
+                $prize['value'], 
+                $prize['probability'], 
+                $prize['rarity'],
+                $prize['quantity'],
+                $prize['original_probability']
+            ]);
         }
         
         echo json_encode([
@@ -1076,6 +1169,42 @@ function getUserTransactions() {
         error_log("获取用户交易记录失败: " . $e->getMessage());
         http_response_code(500);
         echo json_encode(['error' => '获取交易记录失败']);
+    }
+}
+
+// 更新传说奖品概率状态的函数
+function updateLegendaryProbabilities($tableName) {
+    global $db;
+    
+    try {
+        // 获取所有传说奖品
+        $stmt = $db->prepare("SELECT id, quantity, probability, original_probability FROM `{$tableName}` WHERE rarity = 'legendary' AND active = 1");
+        $stmt->execute();
+        $legendaryPrizes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        foreach ($legendaryPrizes as $prize) {
+            // 如果original_probability为空，初始化为当前概率
+            if ($prize['original_probability'] === null) {
+                $stmt = $db->prepare("UPDATE `{$tableName}` SET original_probability = probability WHERE id = ?");
+                $stmt->execute([$prize['id']]);
+                $prize['original_probability'] = $prize['probability'];
+            }
+            
+            // 根据数量状态调整概率
+            if (isset($prize['quantity']) && $prize['quantity'] !== null) {
+                if ($prize['quantity'] <= 0) {
+                    // 数量为0，概率设为0
+                    $stmt = $db->prepare("UPDATE `{$tableName}` SET probability = 0 WHERE id = ?");
+                    $stmt->execute([$prize['id']]);
+                } else {
+                    // 数量大于0，恢复原始概率
+                    $stmt = $db->prepare("UPDATE `{$tableName}` SET probability = original_probability WHERE id = ?");
+                    $stmt->execute([$prize['id']]);
+                }
+            }
+        }
+    } catch (Exception $e) {
+        error_log("更新传说奖品概率失败: " . $e->getMessage());
     }
 }
 ?>

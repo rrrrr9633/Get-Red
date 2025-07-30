@@ -12,6 +12,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit(0);
 }
 
+// 获取网络时间函数
+function getNetworkTime() {
+    try {
+        // 使用世界时间API获取北京时间
+        $timeApiUrl = 'https://worldtimeapi.org/api/timezone/Asia/Shanghai';
+        $context = stream_context_create([
+            'http' => [
+                'timeout' => 5, // 5秒超时
+                'method' => 'GET'
+            ]
+        ]);
+        
+        $response = @file_get_contents($timeApiUrl, false, $context);
+        if ($response !== false) {
+            $timeData = json_decode($response, true);
+            if (isset($timeData['datetime'])) {
+                // 返回格式：2024-01-01T12:30:45+08:00
+                $datetime = new DateTime($timeData['datetime']);
+                return $datetime->format('Y-m-d H:i:s');
+            }
+        }
+    } catch (Exception $e) {
+        error_log('网络时间获取失败: ' . $e->getMessage());
+    }
+    
+    // 备用方案：使用服务器时间，但设置为中国时区
+    try {
+        $timezone = new DateTimeZone('Asia/Shanghai');
+        $datetime = new DateTime('now', $timezone);
+        return $datetime->format('Y-m-d H:i:s');
+    } catch (Exception $e) {
+        // 最后备用方案：使用PHP默认时间
+        return date('Y-m-d H:i:s');
+    }
+}
+
+// 获取当前日期（网络时间）
+function getCurrentDate() {
+    $networkTime = getNetworkTime();
+    return substr($networkTime, 0, 10); // 只取日期部分 Y-m-d
+}
+
 // 获取数据库连接
 $database = new Database();
 $db = $database->getConnection();
@@ -50,8 +92,8 @@ function getCheckinStatus() {
     global $db, $userId;
     
     try {
-        $today = date('Y-m-d');
-        $thisMonth = date('Y-m');
+        $today = getCurrentDate(); // 使用网络时间
+        $thisMonth = substr($today, 0, 7); // Y-m 格式
         
         // 检查今天是否已签到
         $stmt = $db->prepare("SELECT id FROM user_checkin WHERE user_id = ? AND checkin_date = ?");
@@ -80,7 +122,9 @@ function getCheckinStatus() {
             'consecutiveDays' => $consecutiveDays,
             'monthlyDays' => $monthlyCount,
             'totalDays' => $totalCount,
-            'todayReward' => $todayReward
+            'todayReward' => $todayReward,
+            'currentTime' => getNetworkTime(), // 添加当前网络时间用于调试
+            'currentDate' => $today
         ]);
         
     } catch (Exception $e) {
@@ -94,7 +138,7 @@ function doCheckin() {
     global $db, $userId;
     
     try {
-        $today = date('Y-m-d');
+        $today = getCurrentDate(); // 使用网络时间
         
         // 检查今天是否已签到
         $stmt = $db->prepare("SELECT id FROM user_checkin WHERE user_id = ? AND checkin_date = ?");
@@ -114,9 +158,10 @@ function doCheckin() {
         // 开始事务
         $db->beginTransaction();
         
-        // 插入签到记录
-        $stmt = $db->prepare("INSERT INTO user_checkin (user_id, checkin_date, consecutive_days, reward_amount) VALUES (?, ?, ?, ?)");
-        $stmt->execute([$userId, $today, $newConsecutiveDays, $reward]);
+        // 插入签到记录，使用网络时间
+        $networkTime = getNetworkTime();
+        $stmt = $db->prepare("INSERT INTO user_checkin (user_id, checkin_date, consecutive_days, reward_amount, created_at) VALUES (?, ?, ?, ?, ?)");
+        $stmt->execute([$userId, $today, $newConsecutiveDays, $reward, $networkTime]);
         
         // 更新用户余额
         $stmt = $db->prepare("UPDATE users SET balance = balance + ? WHERE id = ?");
@@ -134,7 +179,8 @@ function doCheckin() {
             'message' => '签到成功！',
             'reward' => $reward,
             'consecutiveDays' => $newConsecutiveDays,
-            'newBalance' => $newBalance
+            'newBalance' => $newBalance,
+            'checkinTime' => $networkTime // 添加签到时间用于确认
         ]);
         
     } catch (Exception $e) {
@@ -149,8 +195,12 @@ function getCheckinCalendar() {
     global $db, $userId;
     
     try {
-        $year = $_GET['year'] ?? date('Y');
-        $month = $_GET['month'] ?? date('m');
+        // 使用网络时间作为默认年月
+        $networkTime = getNetworkTime();
+        $currentDateTime = new DateTime($networkTime);
+        
+        $year = $_GET['year'] ?? $currentDateTime->format('Y');
+        $month = $_GET['month'] ?? $currentDateTime->format('m');
         
         $stmt = $db->prepare("
             SELECT DAY(checkin_date) as day, consecutive_days, reward_amount 
@@ -165,7 +215,8 @@ function getCheckinCalendar() {
             'success' => true,
             'checkinDays' => $checkinDays,
             'year' => $year,
-            'month' => $month
+            'month' => $month,
+            'currentNetworkTime' => $networkTime // 添加网络时间用于前端显示
         ]);
         
     } catch (Exception $e) {
@@ -193,7 +244,7 @@ function getConsecutiveDays($userId) {
     }
     
     $consecutiveDays = 0;
-    $currentDate = new DateTime();
+    $currentDate = new DateTime(getCurrentDate()); // 使用网络时间
     $yesterday = clone $currentDate;
     $yesterday->sub(new DateInterval('P1D'));
     

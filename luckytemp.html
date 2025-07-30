@@ -57,6 +57,13 @@
                 <button class="mode-btn" data-mode="3">三连抽</button>
                 <button class="mode-btn" data-mode="5">五连抽</button>
             </div>
+            
+            <div class="animation-settings">
+                <label class="setting-item">
+                    <input type="checkbox" id="skipAnimation" class="skip-checkbox">
+                    <span class="neon-text">跳过动画</span>
+                </label>
+            </div>
         </div>
 
         <!-- 横向滚动老虎机 -->
@@ -323,6 +330,38 @@
             box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
         }
 
+        .animation-settings {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        
+        .setting-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            padding: 8px 15px;
+            border-radius: 20px;
+            transition: all 0.3s ease;
+        }
+        
+        .setting-item:hover {
+            background: rgba(255, 215, 0, 0.1);
+        }
+        
+        .skip-checkbox {
+            width: 18px;
+            height: 18px;
+            accent-color: #ffd700;
+            cursor: pointer;
+        }
+        
+        .skip-checkbox:checked + .neon-text {
+            color: #ffd700;
+            text-shadow: 0 0 10px #ffd700;
+        }
+
         /* 横向滚动老虎机样式 */
         .horizontal-slot-container {
             margin: 40px 0;
@@ -434,6 +473,9 @@
         
         .slot-controls {
             margin-top: 30px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
         
         .btn-spin {
@@ -1006,11 +1048,24 @@
 
             // 抽奖按钮
             document.getElementById('spinBtn').addEventListener('click', startSpin);
+            
+            // 跳过动画复选框 - 保存用户偏好
+            const skipCheckbox = document.getElementById('skipAnimation');
+            const savedSkipSetting = localStorage.getItem('skipAnimation');
+            if (savedSkipSetting === 'true') {
+                skipCheckbox.checked = true;
+            }
+            
+            skipCheckbox.addEventListener('change', (e) => {
+                localStorage.setItem('skipAnimation', e.target.checked);
+            });
         }
 
         // 开始抽奖
         async function startSpin() {
             const spinBtn = document.getElementById('spinBtn');
+            const skipAnimation = document.getElementById('skipAnimation').checked;
+            
             spinBtn.disabled = true;
             spinBtn.querySelector('.btn-text').textContent = '抽奖中...';
 
@@ -1048,38 +1103,47 @@
                     throw new Error(drawResult.message || drawResult.error || '抽奖失败');
                 }
                 
-                // 播放滚动动画，使用后端返回的结果
-                await performSpinWithResults(drawResult.prizes || drawResult.results);
-                
-                // 显示结果
-                setTimeout(() => {
+                // 执行动画或跳过
+                if (skipAnimation) {
+                    // 直接显示结果，跳过动画
                     showWinResult(drawResult.prizes || drawResult.results, drawResult.total_value);
+                    finishSpin(spinBtn);
+                } else {
+                    // 播放滚动动画，使用后端返回的结果
+                    await performSpinWithResults(drawResult.prizes || drawResult.results);
                     
-                    // 重置按钮
-                    spinBtn.disabled = false;
-                    spinBtn.querySelector('.btn-text').textContent = '开始抽奖';
-                    
-                    // 更新用户信息
-                    loadUserInfo();
-                    
-                    // 重置所有strip到初始位置，为下次抽奖做准备
+                    // 显示结果
                     setTimeout(() => {
-                        const allStrips = document.querySelectorAll('.slot-strip');
-                        allStrips.forEach(strip => {
-                            strip.style.transition = 'none';
-                            strip.style.transform = 'translateX(0px)';
-                        });
-                    }, 1000); // 等待1秒后重置
-                    
-                }, 4000); // 增加等待时间到4秒
+                        showWinResult(drawResult.prizes || drawResult.results, drawResult.total_value);
+                        finishSpin(spinBtn);
+                    }, 4000); // 增加等待时间到4秒
+                }
                 
             } catch (error) {
                 console.error('抽奖失败:', error);
                 alert(error.message || '抽奖失败，请稍后再试！');
                 
-                spinBtn.disabled = false;
-                spinBtn.querySelector('.btn-text').textContent = '开始抽奖';
+                finishSpin(spinBtn);
             }
+        }
+        
+        // 完成抽奖的清理工作
+        function finishSpin(spinBtn) {
+            // 重置按钮
+            spinBtn.disabled = false;
+            spinBtn.querySelector('.btn-text').textContent = '开始抽奖';
+            
+            // 更新用户信息
+            loadUserInfo();
+            
+            // 重置所有strip到初始位置，为下次抽奖做准备
+            setTimeout(() => {
+                const allStrips = document.querySelectorAll('.slot-strip');
+                allStrips.forEach(strip => {
+                    strip.style.transition = 'none';
+                    strip.style.transform = 'translateX(0px)';
+                });
+            }, 1000); // 等待1秒后重置
         }
 
         // 执行抽奖动画
@@ -1150,7 +1214,62 @@
         // 使用后端结果执行抽奖动画
         async function performSpinWithResults(prizes) {
             const rows = document.querySelectorAll('.slot-row');
+            let animationSkipped = false;
             
+            // 检查是否启用了跳过动画
+            const skipAnimationEnabled = document.getElementById('skipAnimation').checked;
+            
+            if (skipAnimationEnabled) {
+                // 立即显示最终结果，不播放动画
+                for (let i = 0; i < rows.length && i < prizes.length; i++) {
+                    const row = rows[i];
+                    const strip = row.querySelector('.slot-strip');
+                    const items = strip.querySelectorAll('.slot-item');
+                    const winningPrize = prizes[i];
+                    
+                    // 找到目标奖品的索引
+                    let targetIndex = -1;
+                    for (let j = 0; j < items.length; j++) {
+                        const itemName = items[j].querySelector('.name')?.textContent;
+                        if (itemName === winningPrize.name) {
+                            targetIndex = j;
+                            break;
+                        }
+                    }
+                    
+                    if (targetIndex === -1) {
+                        for (let j = 0; j < items.length; j++) {
+                            const itemId = parseInt(items[j].dataset.prizeId);
+                            const matchingPrize = prizeData.find(p => p.id === itemId);
+                            if (matchingPrize && matchingPrize.rarity === winningPrize.rarity) {
+                                targetIndex = j;
+                                break;
+                            }
+                        }
+                    }
+                    
+                    if (targetIndex === -1) {
+                        targetIndex = Math.floor(Math.random() * Math.min(10, items.length));
+                    }
+                    
+                    // 立即移动到最终位置
+                    const itemWidth = 80;
+                    const containerWidth = row.offsetWidth;
+                    const centerPosition = containerWidth / 2;
+                    const targetItemLeftEdge = targetIndex * itemWidth;
+                    const targetItemCenter = targetItemLeftEdge + itemWidth / 2;
+                    const translateAmount = centerPosition - targetItemCenter;
+                    const extraDistance = itemWidth * 20;
+                    const finalTranslate = translateAmount - extraDistance;
+                    
+                    strip.style.transition = 'transform 0.5s ease-out';
+                    strip.style.transform = `translateX(${finalTranslate}px)`;
+                }
+                
+                return;
+            }
+            
+            // 正常动画流程
             for (let i = 0; i < rows.length && i < prizes.length; i++) {
                 const row = rows[i];
                 const strip = row.querySelector('.slot-strip');
@@ -1164,15 +1283,29 @@
                 // 强制重绘
                 strip.offsetHeight;
                 
-                // 找到目标奖品的索引
+                // 找到目标奖品的索引 - 使用名称和稀有度匹配，而不是ID
                 let targetIndex = -1;
                 for (let j = 0; j < items.length; j++) {
-                    if (parseInt(items[j].dataset.prizeId) === winningPrize.id) {
+                    const itemName = items[j].querySelector('.name')?.textContent;
+                    if (itemName === winningPrize.name) {
                         targetIndex = j;
                         break;
                     }
                 }
                 
+                // 如果找不到完全匹配的，寻找相同稀有度的奖品
+                if (targetIndex === -1) {
+                    for (let j = 0; j < items.length; j++) {
+                        const itemId = parseInt(items[j].dataset.prizeId);
+                        const matchingPrize = prizeData.find(p => p.id === itemId);
+                        if (matchingPrize && matchingPrize.rarity === winningPrize.rarity) {
+                            targetIndex = j;
+                            break;
+                        }
+                    }
+                }
+                
+                // 最后备用方案：随机选择一个位置
                 if (targetIndex === -1) {
                     targetIndex = Math.floor(Math.random() * Math.min(10, items.length));
                 }
