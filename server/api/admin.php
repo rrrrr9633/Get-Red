@@ -468,11 +468,58 @@ function deleteUser() {
     }
     
     try {
+        // 开始事务
+        $db->beginTransaction();
+        
+        // 删除用户相关数据（按外键依赖顺序）
+        
+        // 1. 删除充值历史记录
+        $stmt = $db->prepare("DELETE FROM recharge_history WHERE user_id = ?");
+        $stmt->execute([$id]);
+        
+        // 2. 删除用户物品
+        $stmt = $db->prepare("DELETE FROM user_items WHERE user_id = ?");
+        $stmt->execute([$id]);
+        
+        // 3. 删除抽奖记录
+        $stmt = $db->prepare("DELETE FROM draws WHERE user_id = ?");
+        $stmt->execute([$id]);
+        
+        // 4. 删除签到记录
+        $stmt = $db->prepare("DELETE FROM user_checkin WHERE user_id = ?");
+        $stmt->execute([$id]);
+        
+        // 5. 删除签到历史记录
+        $stmt = $db->prepare("DELETE FROM checkin_records WHERE user_id = ?");
+        $stmt->execute([$id]);
+        
+        // 6. 删除抽奖历史
+        $stmt = $db->prepare("DELETE FROM draw_history WHERE user_id = ?");
+        $stmt->execute([$id]);
+        
+        // 7. 删除彩票记录
+        $stmt = $db->prepare("DELETE FROM lottery_records WHERE user_id = ?");
+        $stmt->execute([$id]);
+        
+        // 8. 删除奖品抽取日志
+        $stmt = $db->prepare("DELETE FROM prize_draw_log WHERE user_id = ?");
+        $stmt->execute([$id]);
+        
+        // 9. 删除交易记录
+        $stmt = $db->prepare("DELETE FROM transactions WHERE user_id = ?");
+        $stmt->execute([$id]);
+        
+        // 10. 最后删除用户本身
         $stmt = $db->prepare("DELETE FROM users WHERE id = ?");
         $stmt->execute([$id]);
         
-        echo json_encode(['success' => true, 'message' => '用户删除成功']);
+        // 提交事务
+        $db->commit();
+        
+        echo json_encode(['success' => true, 'message' => '用户及相关数据删除成功']);
     } catch (Exception $e) {
+        // 回滚事务
+        $db->rollback();
         http_response_code(500);
         echo json_encode(['error' => '删除用户失败: ' . $e->getMessage()]);
     }
