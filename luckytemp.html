@@ -1429,10 +1429,10 @@
             if (confirm('确定要退出登录吗？')) {
                 try {
                     await api.logout();
-                    window.location.href = '../auth/login.html';
+                    window.location.href = '../pages/auth/login.html';
                 } catch (error) {
                     console.error('退出登录失败:', error);
-                    window.location.href = '../auth/login.html';
+                    window.location.href = '../pages/auth/login.html';
                 }
             }
         }

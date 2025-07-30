@@ -736,6 +736,11 @@
 
         // 绑定签到按钮
         document.getElementById('checkinBtn').addEventListener('click', performCheckin);
+        
+        // 返回主页
+        function goToHome() {
+            window.location.href = '../main.html';
+        }
 
         // 页面加载完成后执行
         document.addEventListener('DOMContentLoaded', function() {
