@@ -112,65 +112,157 @@
             color: #333 !important;
         }
         
-        .avatar-upload-label {
+        .avatar-selector-label {
             display: block;
+            margin-bottom: 10px;
             cursor: pointer;
-            margin-bottom: 25px;
+        }
+        
+        .avatar-change-btn {
+            width: 100%;
+            padding: 10px;
+            background: transparent;
+            border: 1px solid #ffd700;
+            color: #ffd700;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+        
+        .avatar-change-btn:hover {
+            background: rgba(255, 215, 0, 0.1);
         }
         
         .avatar-preview {
-            width: 120px;
-            height: 120px;
-            border: 3px dashed #ffd700;
+            width: 100px;
+            height: 100px;
             border-radius: 50%;
+            border: 2px solid #ffd700;
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
-            margin: 0 auto 20px;
-            background-size: cover;
-            background-position: center;
-            color: #ffd700;
-            font-size: 14px;
-            text-align: center;
+            margin: 0 auto 10px;
+            cursor: pointer;
             transition: all 0.3s ease;
             position: relative;
             overflow: hidden;
         }
         
-        .avatar-preview:hover {
-            border-color: #fff;
-            box-shadow: 0 0 25px rgba(255, 215, 0, 0.5);
-            transform: scale(1.05);
+        .avatar-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
         }
         
-        .avatar-preview.has-image {
-            border-style: solid;
-            border-color: #00ffff;
-        }
-        
-        .avatar-preview.has-image span {
-            display: none;
-        }
-        
-        .avatar-preview::after {
-            content: '点击更换';
+        .avatar-preview span {
             position: absolute;
             bottom: 0;
             left: 0;
             right: 0;
-            background: rgba(0, 0, 0, 0.8);
-            color: #fff;
+            background: rgba(0, 0, 0, 0.7);
+            color: #ffd700;
             padding: 5px;
             font-size: 12px;
-            opacity: 0;
-            transition: opacity 0.3s ease;
+            text-align: center;
         }
         
-        .avatar-preview.has-image:hover::after {
-            opacity: 1;
+        .avatar-preview:hover {
+            border-color: #fff;
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
         }
         
-        .btn-neon {
+        /* 头像选择器模态框样式 */
+        .avatar-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+        
+        .avatar-modal-content {
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #ffd700;
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+        }
+        
+        .avatar-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(255, 215, 0, 0.3);
+        }
+        
+        .close-btn {
+            background: none;
+            border: none;
+            color: #ffd700;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+        
+        .close-btn:hover {
+            background: rgba(255, 215, 0, 0.2);
+        }
+        
+        .avatar-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        
+        .avatar-option {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            object-fit: cover;
+        }
+        
+        .avatar-option:hover {
+            border-color: #ffd700;
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+            transform: scale(1.05);
+        }
+        
+        .avatar-option.selected {
+            border-color: #ffd700;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.7);
+        }
+        
+        .avatar-modal-footer {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255, 215, 0, 0.3);
+        }        .btn-neon {
             width: 100%;
             padding: 18px 25px;
             background: linear-gradient(45deg, #ff00ff, #00ffff);
@@ -287,14 +379,15 @@
                     <input type="text" id="nickname" placeholder="昵称" required>
                 </div>
                 
-                <!-- 头像上传 -->
+                <!-- 头像选择 -->
                 <div class="form-group">
-                    <label for="avatar" class="avatar-upload-label">
+                    <label class="avatar-selector-label">
                         <div class="avatar-preview" id="avatarPreview">
-                            <span>点击上传头像<br/>(可选)</span>
+                            <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiByeD0iNTAiIGZpbGw9IiNmZmQ3MDAiLz4KPHN2ZyB4PSIyNSIgeT0iMjAiIHdpZHRoPSI1MCIgaGVpZ2h0PSI2MCI+CjxjaXJjbGUgY3g9IjI1IiBjeT0iMjAiIHI9IjE1IiBmaWxsPSIjMTExIi8+CjxlbGxpcHNlIGN4PSIyNSIgY3k9IjUwIiByeD0iMjAiIHJ5PSIxNSIgZmlsbD0iIzExMSIvPgo8L3N2Zz4KPC9zdmc+" alt="头像" id="selectedAvatarImg">
+                            <span>点击选择头像</span>
                         </div>
                     </label>
-                    <input type="file" id="avatar" accept="image/*" style="display: none;">
+                    <button type="button" class="avatar-change-btn" onclick="showRegisterAvatarSelector()">更换头像</button>
                 </div>
                 
                 <button type="submit" class="btn-neon">注册</button>
@@ -306,10 +399,46 @@
         </div>
     </div>
 
+    <!-- 头像选择器模态框 -->
+    <div id="registerAvatarSelector" class="avatar-modal" style="display: none;">
+        <div class="avatar-modal-content">
+            <div class="avatar-modal-header">
+                <h3 class="neon-text gold">选择头像</h3>
+                <button class="close-btn" onclick="closeRegisterAvatarSelector()">&times;</button>
+            </div>
+            <div class="avatar-grid">
+                <!-- 内置头像将在这里动态生成 -->
+            </div>
+            <div class="avatar-modal-footer">
+                <button class="btn-neon secondary" onclick="closeRegisterAvatarSelector()">取消</button>
+            </div>
+        </div>
+    </div>
+
     <script src="../../js/api-client.js"></script>
     <script src="../../js/effects.js"></script>
     <script>
-        let selectedAvatar = null;
+        // 内置头像数据
+        const builtinAvatars = [
+            // 默认头像
+            'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiByeD0iNTAiIGZpbGw9IiNmZmQ3MDAiLz4KPHN2ZyB4PSIyNSIgeT0iMjAiIHdpZHRoPSI1MCIgaGVpZ2h0PSI2MCI+CjxjaXJjbGUgY3g9IjI1IiBjeT0iMjAiIHI9IjE1IiBmaWxsPSIjMTExIi8+CjxlbGxpcHNlIGN4PSIyNSIgY3k9IjUwIiByeD0iMjAiIHJ5PSIxNSIgZmlsbD0iIzExMSIvPgo8L3N2Zz4KPC9zdmc+',
+            // 蓝色头像
+            'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiByeD0iNTAiIGZpbGw9IiMwMDc3ZmYiLz4KPHN2ZyB4PSIyNSIgeT0iMjAiIHdpZHRoPSI1MCIgaGVpZ2h0PSI2MCI+CjxjaXJjbGUgY3g9IjI1IiBjeT0iMjAiIHI9IjE1IiBmaWxsPSIjZmZmIi8+CjxlbGxpcHNlIGN4PSIyNSIgY3k9IjUwIiByeD0iMjAiIHJ5PSIxNSIgZmlsbD0iI2ZmZiIvPgo8L3N2Zz4KPC9zdmc+',
+            // 绿色头像
+            'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiByeD0iNTAiIGZpbGw9IiMwMGZmODgiLz4KPHN2ZyB4PSIyNSIgeT0iMjAiIHdpZHRoPSI1MCIgaGVpZ2h0PSI2MCI+CjxjaXJjbGUgY3g9IjI1IiBjeT0iMjAiIHI9IjE1IiBmaWxsPSIjMTExIi8+CjxlbGxpcHNlIGN4PSIyNSIgY3k9IjUwIiByeD0iMjAiIHJ5PSIxNSIgZmlsbD0iIzExMSIvPgo8L3N2Zz4KPC9zdmc+',
+            // 红色头像
+            'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiByeD0iNTAiIGZpbGw9IiNmZjQ0NjIiLz4KPHN2ZyB4PSIyNSIgeT0iMjAiIHdpZHRoPSI1MCIgaGVpZ2h0PSI2MCI+CjxjaXJjbGUgY3g9IjI1IiBjeT0iMjAiIHI9IjE1IiBmaWxsPSIjZmZmIi8+CjxlbGxpcHNlIGN4PSIyNSIgY3k9IjUwIiByeD0iMjAiIHJ5PSIxNSIgZmlsbD0iI2ZmZiIvPgo8L3N2Zz4KPC9zdmc+',
+            // 紫色头像
+            'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiByeD0iNTAiIGZpbGw9IiM4ODQ0ZmYiLz4KPHN2ZyB4PSIyNSIgeT0iMjAiIHdpZHRoPSI1MCIgaGVpZ2h0PSI2MCI+CjxjaXJjbGUgY3g9IjI1IiBjeT0iMjAiIHI9IjE1IiBmaWxsPSIjZmZmIi8+CjxlbGxpcHNlIGN4PSIyNSIgY3k9IjUwIiByeD0iMjAiIHJ5PSIxNSIgZmlsbD0iI2ZmZiIvPgo8L3N2Zz4KPC9zdmc+',
+            // 橙色头像
+            'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiByeD0iNTAiIGZpbGw9IiNmZjg4MDAiLz4KPHN2ZyB4PSIyNSIgeT0iMjAiIHdpZHRoPSI1MCIgaGVpZ2h0PSI2MCI+CjxjaXJjbGUgY3g9IjI1IiBjeT0iMjAiIHI9IjE1IiBmaWxsPSIjZmZmIi8+CjxlbGxpcHNlIGN4PSIyNSIgY3k9IjUwIiByeD0iMjAiIHJ5PSIxNSIgZmlsbD0iI2ZmZiIvPgo8L3N2Zz4KPC9zdmc+',
+            // 粉色头像
+            'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiByeD0iNTAiIGZpbGw9IiNmZjQ0YjgiLz4KPHN2ZyB4PSIyNSIgeT0iMjAiIHdpZHRoPSI1MCIgaGVpZ2h0PSI2MCI+CjxjaXJjbGUgY3g9IjI1IiBjeT0iMjAiIHI9IjE1IiBmaWxsPSIjZmZmIi8+CjxlbGxpcHNlIGN4PSIyNSIgY3k9IjUwIiByeD0iMjAiIHJ5PSIxNSIgZmlsbD0iI2ZmZiIvPgo8L3N2Zz4KPC9zdmc+',
+            // 青色头像
+            'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiByeD0iNTAiIGZpbGw9IiMwMGZmZmYiLz4KPHN2ZyB4PSIyNSIgeT0iMjAiIHdpZHRoPSI1MCIgaGVpZ2h0PSI2MCI+CjxjaXJjbGUgY3g9IjI1IiBjeT0iMjAiIHI9IjE1IiBmaWxsPSIjMTExIi8+CjxlbGxpcHNlIGN4PSIyNSIgY3k9IjUwIiByeD0iMjAiIHJ5PSIxNSIgZmlsbD0iIzExMSIvPgo8L3N2Zz4KPC9zdmc+'
+        ];
+        
+        let selectedAvatar = builtinAvatars[0]; // 默认选择第一个头像
         
         // 消息提示函数
         function showMessage(text, type = 'success') {
@@ -334,32 +463,53 @@
             }, 3000);
         }
 
-        // 头像上传处理
-        document.getElementById('avatar').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (file) {
-                // 检查文件大小（限制为2MB）
-                if (file.size > 2 * 1024 * 1024) {
-                    showMessage('头像文件大小不能超过2MB！', 'error');
-                    return;
+        // 显示头像选择器
+        function showRegisterAvatarSelector() {
+            const modal = document.getElementById('registerAvatarSelector');
+            const grid = modal.querySelector('.avatar-grid');
+            
+            // 生成头像选项
+            grid.innerHTML = builtinAvatars.map((avatar, index) => 
+                `<img src="${avatar}" alt="头像选项 ${index + 1}" class="avatar-option" data-avatar="${avatar}" onclick="selectRegisterAvatar('${avatar}')">`
+            ).join('');
+            
+            // 高亮当前选择的头像
+            if (selectedAvatar) {
+                const currentOption = grid.querySelector(`[data-avatar="${selectedAvatar}"]`);
+                if (currentOption) {
+                    currentOption.classList.add('selected');
                 }
-                
-                // 检查文件类型
-                if (!file.type.startsWith('image/')) {
-                    showMessage('请选择图片文件！', 'error');
-                    return;
-                }
-                
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    selectedAvatar = e.target.result;
-                    const preview = document.getElementById('avatarPreview');
-                    preview.style.backgroundImage = `url(${selectedAvatar})`;
-                    preview.classList.add('has-image');
-                };
-                reader.readAsDataURL(file);
             }
-        });
+            
+            modal.style.display = 'flex';
+        }
+        
+        // 关闭头像选择器
+        function closeRegisterAvatarSelector() {
+            document.getElementById('registerAvatarSelector').style.display = 'none';
+        }
+        
+        // 选择头像
+        function selectRegisterAvatar(avatar) {
+            // 移除之前的选中状态
+            document.querySelectorAll('.avatar-option').forEach(option => {
+                option.classList.remove('selected');
+            });
+            
+            // 添加新的选中状态
+            const selectedOption = document.querySelector(`[data-avatar="${avatar}"]`);
+            if (selectedOption) {
+                selectedOption.classList.add('selected');
+            }
+            
+            selectedAvatar = avatar;
+            
+            // 更新预览图像
+            document.getElementById('selectedAvatarImg').src = avatar;
+            
+            // 关闭选择器
+            closeRegisterAvatarSelector();
+        }
 
         // 注册表单处理
         document.getElementById('registerForm').addEventListener('submit', async function(e) {
@@ -430,10 +580,9 @@
                     
                     // 清空表单
                     this.reset();
-                    const preview = document.getElementById('avatarPreview');
-                    preview.style.backgroundImage = '';
-                    preview.classList.remove('has-image');
-                    selectedAvatar = null;
+                    // 重置头像到默认
+                    selectedAvatar = builtinAvatars[0];
+                    document.getElementById('selectedAvatarImg').src = selectedAvatar;
                     
                     // 2秒后跳转到登录页面
                     setTimeout(() => {

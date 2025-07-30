@@ -29,11 +29,10 @@
             <div class="profile-avatar-section">
                 <div class="avatar-container">
                     <img id="profileAvatar" src="" alt="头像" class="profile-avatar">
-                    <button class="avatar-edit-btn" onclick="editAvatar()">
-                        <span>📷</span>
+                    <button class="avatar-edit-btn" onclick="showAvatarSelector()">
+                        <span>🎭</span>
                     </button>
                 </div>
-                <input type="file" id="avatarInput" accept="image/*" style="display: none;">
             </div>
             
             <div class="profile-info">
@@ -155,6 +154,22 @@
                         <!-- 签到记录将在这里显示 -->
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 头像选择器模态框 -->
+    <div id="avatarSelector" class="avatar-modal" style="display: none;">
+        <div class="avatar-modal-content">
+            <div class="avatar-modal-header">
+                <h3 class="neon-text gold">选择头像</h3>
+                <button class="close-btn" onclick="closeAvatarSelector()">&times;</button>
+            </div>
+            <div class="avatar-grid">
+                <!-- 内置头像将在这里动态生成 -->
+            </div>
+            <div class="avatar-modal-footer">
+                <button class="btn-neon secondary" onclick="closeAvatarSelector()">取消</button>
             </div>
         </div>
     </div>
@@ -516,6 +531,96 @@
             border: 1px solid rgba(255, 215, 0, 0.3);
         }
         
+        /* 头像选择器样式 */
+        .avatar-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+        
+        .avatar-modal-content {
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #ffd700;
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+        }
+        
+        .avatar-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(255, 215, 0, 0.3);
+        }
+        
+        .close-btn {
+            background: none;
+            border: none;
+            color: #ffd700;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+        
+        .close-btn:hover {
+            background: rgba(255, 215, 0, 0.2);
+        }
+        
+        .avatar-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        
+        .avatar-option {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            object-fit: cover;
+        }
+        
+        .avatar-option:hover {
+            border-color: #ffd700;
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+            transform: scale(1.05);
+        }
+        
+        .avatar-option.selected {
+            border-color: #ffd700;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.7);
+        }
+        
+        .avatar-modal-footer {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255, 215, 0, 0.3);
+        }
+        
         @media (max-width: 768px) {
             .profile-header {
                 flex-direction: column;
@@ -635,57 +740,101 @@
             `;
         }
 
-        // 编辑头像
-        function editAvatar() {
-            document.getElementById('avatarInput').click();
-        }
+        // 内置头像数据
+        const builtinAvatars = [
+            // 默认头像
+            'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiByeD0iNTAiIGZpbGw9IiNmZmQ3MDAiLz4KPHN2ZyB4PSIyNSIgeT0iMjAiIHdpZHRoPSI1MCIgaGVpZ2h0PSI2MCI+CjxjaXJjbGUgY3g9IjI1IiBjeT0iMjAiIHI9IjE1IiBmaWxsPSIjMTExIi8+CjxlbGxpcHNlIGN4PSIyNSIgY3k9IjUwIiByeD0iMjAiIHJ5PSIxNSIgZmlsbD0iIzExMSIvPgo8L3N2Zz4KPC9zdmc+',
+            // 蓝色头像
+            'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiByeD0iNTAiIGZpbGw9IiMwMDc3ZmYiLz4KPHN2ZyB4PSIyNSIgeT0iMjAiIHdpZHRoPSI1MCIgaGVpZ2h0PSI2MCI+CjxjaXJjbGUgY3g9IjI1IiBjeT0iMjAiIHI9IjE1IiBmaWxsPSIjZmZmIi8+CjxlbGxpcHNlIGN4PSIyNSIgY3k9IjUwIiByeD0iMjAiIHJ5PSIxNSIgZmlsbD0iI2ZmZiIvPgo8L3N2Zz4KPC9zdmc+',
+            // 绿色头像
+            'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiByeD0iNTAiIGZpbGw9IiMwMGZmODgiLz4KPHN2ZyB4PSIyNSIgeT0iMjAiIHdpZHRoPSI1MCIgaGVpZ2h0PSI2MCI+CjxjaXJjbGUgY3g9IjI1IiBjeT0iMjAiIHI9IjE1IiBmaWxsPSIjMTExIi8+CjxlbGxpcHNlIGN4PSIyNSIgY3k9IjUwIiByeD0iMjAiIHJ5PSIxNSIgZmlsbD0iIzExMSIvPgo8L3N2Zz4KPC9zdmc+',
+            // 红色头像
+            'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiByeD0iNTAiIGZpbGw9IiNmZjQ0NjIiLz4KPHN2ZyB4PSIyNSIgeT0iMjAiIHdpZHRoPSI1MCIgaGVpZ2h0PSI2MCI+CjxjaXJjbGUgY3g9IjI1IiBjeT0iMjAiIHI9IjE1IiBmaWxsPSIjZmZmIi8+CjxlbGxpcHNlIGN4PSIyNSIgY3k9IjUwIiByeD0iMjAiIHJ5PSIxNSIgZmlsbD0iI2ZmZiIvPgo8L3N2Zz4KPC9zdmc+',
+            // 紫色头像
+            'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiByeD0iNTAiIGZpbGw9IiM4ODQ0ZmYiLz4KPHN2ZyB4PSIyNSIgeT0iMjAiIHdpZHRoPSI1MCIgaGVpZ2h0PSI2MCI+CjxjaXJjbGUgY3g9IjI1IiBjeT0iMjAiIHI9IjE1IiBmaWxsPSIjZmZmIi8+CjxlbGxpcHNlIGN4PSIyNSIgY3k9IjUwIiByeD0iMjAiIHJ5PSIxNSIgZmlsbD0iI2ZmZiIvPgo8L3N2Zz4KPC9zdmc+',
+            // 橙色头像
+            'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiByeD0iNTAiIGZpbGw9IiNmZjg4MDAiLz4KPHN2ZyB4PSIyNSIgeT0iMjAiIHdpZHRoPSI1MCIgaGVpZ2h0PSI2MCI+CjxjaXJjbGUgY3g9IjI1IiBjeT0iMjAiIHI9IjE1IiBmaWxsPSIjZmZmIi8+CjxlbGxpcHNlIGN4PSIyNSIgY3k9IjUwIiByeD0iMjAiIHJ5PSIxNSIgZmlsbD0iI2ZmZiIvPgo8L3N2Zz4KPC9zdmc+',
+            // 粉色头像
+            'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiByeD0iNTAiIGZpbGw9IiNmZjQ0YjgiLz4KPHN2ZyB4PSIyNSIgeT0iMjAiIHdpZHRoPSI1MCIgaGVpZ2h0PSI2MCI+CjxjaXJjbGUgY3g9IjI1IiBjeT0iMjAiIHI9IjE1IiBmaWxsPSIjZmZmIi8+CjxlbGxpcHNlIGN4PSIyNSIgY3k9IjUwIiByeD0iMjAiIHJ5PSIxNSIgZmlsbD0iI2ZmZiIvPgo8L3N2Zz4KPC9zdmc+',
+            // 青色头像
+            'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiByeD0iNTAiIGZpbGw9IiMwMGZmZmYiLz4KPHN2ZyB4PSIyNSIgeT0iMjAiIHdpZHRoPSI1MCIgaGVpZ2h0PSI2MCI+CjxjaXJjbGUgY3g9IjI1IiBjeT0iMjAiIHI9IjE1IiBmaWxsPSIjMTExIi8+CjxlbGxpcHNlIGN4PSIyNSIgY3k9IjUwIiByeD0iMjAiIHJ5PSIxNSIgZmlsbD0iIzExMSIvPgo8L3N2Zz4KPC9zdmc+'
+        ];
+        
+        let selectedAvatar = null;
 
-        // 头像上传处理
-        document.getElementById('avatarInput').addEventListener('change', async function(e) {
-            const file = e.target.files[0];
-            if (file) {
-                // 检查文件大小（限制2MB）
-                if (file.size > 2 * 1024 * 1024) {
-                    alert('图片大小不能超过2MB！');
-                    return;
-                }
-                
-                // 检查文件类型
-                if (!file.type.startsWith('image/')) {
-                    alert('请选择图片文件！');
-                    return;
-                }
-                
-                const reader = new FileReader();
-                reader.onload = async function(e) {
-                    const newAvatar = e.target.result;
-                    
-                    try {
-                        const response = await fetch('../../server/api/users.php?action=profile', {
-                            method: 'PUT',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
-                            credentials: 'include',
-                            body: JSON.stringify({ avatar: newAvatar })
-                        });
-                        
-                        const data = await response.json();
-                        
-                        if (data.success) {
-                            document.getElementById('profileAvatar').src = newAvatar;
-                            alert('头像更新成功！');
-                        } else {
-                            alert('头像更新失败: ' + data.error);
-                        }
-                    } catch (error) {
-                        console.error('头像更新失败:', error);
-                        alert('头像更新失败！');
-                    }
-                };
-                reader.readAsDataURL(file);
+        // 显示头像选择器
+        function showAvatarSelector() {
+            const modal = document.getElementById('avatarSelector');
+            const grid = modal.querySelector('.avatar-grid');
+            
+            // 生成头像选项
+            grid.innerHTML = builtinAvatars.map((avatar, index) => 
+                `<img src="${avatar}" alt="头像选项 ${index + 1}" class="avatar-option" data-avatar="${avatar}" onclick="selectAvatar('${avatar}')">`
+            ).join('');
+            
+            // 高亮当前头像
+            const currentAvatar = document.getElementById('profileAvatar').src;
+            const currentOption = grid.querySelector(`[data-avatar="${currentAvatar}"]`);
+            if (currentOption) {
+                currentOption.classList.add('selected');
+                selectedAvatar = currentAvatar;
             }
-        });
+            
+            modal.style.display = 'flex';
+        }
+        
+        // 关闭头像选择器
+        function closeAvatarSelector() {
+            document.getElementById('avatarSelector').style.display = 'none';
+            selectedAvatar = null;
+        }
+        
+        // 选择头像
+        function selectAvatar(avatar) {
+            // 移除之前的选中状态
+            document.querySelectorAll('.avatar-option').forEach(option => {
+                option.classList.remove('selected');
+            });
+            
+            // 添加新的选中状态
+            const selectedOption = document.querySelector(`[data-avatar="${avatar}"]`);
+            if (selectedOption) {
+                selectedOption.classList.add('selected');
+            }
+            
+            selectedAvatar = avatar;
+            
+            // 立即更新头像并保存
+            updateAvatar(avatar);
+        }
+        
+        // 更新头像
+        async function updateAvatar(avatar) {
+            try {
+                const response = await fetch('../../server/api/users.php?action=profile', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({ avatar: avatar })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // 更新界面显示的头像
+                    document.getElementById('profileAvatar').src = avatar;
+                    closeAvatarSelector();
+                    alert('头像更新成功！');
+                } else {
+                    alert('头像更新失败: ' + (data.error || '未知错误'));
+                }
+            } catch (error) {
+                console.error('头像更新失败:', error);
+                alert('头像更新失败！');
+            }
+        }
 
         // 切换编辑模式
         function toggleEditMode() {
