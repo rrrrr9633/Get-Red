@@ -197,6 +197,75 @@
             background: linear-gradient(45deg, #ff0044, #cc0033);
             box-shadow: 0 0 30px rgba(255, 0, 68, 0.4);
         }
+        
+        /* 手机端响应式样式 */
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+            
+            .login-form {
+                padding: 30px 25px;
+                width: 100%;
+                max-width: 400px;
+                margin: 20px auto;
+            }
+            
+            .login-form h2 {
+                font-size: 28px;
+                margin-bottom: 30px;
+            }
+            
+            .form-group {
+                margin-bottom: 18px;
+            }
+            
+            .form-group input {
+                padding: 12px 16px;
+                font-size: 15px;
+            }
+            
+            .btn-neon {
+                padding: 12px 30px;
+                font-size: 16px;
+            }
+            
+            .form-links {
+                margin-top: 20px;
+            }
+            
+            .form-links a {
+                font-size: 14px;
+            }
+            
+            .message {
+                padding: 12px 20px;
+                font-size: 14px;
+                max-width: 90vw;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .login-form {
+                padding: 25px 20px;
+                border-radius: 15px;
+            }
+            
+            .login-form h2 {
+                font-size: 24px;
+            }
+            
+            .form-group input {
+                padding: 10px 14px;
+                font-size: 14px;
+                border-radius: 10px;
+            }
+            
+            .btn-neon {
+                padding: 10px 25px;
+                font-size: 15px;
+            }
+        }
     </style>
 </head>
 <body>
