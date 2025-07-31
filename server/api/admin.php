@@ -15,7 +15,7 @@ $database = new Database();
 $db = $database->getConnection();
 
 $input = json_decode(file_get_contents('php://input'), true) ?: [];
-$action = $_GET['action'] ?? '';
+$action = $input['action'] ?? $_GET['action'] ?? '';
 
 switch ($action) {
     case 'users':
@@ -95,6 +95,21 @@ switch ($action) {
         break;
     case 'update_lucky_page_thumb':
         updateLuckyPageThumb();
+        break;
+    case 'get_draw_prices':
+        getDrawPrices();
+        break;
+    case 'update_draw_price':
+        updateDrawPrice();
+        break;
+    case 'batch_update_draw_prices':
+        batchUpdateDrawPrices();
+        break;
+    case 'reset_draw_prices':
+        resetDrawPrices();
+        break;
+    case 'get_price_history':
+        getPriceHistory();
         break;
     default:
         http_response_code(400);
@@ -1665,6 +1680,237 @@ function updateThemeSettings() {
     } catch (Exception $e) {
         // 回滚事务
         $db->rollback();
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+}
+
+// ======== 抽奖价格控制功能 ========
+
+// 获取抽奖价格设置
+function getDrawPrices() {
+    global $db;
+    
+    try {
+        $page = $_GET['page'] ?? 'lucky1.html';
+        
+        // 查询当前页面的价格设置
+        $stmt = $db->prepare("
+            SELECT price_type, price_value 
+            FROM draw_prices 
+            WHERE page_name = ?
+        ");
+        $stmt->execute([$page]);
+        $prices = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // 转换为关联数组
+        $priceData = [
+            'single' => 10,    // 默认值
+            'triple' => 30,
+            'quintuple' => 50
+        ];
+        
+        foreach ($prices as $price) {
+            $priceData[$price['price_type']] = (int)$price['price_value'];
+        }
+        
+        echo json_encode([
+            'success' => true,
+            'prices' => $priceData
+        ]);
+        
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+}
+
+// 更新单个抽奖价格
+function updateDrawPrice() {
+    global $db, $input;
+    
+    try {
+        $page = $input['page'] ?? '';
+        $type = $input['type'] ?? '';
+        $price = $input['price'] ?? 0;
+        
+        if (empty($page) || empty($type) || $price <= 0) {
+            throw new Exception('参数不完整或价格无效');
+        }
+        
+        if (!in_array($type, ['single', 'triple', 'quintuple'])) {
+            throw new Exception('无效的抽奖类型');
+        }
+        
+        $db->beginTransaction();
+        
+        // 获取旧价格用于历史记录
+        $stmt = $db->prepare("SELECT price_value FROM draw_prices WHERE page_name = ? AND price_type = ?");
+        $stmt->execute([$page, $type]);
+        $oldPrice = $stmt->fetchColumn() ?: 0;
+        
+        // 更新或插入价格
+        $stmt = $db->prepare("
+            INSERT INTO draw_prices (page_name, price_type, price_value, updated_at) 
+            VALUES (?, ?, ?, NOW()) 
+            ON DUPLICATE KEY UPDATE 
+            price_value = VALUES(price_value), 
+            updated_at = VALUES(updated_at)
+        ");
+        $stmt->execute([$page, $type, $price]);
+        
+        // 记录价格变更历史
+        $stmt = $db->prepare("
+            INSERT INTO price_history (page_name, price_type, old_price, new_price, created_at) 
+            VALUES (?, ?, ?, ?, NOW())
+        ");
+        $stmt->execute([$page, $type, $oldPrice, $price]);
+        
+        $db->commit();
+        
+        echo json_encode([
+            'success' => true,
+            'message' => '价格更新成功'
+        ]);
+        
+    } catch (Exception $e) {
+        $db->rollback();
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+}
+
+// 批量更新抽奖价格
+function batchUpdateDrawPrices() {
+    global $db, $input;
+    
+    try {
+        $page = $input['page'] ?? '';
+        $prices = $input['prices'] ?? [];
+        
+        if (empty($page) || empty($prices)) {
+            throw new Exception('参数不完整');
+        }
+        
+        $db->beginTransaction();
+        
+        foreach ($prices as $type => $price) {
+            if (!in_array($type, ['single', 'triple', 'quintuple']) || $price <= 0) {
+                continue;
+            }
+            
+            // 获取旧价格
+            $stmt = $db->prepare("SELECT price_value FROM draw_prices WHERE page_name = ? AND price_type = ?");
+            $stmt->execute([$page, $type]);
+            $oldPrice = $stmt->fetchColumn() ?: 0;
+            
+            // 更新价格
+            $stmt = $db->prepare("
+                INSERT INTO draw_prices (page_name, price_type, price_value, updated_at) 
+                VALUES (?, ?, ?, NOW()) 
+                ON DUPLICATE KEY UPDATE 
+                price_value = VALUES(price_value), 
+                updated_at = VALUES(updated_at)
+            ");
+            $stmt->execute([$page, $type, $price]);
+            
+            // 记录历史
+            $stmt = $db->prepare("
+                INSERT INTO price_history (page_name, price_type, old_price, new_price, created_at) 
+                VALUES (?, ?, ?, ?, NOW())
+            ");
+            $stmt->execute([$page, $type, $oldPrice, $price]);
+        }
+        
+        $db->commit();
+        
+        echo json_encode([
+            'success' => true,
+            'message' => '批量价格更新成功'
+        ]);
+        
+    } catch (Exception $e) {
+        $db->rollback();
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+}
+
+// 重置为默认价格
+function resetDrawPrices() {
+    global $db, $input;
+    
+    try {
+        $page = $input['page'] ?? '';
+        
+        if (empty($page)) {
+            throw new Exception('页面参数不能为空');
+        }
+        
+        $defaultPrices = [
+            'single' => 10,
+            'triple' => 30,
+            'quintuple' => 50
+        ];
+        
+        $db->beginTransaction();
+        
+        foreach ($defaultPrices as $type => $price) {
+            // 获取旧价格
+            $stmt = $db->prepare("SELECT price_value FROM draw_prices WHERE page_name = ? AND price_type = ?");
+            $stmt->execute([$page, $type]);
+            $oldPrice = $stmt->fetchColumn() ?: 0;
+            
+            // 更新为默认价格
+            $stmt = $db->prepare("
+                INSERT INTO draw_prices (page_name, price_type, price_value, updated_at) 
+                VALUES (?, ?, ?, NOW()) 
+                ON DUPLICATE KEY UPDATE 
+                price_value = VALUES(price_value), 
+                updated_at = VALUES(updated_at)
+            ");
+            $stmt->execute([$page, $type, $price]);
+            
+            // 记录历史
+            $stmt = $db->prepare("
+                INSERT INTO price_history (page_name, price_type, old_price, new_price, created_at) 
+                VALUES (?, ?, ?, ?, NOW())
+            ");
+            $stmt->execute([$page, 'reset', $oldPrice, $price]);
+        }
+        
+        $db->commit();
+        
+        echo json_encode([
+            'success' => true,
+            'message' => '价格已重置为默认值'
+        ]);
+        
+    } catch (Exception $e) {
+        $db->rollback();
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+}
+
+// 获取价格变更历史
+function getPriceHistory() {
+    global $db;
+    
+    try {
+        $page = $_GET['page'] ?? 'lucky1.html';
+        
+        $stmt = $db->prepare("
+            SELECT price_type, old_price, new_price, created_at 
+            FROM price_history 
+            WHERE page_name = ? 
+            ORDER BY created_at DESC 
+            LIMIT 20
+        ");
+        $stmt->execute([$page]);
+        $history = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        echo json_encode([
+            'success' => true,
+            'history' => $history
+        ]);
+        
+    } catch (Exception $e) {
         echo json_encode(['success' => false, 'error' => $e->getMessage()]);
     }
 }

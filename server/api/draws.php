@@ -10,7 +10,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 require_once '../config/database.php';
 
-function performLuckyDraw($userId, $count = 1) {
+function performLuckyDraw($userId, $count = 1, $page = 'lucky1.html') {
     global $pdo;
     
     try {
@@ -26,14 +26,47 @@ function performLuckyDraw($userId, $count = 1) {
             throw new Exception('用户不存在');
         }
         
-        $cost = $count * 10; // 每次抽奖10金币
+        // 获取动态价格
+        $priceType = '';
+        if ($count == 1) {
+            $priceType = 'single';
+        } elseif ($count == 3) {
+            $priceType = 'triple';
+        } elseif ($count == 5) {
+            $priceType = 'quintuple';
+        } else {
+            // 对于其他数量，使用单抽价格乘以数量
+            $priceType = 'single';
+        }
+        
+        // 从数据库获取价格
+        $stmt = $pdo->prepare("SELECT price_value FROM draw_prices WHERE page_name = ? AND price_type = ?");
+        $stmt->execute([$page, $priceType]);
+        $priceValue = $stmt->fetchColumn();
+        
+        if ($priceValue === false) {
+            // 如果没有找到价格配置，使用默认价格
+            $defaultPrices = ['single' => 10, 'triple' => 30, 'quintuple' => 50];
+            $priceValue = $defaultPrices[$priceType] ?? 10;
+        }
+        
+        // 如果不是标准的1、3、5连抽，按单价计算
+        if (!in_array($count, [1, 3, 5])) {
+            $stmt = $pdo->prepare("SELECT price_value FROM draw_prices WHERE page_name = ? AND price_type = 'single'");
+            $stmt->execute([$page]);
+            $singlePrice = $stmt->fetchColumn() ?: 10;
+            $cost = $count * $singlePrice;
+        } else {
+            $cost = $priceValue;
+        }
+        
         if ($user['balance'] < $cost) {
             throw new Exception('余额不足，请先充值！');
         }
         
-        // 获取幸运掉落奖品列表
-        $stmt = $pdo->prepare("SELECT * FROM prizes WHERE game_type = 'lucky_drop' AND active = 1");
-        $stmt->execute();
+        // 获取指定页面的奖品列表
+        $stmt = $pdo->prepare("SELECT * FROM prizes WHERE game_type = 'lucky_drop' AND active = 1 AND (page = ? OR page IS NULL OR page = '')");
+        $stmt->execute([$page]);
         $prizes = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         if (empty($prizes)) {
@@ -56,7 +89,7 @@ function performLuckyDraw($userId, $count = 1) {
         
         // 记录抽奖消费
         $stmt = $pdo->prepare("INSERT INTO transactions (user_id, amount, description, type) VALUES (?, ?, ?, 'expense')");
-        $stmt->execute([$userId, $cost, "幸运掉落抽奖x{$count}"]);
+        $stmt->execute([$userId, $cost, "幸运掉落抽奖x{$count}({$page})"]);
         
         // 将奖品价值作为余额奖励给用户
         $stmt = $pdo->prepare("UPDATE users SET balance = balance + ? WHERE id = ?");
@@ -77,8 +110,8 @@ function performLuckyDraw($userId, $count = 1) {
         $stmt->execute([$userId, $totalValue, $description]);
         
         // 记录抽奖历史
-        $stmt = $pdo->prepare("INSERT INTO lottery_records (user_id, game_type, cost, reward, result) VALUES (?, 'lucky_drop', ?, ?, ?)");
-        $stmt->execute([$userId, $cost, $totalValue, json_encode($results, JSON_UNESCAPED_UNICODE)]);
+        $stmt = $pdo->prepare("INSERT INTO lottery_records (user_id, game_type, cost, reward, result, page) VALUES (?, 'lucky_drop', ?, ?, ?, ?)");
+        $stmt->execute([$userId, $cost, $totalValue, json_encode($results, JSON_UNESCAPED_UNICODE), $page]);
         
         // 提交事务
         $pdo->commit();
@@ -159,6 +192,7 @@ switch ($method) {
                 case 'draw':
                     $userId = $input['user_id'] ?? null;
                     $count = $input['count'] ?? 1;
+                    $page = $input['page'] ?? 'lucky1.html';
                     
                     if (!$userId) {
                         echo json_encode(['success' => false, 'message' => '用户ID不能为空']);
@@ -170,7 +204,7 @@ switch ($method) {
                         break;
                     }
                     
-                    echo json_encode(performLuckyDraw($userId, $count));
+                    echo json_encode(performLuckyDraw($userId, $count, $page));
                     break;
                     
                 case 'history':

@@ -130,7 +130,40 @@ function drawPrizes($gameType, $count, $userId, $page = '') {
             throw new Exception('用户不存在');
         }
         
-        $cost = $count * 10; // 每次抽奖消耗10
+        // 获取动态价格
+        $priceType = '';
+        if ($count == 1) {
+            $priceType = 'single';
+        } elseif ($count == 3) {
+            $priceType = 'triple';
+        } elseif ($count == 5) {
+            $priceType = 'quintuple';
+        } else {
+            // 对于其他数量，使用单抽价格乘以数量
+            $priceType = 'single';
+        }
+        
+        // 从数据库获取价格
+        $stmt = $pdo->prepare("SELECT price_value FROM draw_prices WHERE page_name = ? AND price_type = ?");
+        $stmt->execute([$page ?: 'lucky1.html', $priceType]);
+        $priceValue = $stmt->fetchColumn();
+        
+        if ($priceValue === false) {
+            // 如果没有找到价格配置，使用默认价格
+            $defaultPrices = ['single' => 10, 'triple' => 30, 'quintuple' => 50];
+            $priceValue = $defaultPrices[$priceType] ?? 10;
+        }
+        
+        // 如果不是标准的1、3、5连抽，按单价计算
+        if (!in_array($count, [1, 3, 5])) {
+            $stmt = $pdo->prepare("SELECT price_value FROM draw_prices WHERE page_name = ? AND price_type = 'single'");
+            $stmt->execute([$page ?: 'lucky1.html']);
+            $singlePrice = $stmt->fetchColumn() ?: 10;
+            $cost = $count * $singlePrice;
+        } else {
+            $cost = $priceValue;
+        }
+        
         if ($user['balance'] < $cost) {
             throw new Exception('余额不足');
         }

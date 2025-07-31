@@ -365,6 +365,7 @@
         /* 横向滚动老虎机样式 */
         .horizontal-slot-container {
             margin: 40px 0;
+            padding: 0 10px;
         }
         
         .slot-rows {
@@ -381,6 +382,8 @@
             border-radius: 10px;
             overflow: hidden;
             background: rgba(0, 0, 0, 0.8);
+            width: 100%;
+            min-width: 320px;
         }
         
         .slot-strip {
@@ -389,6 +392,7 @@
             transform: translateX(0px);
             transition: none;
             will-change: transform;
+            min-width: 100%;
         }
         
         .slot-item {
@@ -400,6 +404,7 @@
             justify-content: center;
             border-right: 1px solid rgba(255, 215, 0, 0.3);
             background: linear-gradient(45deg, rgba(255, 215, 0, 0.1), rgba(255, 215, 0, 0.05));
+            min-width: 80px;
         }
         
         .slot-item:last-child {
@@ -419,6 +424,7 @@
             overflow: hidden;
             text-overflow: ellipsis;
             width: 100%;
+            padding: 0 2px;
         }
         
         /* 中心指针 */
@@ -874,7 +880,7 @@
             .draw-settings {
                 flex-direction: column;
                 gap: 15px;
-                padding: 15px;
+                padding: 15px 5px;
             }
             
             .draw-mode-selector {
@@ -887,28 +893,55 @@
             }
             
             .horizontal-slot-container {
-                padding: 15px;
+                padding: 10px 5px;
                 margin: 20px 0;
             }
             
             .slot-rows {
-                gap: 15px;
+                gap: 8px;
             }
             
             .slot-row {
-                height: 80px;
+                height: 50px;
+                min-width: 300px;
+                margin: 0 auto;
+                max-width: 95vw;
+                border-radius: 8px;
+            }
+            
+            .slot-strip {
+                min-width: 600px; /* 确保足够的宽度来容纳所有奖品 */
             }
             
             .slot-item {
-                min-width: 80px;
+                flex: 0 0 50px;
+                height: 50px;
+                min-width: 50px;
+                max-width: 50px;
             }
             
             .slot-item .icon {
-                font-size: 28px;
+                font-size: 16px;
+                margin-bottom: 2px;
             }
             
             .slot-item .name {
-                font-size: 11px;
+                font-size: 8px;
+                line-height: 1;
+                padding: 0 1px;
+            }
+            
+            .slot-pointer {
+                width: 3px;
+                height: 40px;
+            }
+            
+            .slot-pointer::before,
+            .slot-pointer::after {
+                border-left-width: 6px;
+                border-right-width: 6px;
+                border-bottom-width: 8px;
+                border-top-width: 8px;
             }
             
             .slot-controls {
@@ -986,7 +1019,7 @@
             }
             
             .draw-settings {
-                padding: 12px;
+                padding: 10px 3px;
             }
             
             .mode-btn {
@@ -995,23 +1028,54 @@
             }
             
             .horizontal-slot-container {
-                padding: 12px;
+                padding: 8px 3px;
+            }
+            
+            .slot-rows {
+                gap: 6px;
             }
             
             .slot-row {
-                height: 70px;
+                height: 40px;
+                min-width: 280px;
+                max-width: 92vw;
+                margin: 0 auto;
+                border-radius: 6px;
+            }
+            
+            .slot-strip {
+                min-width: 500px; /* 确保足够的宽度来容纳所有奖品 */
             }
             
             .slot-item {
-                min-width: 70px;
+                flex: 0 0 40px;
+                height: 40px;
+                min-width: 40px;
+                max-width: 40px;
             }
             
             .slot-item .icon {
-                font-size: 24px;
+                font-size: 14px;
+                margin-bottom: 1px;
             }
             
             .slot-item .name {
-                font-size: 10px;
+                font-size: 7px;
+                line-height: 1;
+                padding: 0;
+            }
+            
+            .slot-pointer {
+                width: 2px;
+                height: 30px;
+            }
+            
+            .slot-pointer::before,
+            .slot-pointer::after {
+                border-left-width: 4px;
+                border-right-width: 4px;
+                border-bottom-width: 6px;
+                border-top-width: 6px;
             }
             
             .btn-spin {
@@ -1036,6 +1100,7 @@
         let currentUser = null;
         let prizeData = [];
         let currentMode = 1; // 当前抽奖模式：1单抽，3三连抽，5五连抽
+        let drawPrices = { single: 10, triple: 30, quintuple: 50 }; // 动态价格
 
         // 检查登录状态并加载数据
         async function initPage() {
@@ -1060,6 +1125,7 @@
             
             await loadUserInfo();
             await loadPrizes();
+            await loadDrawPrices(); // 加载抽奖价格
             initSlotMachine();
             bindEvents();
             createParticles();
@@ -1125,6 +1191,37 @@
             generatePrizeGrid();
         }
 
+        // 加载抽奖价格
+        async function loadDrawPrices() {
+            try {
+                // 获取当前页面参数
+                const urlParams = new URLSearchParams(window.location.search);
+                let currentPage = urlParams.get('page');
+                
+                if (!currentPage) {
+                    const path = window.location.pathname;
+                    const filename = path.substring(path.lastIndexOf('/') + 1);
+                    currentPage = filename;
+                }
+                
+                if (!currentPage || currentPage === 'luckytemp.html') {
+                    currentPage = 'lucky1.html';
+                }
+                
+                const response = await fetch(`../../server/api/admin.php?action=get_draw_prices&page=${encodeURIComponent(currentPage)}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    drawPrices = data.prices;
+                    console.log('加载的抽奖价格:', drawPrices);
+                } else {
+                    console.warn('加载价格失败，使用默认价格:', data.error);
+                }
+            } catch (error) {
+                console.error('加载抽奖价格失败:', error);
+            }
+        }
+
         // 初始化横向滚动老虎机
         function initSlotMachine() {
             updateSlotRows();
@@ -1140,8 +1237,18 @@
                 slotRows.appendChild(row);
             }
             
-            // 更新按钮显示的消耗
-            const cost = currentMode * 10;
+            // 更新按钮显示的消耗 - 使用动态价格
+            let cost;
+            if (currentMode === 1) {
+                cost = drawPrices.single;
+            } else if (currentMode === 3) {
+                cost = drawPrices.triple;
+            } else if (currentMode === 5) {
+                cost = drawPrices.quintuple;
+            } else {
+                cost = currentMode * drawPrices.single; // 备用计算方式
+            }
+            
             document.getElementById('btnCost').textContent = `(消耗: ${cost})`;
         }
 
@@ -1158,9 +1265,16 @@
             const pointer = document.createElement('div');
             pointer.className = 'slot-pointer';
             
-            // 生成奖品项目（重复多次以便滚动）
-            // 确保有足够的项目让滚动看起来真实
-            const repeatTimes = 8; // 将奖品列表重复8次
+            // 计算需要的重复次数，确保在各种屏幕尺寸下都有足够的奖品
+            const isMobile = window.innerWidth <= 768;
+            const isSmallMobile = window.innerWidth <= 480;
+            const itemWidth = isSmallMobile ? 40 : (isMobile ? 50 : 80);
+            const containerWidth = Math.max(window.innerWidth * 0.9, 300);
+            const visibleItems = Math.ceil(containerWidth / itemWidth);
+            
+            // 确保有足够的项目让滚动看起来真实，并且永远不会出现空白
+            const repeatTimes = Math.max(15, visibleItems * 3); // 至少重复15次或3倍可见项目数
+            
             for (let repeat = 0; repeat < repeatTimes; repeat++) {
                 for (let i = 0; i < prizeData.length; i++) {
                     const prize = prizeData[i];
@@ -1181,6 +1295,14 @@
             item.className = 'slot-item';
             item.dataset.prizeId = prize.id;
             
+            // 根据屏幕尺寸设置item宽度
+            const isMobile = window.innerWidth <= 768;
+            const isSmallMobile = window.innerWidth <= 480;
+            const itemWidth = isSmallMobile ? 40 : (isMobile ? 50 : 80);
+            item.style.flex = `0 0 ${itemWidth}px`;
+            item.style.minWidth = `${itemWidth}px`;
+            item.style.maxWidth = `${itemWidth}px`;
+            
             const icon = document.createElement('div');
             icon.className = 'icon';
             
@@ -1188,10 +1310,13 @@
                 const img = document.createElement('img');
                 img.src = prize.image_url;
                 img.alt = prize.name;
-                img.style.width = '32px';
-                img.style.height = '32px';
+                
+                // 根据屏幕尺寸调整图片大小
+                const imgSize = isSmallMobile ? '14px' : (isMobile ? '16px' : '24px');
+                img.style.width = imgSize;
+                img.style.height = imgSize;
                 img.style.objectFit = 'cover';
-                img.style.borderRadius = '4px';
+                img.style.borderRadius = '2px';
                 img.onerror = () => {
                     img.style.display = 'none';
                     icon.textContent = prize.icon;
@@ -1432,14 +1557,16 @@
                         targetIndex = Math.floor(Math.random() * Math.min(10, items.length));
                     }
                     
-                    // 立即移动到最终位置
-                    const itemWidth = 80;
+                    // 立即移动到最终位置 - 动态获取itemWidth
+                    const isMobile = window.innerWidth <= 768;
+                    const isSmallMobile = window.innerWidth <= 480;
+                    const itemWidth = isSmallMobile ? 40 : (isMobile ? 50 : 80);
                     const containerWidth = row.offsetWidth;
                     const centerPosition = containerWidth / 2;
                     const targetItemLeftEdge = targetIndex * itemWidth;
                     const targetItemCenter = targetItemLeftEdge + itemWidth / 2;
                     const translateAmount = centerPosition - targetItemCenter;
-                    const extraDistance = itemWidth * 20;
+                    const extraDistance = itemWidth * (isSmallMobile ? 10 : (isMobile ? 15 : 20));
                     const finalTranslate = translateAmount - extraDistance;
                     
                     strip.style.transition = 'transform 0.5s ease-out';
@@ -1490,8 +1617,10 @@
                     targetIndex = Math.floor(Math.random() * Math.min(10, items.length));
                 }
                 
-                // 计算滚动参数
-                const itemWidth = 80;
+                // 计算滚动参数 - 动态获取itemWidth
+                const isMobile = window.innerWidth <= 768;
+                const isSmallMobile = window.innerWidth <= 480;
+                const itemWidth = isSmallMobile ? 40 : (isMobile ? 50 : 80);
                 const containerWidth = row.offsetWidth;
                 const centerPosition = containerWidth / 2;
                 
@@ -1499,7 +1628,8 @@
                 const targetItemCenter = targetItemLeftEdge + itemWidth / 2;
                 const translateAmount = centerPosition - targetItemCenter;
                 
-                const extraDistance = itemWidth * 20;
+                // 调整额外滚动距离，手机端减少
+                const extraDistance = itemWidth * (isSmallMobile ? 10 : (isMobile ? 15 : 20));
                 const finalTranslate = translateAmount - extraDistance;
                 
                 // 启动滚动动画
@@ -1619,6 +1749,27 @@
 
         // 页面加载完成后执行
         document.addEventListener('DOMContentLoaded', initPage);
+
+        // 监听窗口大小变化，重新初始化老虎机（处理屏幕旋转等情况）
+        let resizeTimer;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(() => {
+                // 重新初始化老虎机以适应新的屏幕尺寸
+                if (prizeData && prizeData.length > 0) {
+                    updateSlotRows();
+                }
+            }, 300); // 防抖，300ms后执行
+        });
+
+        // 监听设备方向变化
+        window.addEventListener('orientationchange', () => {
+            setTimeout(() => {
+                if (prizeData && prizeData.length > 0) {
+                    updateSlotRows();
+                }
+            }, 500); // 等待方向变化完成
+        });
 
         // 新增功能函数
 

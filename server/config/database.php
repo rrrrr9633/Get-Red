@@ -9,7 +9,7 @@
  * - 主机: localhost
  * - 字符集: utf8mb4
  * 
- * 数据库表结构（共22个表）：
+ * 数据库表结构（共24个表）：
  * 
  * 1. users - 统一用户表（包含所有用户类型）
  *    - id (INT, 主键, 自增)
@@ -221,7 +221,27 @@
  * 22. sql_execution_log - SQL执行日志表（已废弃，数据已迁移到security_logs表）
  *     - 保留表结构用于向后兼容
  * 
- * 总表数：22张表
+ * 23. draw_prices - 抽奖价格表
+ *     - id (INT, 主键, 自增)
+ *     - page_name (VARCHAR(100), 页面名称, 如'lucky1.html')
+ *     - price_type (ENUM('single','triple','quintuple'), 抽奖类型)
+ *     - price_value (DECIMAL(10,2), 价格值)
+ *     - created_at (TIMESTAMP, 默认CURRENT_TIMESTAMP, 创建时间)
+ *     - updated_at (TIMESTAMP, 默认CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, 更新时间)
+ *     - UNIQUE: unique_page_price (page_name, price_type)
+ * 
+ * 24. price_history - 价格历史表
+ *     - id (INT, 主键, 自增)
+ *     - page_name (VARCHAR(100), 页面名称)
+ *     - price_type (ENUM('single','triple','quintuple'), 抽奖类型)
+ *     - old_price (DECIMAL(10,2), 旧价格)
+ *     - new_price (DECIMAL(10,2), 新价格)
+ *     - changed_by (VARCHAR(100), 操作者)
+ *     - change_reason (VARCHAR(255), 默认'manual', 变更原因)
+ *     - created_at (TIMESTAMP, 默认CURRENT_TIMESTAMP, 创建时间)
+ *     - INDEX: idx_page_name (page_name), idx_created_at (created_at)
+ * 
+ * 总表数：24张表
  */
 
 // 数据库配置

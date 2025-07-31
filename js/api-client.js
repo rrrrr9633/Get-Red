@@ -268,18 +268,34 @@ class APIClient {
     }
 
     // 抽奖相关方法
-    async performLuckyDraw(count = 1) {
+    async performLuckyDraw(count = 1, page = null) {
         if (!this.currentUser) {
             return { success: false, message: '请先登录' };
         }
         
+        const requestBody = {
+            action: 'draw',
+            user_id: this.currentUser.id,
+            count: count
+        };
+        
+        // 如果没有提供页面参数，尝试从当前页面URL获取
+        if (!page) {
+            // 从当前页面路径中提取页面名称
+            const currentPath = window.location.pathname;
+            const pageMatch = currentPath.match(/([^\/]+\.html)$/);
+            if (pageMatch) {
+                page = pageMatch[1];
+            } else {
+                page = 'lucky1.html'; // 默认页面
+            }
+        }
+        
+        requestBody.page = page;
+        
         return await this.request('/draws.php', {
             method: 'POST',
-            body: {
-                action: 'draw',
-                user_id: this.currentUser.id,
-                count: count
-            }
+            body: requestBody
         });
     }
 
