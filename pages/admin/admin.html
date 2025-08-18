@@ -805,25 +805,10 @@
             }
         });
 
-        // 安全导航函数 - 生成访问token并跳转
-        async function navigateToPage(pagePath) {
-            try {
-                // 生成访问token
-                const response = await fetch('../../server/api/admin.php?action=generate_access_token', {
-                    method: 'POST'
-                });
-                
-                const data = await response.json();
-                if (data.success && data.token) {
-                    // 使用token跳转
-                    window.location.href = `${pagePath}${pagePath.includes('?') ? '&' : '?'}token=${data.token}`;
-                } else {
-                    alert('生成访问授权失败！');
-                }
-            } catch (error) {
-                console.error('导航失败:', error);
-                alert('导航失败，请重试！');
-            }
+        // 简化的导航函数 - 直接跳转，依赖session验证
+        function navigateToPage(pagePath) {
+            // 直接跳转到目标页面，目标页面会自动验证超级管理员session
+            window.location.href = pagePath;
         }
     </script>
 </body>

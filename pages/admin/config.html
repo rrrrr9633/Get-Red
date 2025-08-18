@@ -10,37 +10,21 @@
         // 超级管理员权限验证
         async function checkAdminAccess() {
             try {
-                // 检查是否通过admin页面访问（有token参数）
-                const urlParams = new URLSearchParams(window.location.search);
-                const token = urlParams.get('token');
-                
-                if (!token) {
-                    alert('禁止直接访问！请通过管理后台进入。');
-                    window.location.href = 'admin.html';
-                    return false;
-                }
-                
-                // 验证token
-                const response = await fetch('../../server/api/super-admin.php?action=verify_token', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ token: token })
-                });
-                
+                // 直接检查超级管理员session状态
+                const response = await fetch('../../server/api/super-admin.php?action=check');
                 const data = await response.json();
-                if (!data.success || !data.authenticated) {
-                    alert('访问权限验证失败！请重新登录。');
-                    window.location.href = 'admin.html';
+                
+                if (!data.authenticated) {
+                    alert('需要超级管理员权限！请先登录。');
+                    window.location.href = '../../super-admin.html';
                     return false;
                 }
                 
                 return true;
             } catch (error) {
                 console.error('权限验证失败:', error);
-                alert('系统错误，请重新访问！');
-                window.location.href = 'admin.html';
+                alert('系统错误，请重新登录！');
+                window.location.href = '../../super-admin.html';
                 return false;
             }
         }

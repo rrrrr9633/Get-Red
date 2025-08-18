@@ -5,28 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>抽奖记录管理 - 大红行动</title>
     <script>
-        // 权限验证 - 支持超级管理员和客服人员
+        // 简化权限验证 - 支持超级管理员和客服人员
         async function checkPageAccess() {
             try {
-                // 检查是否通过admin页面访问（有token参数） - 超级管理员
-                const urlParams = new URLSearchParams(window.location.search);
-                const token = urlParams.get('token');
+                // 首先检查超级管理员身份
+                const adminResponse = await fetch('../../server/api/super-admin.php?action=check');
+                const adminData = await adminResponse.json();
                 
-                if (token) {
-                    // 验证超级管理员token
-                    const response = await fetch('../../server/api/super-admin.php?action=verify_token', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({ token: token })
-                    });
-                    
-                    const data = await response.json();
-                    if (data.success && data.authenticated) {
-                        window.userRole = 'admin';
-                        return true;
-                    }
+                if (adminData.authenticated) {
+                    window.userRole = 'admin';
+                    return true;
                 }
                 
                 // 检查客服人员身份
@@ -39,14 +27,14 @@
                 }
                 
                 // 都不是，拒绝访问
-                alert('访问被拒绝！请通过正确的方式登录。');
-                window.location.href = '../../auth/login.html';
+                alert('需要管理员权限！请先登录。');
+                window.location.href = '../../super-admin.html';
                 return false;
                 
             } catch (error) {
                 console.error('权限验证失败:', error);
                 alert('系统错误，请重新登录！');
-                window.location.href = '../../auth/login.html';
+                window.location.href = '../../super-admin.html';
                 return false;
             }
         }
