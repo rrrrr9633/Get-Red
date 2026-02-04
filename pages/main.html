@@ -18,6 +18,18 @@
     <nav class="navbar">
         <div class="nav-brand">
             <h1 class="neon-text gold" onclick="goToHome()" style="cursor: pointer;" title="返回主页">大红行动</h1>
+            
+            <!-- 模块切换 -->
+            <div class="module-switcher">
+                <button class="module-btn active" onclick="switchModule('lucky')" data-module="lucky">
+                    <span class="module-icon">🎰</span>
+                    <span class="module-name">幸运抽奖</span>
+                </button>
+                <button class="module-btn" onclick="switchModule('shop')" data-module="shop">
+                    <span class="module-icon">🛒</span>
+                    <span class="module-name">金币商城</span>
+                </button>
+            </div>
         </div>
         
         <div class="nav-user">
@@ -47,14 +59,49 @@
     </nav>
 
     <div class="main-container">
-        <div class="welcome-section">
-            <h2 class="neon-text rainbow">欢迎来到大红行动</h2>
-            <p class="neon-text">选择您喜欢的游戏模式，开始您的幸运之旅！</p>
-        </div>
+        <!-- 幸运抽奖模块 -->
+        <div id="luckyModule" class="module-content active">
+            <div class="welcome-section">
+                <h2 class="neon-text rainbow">欢迎来到大红行动</h2>
+                <p class="neon-text">选择您喜欢的游戏模式，开始您的幸运之旅！</p>
+            </div>
 
-        <!-- 游戏模块网格 -->
-        <div class="game-grid" id="gameGrid">
-            <!-- Lucky页面将动态加载到这里 -->
+            <!-- 游戏模块网格 -->
+            <div class="game-grid" id="gameGrid">
+                <!-- Lucky页面将动态加载到这里 -->
+            </div>
+        </div>
+        
+        <!-- 金币商城模块 -->
+        <div id="shopModule" class="module-content">
+            <div class="welcome-section">
+                <h2 class="neon-text rainbow">金币商城</h2>
+                <p class="neon-text">使用您的金币购买各种精美商品！</p>
+            </div>
+            
+            <div class="shop-coming-soon">
+                <div class="coming-soon-icon">🛒</div>
+                <h3 class="neon-text gold">商城即将开放</h3>
+                <p class="neon-text">我们正在精心准备各种精美商品，敬请期待！</p>
+                <div class="features-preview">
+                    <div class="feature-item">
+                        <span class="feature-icon">🎁</span>
+                        <span class="feature-text">精美礼品</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">💎</span>
+                        <span class="feature-text">稀有道具</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">🎨</span>
+                        <span class="feature-text">个性装饰</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">⚡</span>
+                        <span class="feature-text">特殊权益</span>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -74,10 +121,67 @@
             z-index: 1000;
         }
         
+        .nav-brand {
+            display: flex;
+            align-items: center;
+            gap: 30px;
+        }
+        
         .nav-brand h1 {
             margin: 0;
             font-size: 24px;
             color: var(--primary-green);
+        }
+        
+        /* 模块切换器样式 */
+        .module-switcher {
+            display: flex;
+            gap: 10px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 5px;
+            border-radius: 12px;
+            border: 1px solid rgba(74, 222, 128, 0.3);
+        }
+        
+        .module-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: transparent;
+            border: none;
+            border-radius: 8px;
+            color: rgba(255, 255, 255, 0.6);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .module-btn:hover {
+            background: rgba(74, 222, 128, 0.1);
+            color: rgba(255, 255, 255, 0.9);
+        }
+        
+        .module-btn.active {
+            background: linear-gradient(135deg, rgba(74, 222, 128, 0.2), rgba(34, 197, 94, 0.2));
+            color: var(--primary-green);
+            box-shadow: 0 0 15px rgba(74, 222, 128, 0.3);
+        }
+        
+        .module-icon {
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .module-name {
+            font-weight: bold;
+            letter-spacing: 0.5px;
+        }
+        
+        .module-btn.active .module-name {
+            text-shadow: 0 0 10px rgba(74, 222, 128, 0.5);
         }
         
         .nav-user {
@@ -180,6 +284,27 @@
             margin-right: auto;
         }
         
+        /* 模块内容切换 */
+        .module-content {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        .module-content.active {
+            display: block;
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
         .welcome-section {
             text-align: center;
             margin-bottom: 60px;
@@ -195,6 +320,80 @@
             font-size: 18px;
             opacity: 0.8;
             color: var(--text-primary);
+        }
+        
+        /* 商城即将开放样式 */
+        .shop-coming-soon {
+            text-align: center;
+            padding: 80px 20px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid rgba(74, 222, 128, 0.3);
+            border-radius: 20px;
+            margin-top: 40px;
+        }
+        
+        .coming-soon-icon {
+            font-size: 100px;
+            margin-bottom: 30px;
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0%, 100% {
+                transform: translateY(0);
+            }
+            50% {
+                transform: translateY(-20px);
+            }
+        }
+        
+        .shop-coming-soon h3 {
+            font-size: 36px;
+            margin-bottom: 20px;
+        }
+        
+        .shop-coming-soon p {
+            font-size: 18px;
+            opacity: 0.8;
+            margin-bottom: 50px;
+        }
+        
+        .features-preview {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 30px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .feature-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            padding: 30px 20px;
+            background: rgba(74, 222, 128, 0.1);
+            border: 1px solid rgba(74, 222, 128, 0.3);
+            border-radius: 15px;
+            transition: all 0.3s ease;
+        }
+        
+        .feature-item:hover {
+            background: rgba(74, 222, 128, 0.2);
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(74, 222, 128, 0.2);
+        }
+        
+        .feature-icon {
+            font-size: 48px;
+            filter: drop-shadow(0 0 10px rgba(74, 222, 128, 0.5));
+        }
+        
+        .feature-text {
+            font-size: 16px;
+            font-weight: bold;
+            color: var(--primary-green);
+            text-shadow: 0 0 10px rgba(74, 222, 128, 0.3);
         }
         
         .game-grid {
@@ -341,8 +540,33 @@
                 height: 60px;
             }
             
+            .nav-brand {
+                flex-direction: column;
+                gap: 8px;
+                align-items: flex-start;
+            }
+            
             .nav-brand h1 {
-                font-size: 18px;
+                font-size: 16px;
+            }
+            
+            .module-switcher {
+                gap: 5px;
+                padding: 3px;
+            }
+            
+            .module-btn {
+                padding: 5px 10px;
+                font-size: 11px;
+                gap: 5px;
+            }
+            
+            .module-icon {
+                font-size: 14px;
+            }
+            
+            .module-name {
+                display: none;
             }
             
             .nav-user {
@@ -381,6 +605,35 @@
             
             .welcome-section h2 {
                 font-size: 32px;
+            }
+            
+            .shop-coming-soon {
+                padding: 40px 15px;
+            }
+            
+            .coming-soon-icon {
+                font-size: 60px;
+            }
+            
+            .shop-coming-soon h3 {
+                font-size: 24px;
+            }
+            
+            .features-preview {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 15px;
+            }
+            
+            .feature-item {
+                padding: 20px 10px;
+            }
+            
+            .feature-icon {
+                font-size: 32px;
+            }
+            
+            .feature-text {
+                font-size: 12px;
             }
             
             .game-grid {
@@ -455,6 +708,26 @@
     <script>
         // 不再使用本地数据库，改用MySQL数据库
         
+        // 模块切换功能
+        function switchModule(moduleName) {
+            // 更新按钮状态
+            document.querySelectorAll('.module-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector(`[data-module="${moduleName}"]`).classList.add('active');
+            
+            // 切换模块内容
+            document.querySelectorAll('.module-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            if (moduleName === 'lucky') {
+                document.getElementById('luckyModule').classList.add('active');
+            } else if (moduleName === 'shop') {
+                document.getElementById('shopModule').classList.add('active');
+            }
+        }
+        
         // 检查登录状态 - 改为温和提示而不是强制跳转
         function checkLogin() {
             const currentUser = localStorage.getItem('currentUser');
@@ -494,7 +767,15 @@
                 
                 if (result.success) {
                     const user = result.user;
-                    document.getElementById('userAvatar').src = user.avatar || '../uploads/avatars/default.png';
+                    // 处理头像路径
+                    let avatarSrc = user.avatar || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiByeD0iNTAiIGZpbGw9IiNmZmQ3MDAiLz4KPHN2ZyB4PSIyNSIgeT0iMjAiIHdpZHRoPSI1MCIgaGVpZ2h0PSI2MCI+CjxjaXJjbGUgY3g9IjI1IiBjeT0iMjAiIHI9IjE1IiBmaWxsPSIjMTExIi8+CjxlbGxpcHNlIGN4PSIyNSIgY3k9IjUwIiByeD0iMjAiIHJ5PSIxNSIgZmlsbD0iIzExMSIvPgo8L3N2Zz4KPC9zdmc+';
+                    
+                    // 如果是上传的图片（不是 data: 或 http 开头），添加相对路径
+                    if (avatarSrc && !avatarSrc.startsWith('data:') && !avatarSrc.startsWith('http')) {
+                        avatarSrc = '../' + avatarSrc;
+                    }
+                    
+                    document.getElementById('userAvatar').src = avatarSrc;
                     document.getElementById('userNickname').textContent = user.nickname;
                     document.getElementById('userBalance').textContent = `余额: ${parseFloat(user.balance).toFixed(2)}`;
                 }

@@ -439,74 +439,25 @@ class APIClient {
 
     // 活动监测和心跳检测
     startHeartbeat() {
-        // 每30秒发送一次心跳
-        this.heartbeatInterval = setInterval(async () => {
-            if (this.isLoggedIn() && !this.isAdminPage() && !this.isLoginPage()) {
-                try {
-                    await this.request('/users.php?action=heartbeat', {
-                        method: 'POST'
-                    });
-                } catch (error) {
-                    console.error('心跳检测失败:', error);
-                }
-            }
-        }, 30000);
+        // 心跳功能已禁用 - 后端未实现
+        // 如需启用，请在 users.php 中添加 heartbeat action 处理
+        return;
     }
 
     setupActivityMonitoring() {
-        // 页面可见性变化监听
-        document.addEventListener('visibilitychange', () => {
-            if (document.hidden) {
-                // 页面隐藏时设置离线
-                this.setOfflineStatus();
-            } else if (this.isLoggedIn() && !this.isAdminPage() && !this.isLoginPage()) {
-                // 页面可见时设置在线
-                this.setOnlineStatus();
-            }
-        });
-
-        // 页面卸载时设置离线
-        window.addEventListener('beforeunload', () => {
-            if (this.isLoggedIn()) {
-                navigator.sendBeacon(
-                    `${this.baseURL}/users.php?action=offline`,
-                    JSON.stringify({ user_id: this.getCurrentUser()?.id })
-                );
-            }
-        });
-
-        // 鼠标和键盘活动监听
-        ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'].forEach(event => {
-            document.addEventListener(event, () => {
-                if (this.isLoggedIn() && !this.isAdminPage() && !this.isLoginPage()) {
-                    this.updateActivity();
-                }
-            }, { passive: true });
-        });
+        // 活动监测功能已禁用 - 后端未实现
+        // 如需启用，请在 users.php 中添加 online/offline action 处理
+        return;
     }
 
     async setOnlineStatus() {
-        if (this.isLoggedIn()) {
-            try {
-                await this.request('/users.php?action=online', {
-                    method: 'POST'
-                });
-            } catch (error) {
-                console.error('设置在线状态失败:', error);
-            }
-        }
+        // 在线状态功能已禁用 - 后端未实现
+        return;
     }
 
     async setOfflineStatus() {
-        if (this.isLoggedIn()) {
-            try {
-                await this.request('/users.php?action=offline', {
-                    method: 'POST'
-                });
-            } catch (error) {
-                console.error('设置离线状态失败:', error);
-            }
-        }
+        // 离线状态功能已禁用 - 后端未实现
+        return;
     }
 
     updateActivity() {
