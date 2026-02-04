@@ -15,8 +15,8 @@ class EffectsManager {
     createBackgroundEffects() {
         // 创建动态背景粒子
         this.createFloatingParticles();
-        // 创建霓虹光线效果
-        this.createNeonRays();
+        // 霓虹光线效果已禁用
+        // this.createNeonRays();
         // 创建星空效果
         this.createStarField();
     }
@@ -156,8 +156,8 @@ class EffectsManager {
     initInteractionEffects() {
         // 鼠标移动效果
         this.initMouseTrail();
-        // 点击波纹效果
-        this.initClickRipples();
+        // 点击波纹效果已禁用
+        // this.initClickRipples();
         // 元素悬停效果
         this.initHoverEffects();
     }
