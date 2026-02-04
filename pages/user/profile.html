@@ -51,6 +51,7 @@
             <div class="tab-buttons">
                 <button class="tab-btn active" onclick="showTab('account')">账户信息</button>
                 <button class="tab-btn" onclick="showTab('transactions')">交易记录</button>
+                <button class="tab-btn" onclick="showTab('withdrawal')">提现记录</button>
                 <button class="tab-btn" onclick="showTab('checkin')">签到记录</button>
             </div>
 
@@ -162,6 +163,37 @@
                     </div>
                     <div id="checkinList" class="checkin-list">
                         <!-- 签到记录将在这里显示 -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- 提现记录标签页 -->
+            <div id="withdrawalTab" class="tab-content">
+                <div class="info-card">
+                    <h3 class="neon-text gold">💰 我的提现记录</h3>
+                    
+                    <div class="withdrawal-info-notice">
+                        <p class="neon-text">💡 提示：前往 <a href="../shop/knife-exchange.html" class="link-highlight">跑刀提现页面</a> 申请提现</p>
+                        <p class="neon-text" style="font-size: 14px; opacity: 0.8; margin-top: 10px;">
+                            兑换汇率：1金币 = 10000哈夫币
+                        </p>
+                    </div>
+
+                    <div class="withdrawal-tabs">
+                        <button class="withdrawal-sub-tab active" onclick="switchWithdrawalTab('pending')">待处理</button>
+                        <button class="withdrawal-sub-tab" onclick="switchWithdrawalTab('history')">历史记录</button>
+                    </div>
+
+                    <div id="withdrawalPendingTab" class="withdrawal-tab-content active">
+                        <div id="withdrawalPendingList" class="withdrawal-records-list">
+                            <div class="empty-state">暂无待处理的提现申请</div>
+                        </div>
+                    </div>
+
+                    <div id="withdrawalHistoryTab" class="withdrawal-tab-content">
+                        <div id="withdrawalHistoryList" class="withdrawal-records-list">
+                            <div class="empty-state">暂无历史记录</div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -649,6 +681,132 @@
             border-radius: 10px;
             border: 1px solid rgba(255, 215, 0, 0.3);
         }
+
+        /* 提现记录样式 */
+        .withdrawal-info-notice {
+            background: rgba(255, 215, 0, 0.1);
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 25px;
+            text-align: center;
+        }
+
+        .withdrawal-info-notice p {
+            margin: 0;
+        }
+
+        .link-highlight {
+            color: #ffd700;
+            text-decoration: underline;
+            font-weight: bold;
+        }
+
+        .link-highlight:hover {
+            color: #ffed4e;
+        }
+
+        .withdrawal-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .withdrawal-sub-tab {
+            flex: 1;
+            padding: 10px;
+            background: transparent;
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            color: #ffd700;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .withdrawal-sub-tab:hover {
+            background: rgba(255, 215, 0, 0.1);
+        }
+
+        .withdrawal-sub-tab.active {
+            background: rgba(255, 215, 0, 0.2);
+            border-color: #ffd700;
+        }
+
+        .withdrawal-tab-content {
+            display: none;
+        }
+
+        .withdrawal-tab-content.active {
+            display: block;
+        }
+
+        .withdrawal-records-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .withdrawal-record-item {
+            padding: 15px;
+            background: rgba(255, 215, 0, 0.05);
+            border: 1px solid rgba(255, 215, 0, 0.2);
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+
+        .withdrawal-record-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .withdrawal-record-amount {
+            font-size: 16px;
+            font-weight: bold;
+            color: #ffd700;
+        }
+
+        .withdrawal-status-badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .status-pending {
+            background: rgba(255, 165, 0, 0.2);
+            color: #ffa500;
+        }
+
+        .status-processing {
+            background: rgba(100, 149, 237, 0.2);
+            color: #6495ed;
+        }
+
+        .status-completed {
+            background: rgba(74, 222, 128, 0.2);
+            color: #4ade80;
+        }
+
+        .status-rejected {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+
+        .withdrawal-record-details {
+            font-size: 13px;
+            opacity: 0.8;
+        }
+
+        .withdrawal-record-details div {
+            margin: 5px 0;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            opacity: 0.6;
+        }
         
         @media (max-width: 768px) {
             .profile-header {
@@ -907,7 +1065,119 @@
                 loadTransactions();
             } else if (tabName === 'checkin') {
                 loadCheckinRecords();
+            } else if (tabName === 'withdrawal') {
+                loadWithdrawalData();
             }
+        }
+
+        // 加载提现数据
+        async function loadWithdrawalData() {
+            try {
+                // 加载提现记录
+                loadWithdrawalRecords();
+            } catch (error) {
+                console.error('加载提现数据失败:', error);
+            }
+        }
+
+        // 切换提现记录标签
+        function switchWithdrawalTab(tab) {
+            document.querySelectorAll('.withdrawal-sub-tab').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.withdrawal-tab-content').forEach(content => content.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById('withdrawal' + tab.charAt(0).toUpperCase() + tab.slice(1) + 'Tab').classList.add('active');
+        }
+
+        // 加载提现记录
+        async function loadWithdrawalRecords() {
+            try {
+                // 加载待处理的申请
+                const pendingResponse = await fetch('../../server/api/withdrawal.php?action=user_requests', {
+                    credentials: 'include'
+                });
+                const pendingData = await pendingResponse.json();
+                
+                if (pendingData.success) {
+                    renderWithdrawalPending(pendingData.requests);
+                }
+                
+                // 加载历史记录
+                const historyResponse = await fetch('../../server/api/withdrawal.php?action=user_history', {
+                    credentials: 'include'
+                });
+                const historyData = await historyResponse.json();
+                
+                if (historyData.success) {
+                    renderWithdrawalHistory(historyData.history);
+                }
+            } catch (error) {
+                console.error('加载提现记录失败:', error);
+            }
+        }
+
+        // 渲染待处理的提现申请
+        function renderWithdrawalPending(records) {
+            const container = document.getElementById('withdrawalPendingList');
+            
+            if (records.length === 0) {
+                container.innerHTML = '<div class="empty-state">暂无待处理的提现申请</div>';
+                return;
+            }
+            
+            container.innerHTML = records.map(record => {
+                const statusMap = {
+                    'pending': '待处理',
+                    'processing': '处理中'
+                };
+                
+                return `
+                    <div class="withdrawal-record-item">
+                        <div class="withdrawal-record-header">
+                            <div class="withdrawal-record-amount">${record.amount} 金币 → ${parseFloat(record.buff_coins).toFixed(0)} 哈夫币</div>
+                            <div class="withdrawal-status-badge status-${record.status}">
+                                ${statusMap[record.status] || record.status}
+                            </div>
+                        </div>
+                        <div class="withdrawal-record-details">
+                            <div>申请时间: ${new Date(record.created_at).toLocaleString()}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // 渲染提现历史记录
+        function renderWithdrawalHistory(records) {
+            const container = document.getElementById('withdrawalHistoryList');
+            
+            if (records.length === 0) {
+                container.innerHTML = '<div class="empty-state">暂无历史记录</div>';
+                return;
+            }
+            
+            container.innerHTML = records.map(record => {
+                const statusMap = {
+                    'completed': '已完成',
+                    'rejected': '已拒绝'
+                };
+                
+                return `
+                    <div class="withdrawal-record-item">
+                        <div class="withdrawal-record-header">
+                            <div class="withdrawal-record-amount">${record.amount} 金币 → ${parseFloat(record.buff_coins).toFixed(0)} 哈夫币</div>
+                            <div class="withdrawal-status-badge status-${record.status}">
+                                ${statusMap[record.status] || record.status}
+                            </div>
+                        </div>
+                        <div class="withdrawal-record-details">
+                            <div>申请时间: ${new Date(record.created_at).toLocaleString()}</div>
+                            <div>处理时间: ${new Date(record.processed_at).toLocaleString()}</div>
+                            ${record.reject_reason ? `<div style="color: #ef4444;">拒绝原因: ${record.reject_reason}</div>` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
         }
 
         // 显示交易记录类型

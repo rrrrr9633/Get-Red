@@ -189,14 +189,14 @@ function saveServiceConfig() {
 function getChatSessions() {
     global $db;
     
-    if (!checkPermission($db)) {
-        http_response_code(403);
-        echo json_encode(['error' => '权限不足']);
+    session_start();
+    if (!isset($_SESSION['user_id'])) {
+        http_response_code(401);
+        echo json_encode(['error' => '未登录']);
         return;
     }
     
     try {
-        session_start();
         $user_id = $_SESSION['user_id'];
         
         // 获取用户类型
@@ -204,29 +204,61 @@ function getChatSessions() {
         $stmt->execute([$user_id]);
         $user = $stmt->fetch();
         
+        if (!$user) {
+            http_response_code(403);
+            echo json_encode(['error' => '用户不存在']);
+            return;
+        }
+        
         if ($user['user_type'] === 'service') {
             // 客服用户：获取分配给自己的会话
             $stmt = $db->prepare("
-                SELECT cs.*, u.nickname as user_nickname, u.username as user_username
+                SELECT cs.*, 
+                       u.nickname as user_nickname, 
+                       u.username as user_username,
+                       u.is_online as user_is_online,
+                       (SELECT COUNT(*) FROM chat_messages WHERE session_id = cs.session_id AND sender_type = 'user' AND is_read = 0) as unread_count
                 FROM chat_sessions cs
                 JOIN users u ON cs.user_id = u.id
-                WHERE cs.service_user_id = ? OR cs.service_user_id IS NULL
-                ORDER BY cs.created_at DESC
+                WHERE cs.service_user_id = ? AND cs.status IN ('waiting', 'active')
+                ORDER BY cs.updated_at DESC, cs.created_at DESC
                 LIMIT 50
             ");
             $stmt->execute([$user_id]);
-        } else {
+        } elseif (in_array($user['user_type'], ['admin', 'super_admin'])) {
             // 管理员：获取所有会话
             $stmt = $db->prepare("
-                SELECT cs.*, u.nickname as user_nickname, u.username as user_username,
-                       su.nickname as service_nickname, su.username as service_username
+                SELECT cs.*, 
+                       u.nickname as user_nickname, 
+                       u.username as user_username,
+                       u.is_online as user_is_online,
+                       su.nickname as service_nickname, 
+                       su.username as service_username,
+                       (SELECT COUNT(*) FROM chat_messages WHERE session_id = cs.session_id AND sender_type = 'user' AND is_read = 0) as unread_count
                 FROM chat_sessions cs
                 JOIN users u ON cs.user_id = u.id
                 LEFT JOIN users su ON cs.service_user_id = su.id
-                ORDER BY cs.created_at DESC
+                WHERE cs.status IN ('waiting', 'active')
+                ORDER BY cs.updated_at DESC, cs.created_at DESC
                 LIMIT 100
             ");
             $stmt->execute();
+        } else {
+            // 普通用户：只能看自己的会话
+            $stmt = $db->prepare("
+                SELECT cs.*, 
+                       u.nickname as user_nickname, 
+                       u.username as user_username,
+                       su.nickname as service_nickname, 
+                       su.username as service_username
+                FROM chat_sessions cs
+                JOIN users u ON cs.user_id = u.id
+                LEFT JOIN users su ON cs.service_user_id = su.id
+                WHERE cs.user_id = ?
+                ORDER BY cs.created_at DESC
+                LIMIT 10
+            ");
+            $stmt->execute([$user_id]);
         }
         
         $sessions = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -235,7 +267,7 @@ function getChatSessions() {
     } catch (Exception $e) {
         logSecurityEvent($db, 'get_chat_sessions', 'failed', null, $e->getMessage());
         http_response_code(500);
-        echo json_encode(['error' => '获取会话列表失败']);
+        echo json_encode(['error' => '获取会话列表失败: ' . $e->getMessage()]);
     }
 }
 
@@ -243,9 +275,10 @@ function getChatSessions() {
 function getChatMessages() {
     global $db;
     
-    if (!checkPermission($db)) {
-        http_response_code(403);
-        echo json_encode(['error' => '权限不足']);
+    session_start();
+    if (!isset($_SESSION['user_id'])) {
+        http_response_code(401);
+        echo json_encode(['error' => '未登录']);
         return;
     }
     
@@ -257,7 +290,47 @@ function getChatMessages() {
     
     try {
         $session_id = $_GET['session_id'];
+        $user_id = $_SESSION['user_id'];
         
+        // 获取用户类型
+        $stmt = $db->prepare("SELECT user_type FROM users WHERE id = ?");
+        $stmt->execute([$user_id]);
+        $user = $stmt->fetch();
+        
+        if (!$user) {
+            http_response_code(403);
+            echo json_encode(['error' => '用户不存在']);
+            return;
+        }
+        
+        // 验证用户是否有权限查看此会话
+        $stmt = $db->prepare("SELECT user_id, service_user_id FROM chat_sessions WHERE session_id = ?");
+        $stmt->execute([$session_id]);
+        $session = $stmt->fetch();
+        
+        if (!$session) {
+            http_response_code(404);
+            echo json_encode(['error' => '会话不存在']);
+            return;
+        }
+        
+        // 检查权限：普通用户只能看自己的会话，客服只能看分配给自己的会话，管理员可以看所有会话
+        $hasPermission = false;
+        if ($user['user_type'] === 'user' && $session['user_id'] == $user_id) {
+            $hasPermission = true;
+        } elseif ($user['user_type'] === 'service' && $session['service_user_id'] == $user_id) {
+            $hasPermission = true;
+        } elseif (in_array($user['user_type'], ['admin', 'super_admin'])) {
+            $hasPermission = true;
+        }
+        
+        if (!$hasPermission) {
+            http_response_code(403);
+            echo json_encode(['error' => '无权限查看此会话']);
+            return;
+        }
+        
+        // 获取消息
         $stmt = $db->prepare("
             SELECT cm.*, u.nickname as sender_nickname, u.username as sender_username
             FROM chat_messages cm
@@ -270,9 +343,9 @@ function getChatMessages() {
         
         echo json_encode(['success' => true, 'messages' => $messages]);
     } catch (Exception $e) {
-        logSecurityEvent($db, 'get_chat_messages', 'failed', "session_id: $session_id", $e->getMessage());
+        logSecurityEvent($db, 'get_chat_messages', 'failed', "session_id: " . ($session_id ?? 'unknown'), $e->getMessage());
         http_response_code(500);
-        echo json_encode(['error' => '获取消息失败']);
+        echo json_encode(['error' => '获取消息失败: ' . $e->getMessage()]);
     }
 }
 
@@ -289,19 +362,76 @@ function startChatSession() {
     
     try {
         $user_id = $_SESSION['user_id'];
+        
+        // 检查是否已有活跃会话
+        $stmt = $db->prepare("
+            SELECT session_id FROM chat_sessions 
+            WHERE user_id = ? AND status IN ('waiting', 'active')
+            ORDER BY created_at DESC
+            LIMIT 1
+        ");
+        $stmt->execute([$user_id]);
+        $existingSession = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($existingSession) {
+            // 返回现有会话
+            echo json_encode([
+                'success' => true, 
+                'session_id' => $existingSession['session_id'],
+                'is_new' => false
+            ]);
+            return;
+        }
+        
+        // 创建新会话
         $session_id = 'chat_' . $user_id . '_' . time() . '_' . rand(1000, 9999);
         
+        // 查找分配的客服
         $stmt = $db->prepare("
-            INSERT INTO chat_sessions (user_id, session_id, status) 
-            VALUES (?, ?, 'waiting')
+            SELECT service_user_id 
+            FROM service_user_assignments 
+            WHERE regular_user_id = ? AND status = 'active'
+            LIMIT 1
         ");
-        $stmt->execute([$user_id, $session_id]);
+        $stmt->execute([$user_id]);
+        $assignment = $stmt->fetch(PDO::FETCH_ASSOC);
         
-        echo json_encode(['success' => true, 'session_id' => $session_id]);
+        $service_user_id = $assignment ? $assignment['service_user_id'] : null;
+        
+        $stmt = $db->prepare("
+            INSERT INTO chat_sessions (user_id, service_user_id, session_id, status) 
+            VALUES (?, ?, ?, ?)
+        ");
+        $stmt->execute([
+            $user_id, 
+            $service_user_id, 
+            $session_id,
+            $service_user_id ? 'active' : 'waiting'
+        ]);
+        
+        // 发送欢迎消息
+        if ($service_user_id) {
+            $stmt = $db->prepare("
+                INSERT INTO chat_messages (session_id, sender_id, sender_type, message, message_type) 
+                VALUES (?, ?, 'service', ?, 'text')
+            ");
+            $stmt->execute([
+                $session_id,
+                $service_user_id,
+                '您好！我是您的专属客服，很高兴为您服务。请问有什么可以帮助您的？'
+            ]);
+        }
+        
+        echo json_encode([
+            'success' => true, 
+            'session_id' => $session_id,
+            'is_new' => true,
+            'has_service' => $service_user_id ? true : false
+        ]);
     } catch (Exception $e) {
         logSecurityEvent($db, 'start_chat_session', 'failed', null, $e->getMessage());
         http_response_code(500);
-        echo json_encode(['error' => '创建会话失败']);
+        echo json_encode(['error' => '创建会话失败: ' . $e->getMessage()]);
     }
 }
 
@@ -309,9 +439,10 @@ function startChatSession() {
 function sendChatMessage() {
     global $db, $input;
     
-    if (!checkPermission($db, ['user', 'service', 'admin', 'super_admin'])) {
-        http_response_code(403);
-        echo json_encode(['error' => '权限不足']);
+    session_start();
+    if (!isset($_SESSION['user_id'])) {
+        http_response_code(401);
+        echo json_encode(['error' => '未登录']);
         return;
     }
     
@@ -322,13 +453,45 @@ function sendChatMessage() {
     }
     
     try {
-        session_start();
         $user_id = $_SESSION['user_id'];
         
         // 获取用户类型
         $stmt = $db->prepare("SELECT user_type FROM users WHERE id = ?");
         $stmt->execute([$user_id]);
         $user = $stmt->fetch();
+        
+        if (!$user) {
+            http_response_code(403);
+            echo json_encode(['error' => '用户不存在']);
+            return;
+        }
+        
+        // 验证用户是否有权限在此会话中发送消息
+        $stmt = $db->prepare("SELECT user_id, service_user_id FROM chat_sessions WHERE session_id = ?");
+        $stmt->execute([$input['session_id']]);
+        $session = $stmt->fetch();
+        
+        if (!$session) {
+            http_response_code(404);
+            echo json_encode(['error' => '会话不存在']);
+            return;
+        }
+        
+        // 检查权限
+        $hasPermission = false;
+        if ($user['user_type'] === 'user' && $session['user_id'] == $user_id) {
+            $hasPermission = true;
+        } elseif ($user['user_type'] === 'service' && $session['service_user_id'] == $user_id) {
+            $hasPermission = true;
+        } elseif (in_array($user['user_type'], ['admin', 'super_admin'])) {
+            $hasPermission = true;
+        }
+        
+        if (!$hasPermission) {
+            http_response_code(403);
+            echo json_encode(['error' => '无权限在此会话中发送消息']);
+            return;
+        }
         
         $sender_type = in_array($user['user_type'], ['service', 'admin', 'super_admin']) ? 'service' : 'user';
         
@@ -344,6 +507,10 @@ function sendChatMessage() {
             $input['message_type'] ?? 'text'
         ]);
         
+        // 更新会话的最后更新时间
+        $stmt = $db->prepare("UPDATE chat_sessions SET updated_at = NOW() WHERE session_id = ?");
+        $stmt->execute([$input['session_id']]);
+        
         // 如果是客服发送消息，更新会话状态为active
         if ($sender_type === 'service') {
             $stmt = $db->prepare("UPDATE chat_sessions SET status = 'active', service_user_id = ? WHERE session_id = ?");
@@ -354,7 +521,7 @@ function sendChatMessage() {
     } catch (Exception $e) {
         logSecurityEvent($db, 'send_chat_message', 'failed', json_encode($input), $e->getMessage());
         http_response_code(500);
-        echo json_encode(['error' => '发送消息失败']);
+        echo json_encode(['error' => '发送消息失败: ' . $e->getMessage()]);
     }
 }
 

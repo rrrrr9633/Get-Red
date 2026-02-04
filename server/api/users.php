@@ -122,6 +122,33 @@ function register() {
         $stmt = $db->prepare("INSERT INTO transactions (user_id, amount, description, type) VALUES (?, 1000.00, '注册奖励', 'income')");
         $stmt->execute([$userId]);
         
+        // 自动分配客服（分配给用户数最少的客服）
+        try {
+            $stmt = $db->prepare("
+                SELECT u.id, COUNT(sua.regular_user_id) as user_count
+                FROM users u
+                LEFT JOIN service_user_assignments sua ON u.id = sua.service_user_id AND sua.status = 'active'
+                WHERE u.user_type = 'service' AND u.status = 'active'
+                GROUP BY u.id
+                ORDER BY user_count ASC, u.id ASC
+                LIMIT 1
+            ");
+            $stmt->execute();
+            $serviceUser = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if ($serviceUser) {
+                // 分配给用户数最少的客服
+                $stmt = $db->prepare("
+                    INSERT INTO service_user_assignments (service_user_id, regular_user_id, assigned_by) 
+                    VALUES (?, ?, NULL)
+                ");
+                $stmt->execute([$serviceUser['id'], $userId]);
+            }
+        } catch (Exception $e) {
+            // 自动分配失败不影响注册流程
+            error_log('自动分配客服失败: ' . $e->getMessage());
+        }
+        
         echo json_encode(['success' => true, 'message' => '注册成功']);
     } else {
         http_response_code(500);

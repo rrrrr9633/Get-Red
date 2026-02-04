@@ -124,22 +124,25 @@ function getUsers() {
         // 首先清理超时的在线状态（超过5分钟无活动的用户标记为离线）
         $db->query("UPDATE users SET is_online = 0 WHERE last_activity < DATE_SUB(NOW(), INTERVAL 5 MINUTE)");
         
-        // 获取用户列表，包含在线状态信息
+        // 获取用户列表，包含在线状态信息和待处理提现数量
         $stmt = $db->query("
             SELECT 
-                id, 
-                username, 
-                nickname, 
-                balance, 
-                is_online,
-                last_login,
-                last_activity,
-                created_at,
-                updated_at,
-                user_type,
-                status
-            FROM users 
-            ORDER BY created_at DESC
+                u.id, 
+                u.username, 
+                u.nickname, 
+                u.balance, 
+                u.is_online,
+                u.last_login,
+                u.last_activity,
+                u.created_at,
+                u.updated_at,
+                u.user_type,
+                u.status,
+                COUNT(wr.id) as pending_withdrawals
+            FROM users u
+            LEFT JOIN withdrawal_requests wr ON u.id = wr.user_id AND wr.status IN ('pending', 'processing')
+            GROUP BY u.id
+            ORDER BY u.created_at DESC
         ");
         $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
@@ -150,6 +153,7 @@ function getUsers() {
             $user['last_activity_formatted'] = $user['last_activity'] ? 
                 date('Y-m-d H:i:s', strtotime($user['last_activity'])) : '无活动记录';
             $user['online_status'] = $user['is_online'] ? '在线' : '离线';
+            $user['pending_withdrawals'] = intval($user['pending_withdrawals']); // 确保是整数
         }
         
         // 获取用户统计
@@ -163,13 +167,18 @@ function getUsers() {
         $stmt = $db->query("SELECT COUNT(*) as today_new FROM users WHERE DATE(created_at) = CURDATE()");
         $todayNew = $stmt->fetch(PDO::FETCH_ASSOC)['today_new'];
         
+        // 获取待处理提现总数
+        $stmt = $db->query("SELECT COUNT(*) as pending_withdrawals FROM withdrawal_requests WHERE status IN ('pending', 'processing')");
+        $pendingWithdrawals = $stmt->fetch(PDO::FETCH_ASSOC)['pending_withdrawals'];
+        
         echo json_encode([
             'success' => true, 
             'users' => $users,
             'stats' => [
                 'total' => $totalUsers,
                 'online' => $onlineCount,
-                'today_new' => $todayNew
+                'today_new' => $todayNew,
+                'pending_withdrawals' => $pendingWithdrawals
             ]
         ]);
     } catch (Exception $e) {

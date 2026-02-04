@@ -1,0 +1,357 @@
+<!-- 提现信息弹窗模块 -->
+<!-- 在 users.html 中引入此模块 -->
+
+<style>
+.withdrawal-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 10000;
+    justify-content: center;
+    align-items: center;
+}
+
+.withdrawal-modal-content {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border: 2px solid #ffd700;
+    border-radius: 20px;
+    padding: 30px;
+    max-width: 800px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.withdrawal-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid rgba(255, 215, 0, 0.3);
+}
+
+.withdrawal-modal-header h2 {
+    color: #ffd700;
+    margin: 0;
+}
+
+.close-modal-btn {
+    background: none;
+    border: none;
+    color: #ffd700;
+    font-size: 28px;
+    cursor: pointer;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.close-modal-btn:hover {
+    color: #ffed4e;
+}
+
+.withdrawal-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.withdrawal-tab-btn {
+    flex: 1;
+    padding: 12px;
+    background: transparent;
+    border: 1px solid rgba(255, 215, 0, 0.3);
+    border-radius: 8px;
+    color: #ffd700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.withdrawal-tab-btn:hover {
+    background: rgba(255, 215, 0, 0.1);
+}
+
+.withdrawal-tab-btn.active {
+    background: rgba(255, 215, 0, 0.2);
+    border-color: #ffd700;
+}
+
+.withdrawal-tab-content {
+    display: none;
+}
+
+.withdrawal-tab-content.active {
+    display: block;
+}
+
+.withdrawal-item {
+    background: rgba(255, 215, 0, 0.05);
+    border: 1px solid rgba(255, 215, 0, 0.2);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 15px;
+}
+
+.withdrawal-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.withdrawal-amount {
+    font-size: 20px;
+    font-weight: bold;
+    color: #ffd700;
+}
+
+.withdrawal-type-badge {
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: bold;
+    background: rgba(74, 222, 128, 0.2);
+    color: #4ade80;
+}
+
+.withdrawal-item-details {
+    font-size: 14px;
+    color: #ccc;
+}
+
+.withdrawal-item-details div {
+    margin: 8px 0;
+}
+
+.withdrawal-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.btn-approve,
+.btn-reject {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-approve {
+    background: linear-gradient(135deg, #4ade80, #22c55e);
+    color: #000;
+}
+
+.btn-approve:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(74, 222, 128, 0.4);
+}
+
+.btn-reject {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: #fff;
+}
+
+.btn-reject:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+}
+
+.empty-withdrawal {
+    text-align: center;
+    padding: 60px 20px;
+    color: #888;
+}
+</style>
+
+<!-- 提现信息弹窗 HTML -->
+<div id="withdrawalModal" class="withdrawal-modal">
+    <div class="withdrawal-modal-content">
+        <div class="withdrawal-modal-header">
+            <h2>💰 用户提现信息</h2>
+            <button class="close-modal-btn" onclick="closeWithdrawalModal()">&times;</button>
+        </div>
+
+        <div class="withdrawal-tabs">
+            <button class="withdrawal-tab-btn active" onclick="switchWithdrawalTab('knife')">
+                🔪 跑刀提现
+            </button>
+            <button class="withdrawal-tab-btn" onclick="switchWithdrawalTab('skin')">
+                🎨 皮肤兑换
+            </button>
+            <button class="withdrawal-tab-btn" onclick="switchWithdrawalTab('legendary')">
+                ⭐ 传说级兑换
+            </button>
+        </div>
+
+        <div id="knifeTab" class="withdrawal-tab-content active">
+            <h3 style="color: #ffd700; margin-bottom: 15px;">待处理申请</h3>
+            <div id="knifePendingList"></div>
+            
+            <h3 style="color: #ffd700; margin: 25px 0 15px;">历史记录</h3>
+            <div id="knifeHistoryList"></div>
+        </div>
+
+        <div id="skinTab" class="withdrawal-tab-content">
+            <div class="empty-withdrawal">皮肤兑换功能即将开放</div>
+        </div>
+
+        <div id="legendaryTab" class="withdrawal-tab-content">
+            <div class="empty-withdrawal">传说级兑换功能即将开放</div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentWithdrawalUserId = null;
+
+// 打开提现信息弹窗
+async function openWithdrawalModal(userId) {
+    currentWithdrawalUserId = userId;
+    document.getElementById('withdrawalModal').style.display = 'flex';
+    await loadUserWithdrawals(userId);
+}
+
+// 关闭提现信息弹窗
+function closeWithdrawalModal() {
+    document.getElementById('withdrawalModal').style.display = 'none';
+    currentWithdrawalUserId = null;
+}
+
+// 切换提现类型标签
+function switchWithdrawalTab(type) {
+    document.querySelectorAll('.withdrawal-tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.withdrawal-tab-content').forEach(content => content.classList.remove('active'));
+    
+    event.target.classList.add('active');
+    document.getElementById(type + 'Tab').classList.add('active');
+}
+
+// 加载用户提现信息
+async function loadUserWithdrawals(userId) {
+    try {
+        const response = await fetch(`../../server/api/withdrawal.php?action=admin_user_withdrawals&user_id=${userId}`, {
+            credentials: 'include'
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+            renderWithdrawalPending(data.pending);
+            renderWithdrawalHistory(data.history);
+        }
+    } catch (error) {
+        console.error('加载提现信息失败:', error);
+    }
+}
+
+// 渲染待处理申请
+function renderWithdrawalPending(pending) {
+    const container = document.getElementById('knifePendingList');
+    
+    if (pending.length === 0) {
+        container.innerHTML = '<div class="empty-withdrawal">暂无待处理的提现申请</div>';
+        return;
+    }
+    
+    container.innerHTML = pending.map(item => `
+        <div class="withdrawal-item">
+            <div class="withdrawal-item-header">
+                <div class="withdrawal-amount">${item.amount} 金币 → ${parseFloat(item.buff_coins).toFixed(0)} 哈夫币</div>
+                <div class="withdrawal-type-badge">跑刀提现</div>
+            </div>
+            <div class="withdrawal-item-details">
+                <div>申请时间: ${new Date(item.created_at).toLocaleString()}</div>
+                <div>状态: ${item.status === 'pending' ? '待处理' : '处理中'}</div>
+            </div>
+            <div class="withdrawal-actions">
+                <button class="btn-approve" onclick="processWithdrawal(${item.id}, 'approve')">
+                    ✓ 批准
+                </button>
+                <button class="btn-reject" onclick="processWithdrawal(${item.id}, 'reject')">
+                    ✗ 拒绝
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+// 渲染历史记录
+function renderWithdrawalHistory(history) {
+    const container = document.getElementById('knifeHistoryList');
+    
+    if (history.length === 0) {
+        container.innerHTML = '<div class="empty-withdrawal">暂无历史记录</div>';
+        return;
+    }
+    
+    container.innerHTML = history.map(item => `
+        <div class="withdrawal-item">
+            <div class="withdrawal-item-header">
+                <div class="withdrawal-amount">${item.amount} 金币 → ${parseFloat(item.buff_coins).toFixed(0)} 哈夫币</div>
+                <div class="withdrawal-type-badge" style="background: ${item.status === 'completed' ? 'rgba(74, 222, 128, 0.2)' : 'rgba(239, 68, 68, 0.2)'}; color: ${item.status === 'completed' ? '#4ade80' : '#ef4444'}">
+                    ${item.status === 'completed' ? '已完成' : '已拒绝'}
+                </div>
+            </div>
+            <div class="withdrawal-item-details">
+                <div>申请时间: ${new Date(item.created_at).toLocaleString()}</div>
+                <div>处理时间: ${new Date(item.processed_at).toLocaleString()}</div>
+                ${item.reject_reason ? `<div style="color: #ef4444;">拒绝原因: ${item.reject_reason}</div>` : ''}
+            </div>
+        </div>
+    `).join('');
+}
+
+// 处理提现申请
+async function processWithdrawal(requestId, action) {
+    let rejectReason = null;
+    
+    if (action === 'reject') {
+        rejectReason = prompt('请输入拒绝原因:');
+        if (!rejectReason) {
+            return;
+        }
+    }
+    
+    if (!confirm(`确认${action === 'approve' ? '批准' : '拒绝'}此提现申请吗？`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('../../server/api/withdrawal.php?action=process', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+                request_id: requestId,
+                action: action,
+                reject_reason: rejectReason
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert(data.message);
+            await loadUserWithdrawals(currentWithdrawalUserId);
+        } else {
+            alert('操作失败: ' + data.error);
+        }
+    } catch (error) {
+        console.error('处理失败:', error);
+        alert('操作失败，请稍后重试');
+    }
+}
+</script>

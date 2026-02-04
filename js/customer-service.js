@@ -258,15 +258,31 @@ class CustomerServiceWidget {
             
             this.showChatStatus('正在连接客服...');
             
-            // 这里应该调用API创建会话
-            // 暂时模拟
-            this.chatSession = 'session_' + Date.now();
+            // 调用API创建或获取会话
+            const response = await fetch('../../server/api/customer-service.php?action=start_session', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                credentials: 'include'
+            });
             
-            this.showChatStatus('已连接到客服，请输入您的问题');
-            this.loadChatHistory();
+            const data = await response.json();
             
-            // 开始轮询新消息
-            this.startMessagePolling();
+            if (data.success) {
+                this.chatSession = data.session_id;
+                
+                if (data.has_service) {
+                    this.showChatStatus('已连接到您的专属客服');
+                } else {
+                    this.showChatStatus('客服正在为您接入，请稍候...');
+                }
+                
+                this.loadChatHistory();
+                this.startMessagePolling();
+            } else {
+                this.showChatStatus('连接客服失败: ' + data.error);
+            }
             
         } catch (error) {
             console.error('创建聊天会话失败:', error);
@@ -281,17 +297,24 @@ class CustomerServiceWidget {
     }
     
     // 加载聊天历史
-    loadChatHistory() {
-        // 模拟聊天历史
-        const messages = [
-            {
-                type: 'service',
-                content: '您好！我是客服小助手，很高兴为您服务。请问有什么可以帮助您的？',
-                time: new Date().toLocaleTimeString('zh-CN', {hour: '2-digit', minute: '2-digit'})
-            }
-        ];
+    async loadChatHistory() {
+        if (!this.chatSession) return;
         
-        this.renderMessages(messages);
+        try {
+            const response = await fetch(`../../server/api/customer-service.php?action=messages&session_id=${this.chatSession}`, {
+                credentials: 'include'
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                this.renderMessages(data.messages);
+            } else {
+                console.error('加载聊天历史失败:', data.error);
+            }
+        } catch (error) {
+            console.error('加载聊天历史失败:', error);
+        }
     }
     
     // 渲染消息
@@ -299,18 +322,36 @@ class CustomerServiceWidget {
         const chatMessages = document.getElementById('chatMessages');
         chatMessages.innerHTML = '';
         
+        if (messages.length === 0) {
+            chatMessages.innerHTML = '<div class="service-status">暂无消息</div>';
+            return;
+        }
+        
         messages.forEach(msg => {
             const messageDiv = document.createElement('div');
-            messageDiv.className = `chat-message ${msg.type}`;
+            messageDiv.className = `chat-message ${msg.sender_type}`;
+            const time = new Date(msg.created_at).toLocaleTimeString('zh-CN', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
             messageDiv.innerHTML = `
-                <div>${msg.content}</div>
-                <div class="message-time">${msg.time}</div>
+                <div>${this.escapeHtml(msg.message)}</div>
+                <div class="message-time">${time}</div>
             `;
             chatMessages.appendChild(messageDiv);
         });
         
-        // 滚动到底部
-        chatMessages.scrollTop = chatMessages.scrollHeight;
+        // 自动滚动到底部
+        setTimeout(() => {
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }, 0);
+    }
+    
+    // HTML转义
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
     
     // 发送消息
@@ -323,29 +364,30 @@ class CustomerServiceWidget {
         }
         
         try {
-            // 添加用户消息到界面
-            const chatMessages = document.getElementById('chatMessages');
-            const messageDiv = document.createElement('div');
-            messageDiv.className = 'chat-message user';
-            messageDiv.innerHTML = `
-                <div>${message}</div>
-                <div class="message-time">${new Date().toLocaleTimeString('zh-CN', {hour: '2-digit', minute: '2-digit'})}</div>
-            `;
-            chatMessages.appendChild(messageDiv);
+            const response = await fetch('../../server/api/customer-service.php?action=send_message', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                credentials: 'include',
+                body: JSON.stringify({
+                    session_id: this.chatSession,
+                    message: message,
+                    message_type: 'text'
+                })
+            });
             
-            // 清空输入框
-            messageInput.value = '';
+            const data = await response.json();
             
-            // 滚动到底部
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-            
-            // 这里应该调用API发送消息
-            console.log('发送消息:', message);
-            
-            // 模拟客服回复（仅演示）
-            setTimeout(() => {
-                this.addServiceMessage('收到您的消息，我们会尽快为您处理。');
-            }, 2000);
+            if (data.success) {
+                // 清空输入框
+                messageInput.value = '';
+                
+                // 立即刷新消息列表
+                await this.loadChatHistory();
+            } else {
+                this.showMessage('发送失败: ' + data.error, 'error');
+            }
             
         } catch (error) {
             console.error('发送消息失败:', error);
@@ -353,19 +395,10 @@ class CustomerServiceWidget {
         }
     }
     
-    // 添加客服消息
+    // 添加客服消息（已废弃，改用loadChatHistory）
     addServiceMessage(content) {
-        const chatMessages = document.getElementById('chatMessages');
-        const messageDiv = document.createElement('div');
-        messageDiv.className = 'chat-message service';
-        messageDiv.innerHTML = `
-            <div>${content}</div>
-            <div class="message-time">${new Date().toLocaleTimeString('zh-CN', {hour: '2-digit', minute: '2-digit'})}</div>
-        `;
-        chatMessages.appendChild(messageDiv);
-        
-        // 滚动到底部
-        chatMessages.scrollTop = chatMessages.scrollHeight;
+        // 此方法已被loadChatHistory替代
+        this.loadChatHistory();
     }
     
     // 开始消息轮询
@@ -375,8 +408,9 @@ class CustomerServiceWidget {
         }
         
         this.messageInterval = setInterval(() => {
-            // 这里应该调用API检查新消息
-            // 暂时跳过
+            if (this.chatSession) {
+                this.loadChatHistory();
+            }
         }, 3000);
     }
     

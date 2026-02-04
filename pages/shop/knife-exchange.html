@@ -32,15 +32,74 @@
     <!-- 主内容区 -->
     <div class="shop-container">
         <div class="shop-header">
-            <h1 class="neon-text gold">🔪 1:1跑刀</h1>
-            <p class="neon-text">1：1哈夫币兑换服务</p>
+            <h1 class="neon-text gold">🔪 1:1跑刀提现</h1>
+            <p class="neon-text">将您的金币兑换成哈夫币（BUFF币）</p>
         </div>
 
-        <div class="shop-content">
-            <div class="coming-soon">
-                <div class="coming-soon-icon">🚧</div>
-                <h2 class="neon-text gold">功能开发中</h2>
-                <p class="neon-text">1:1跑刀功能即将上线，敬请期待！</p>
+        <div class="withdrawal-content">
+            <!-- 提现表单 -->
+            <div class="withdrawal-form-card">
+                <h3 class="neon-text">提现申请</h3>
+                
+                <div class="exchange-info">
+                    <div class="info-item">
+                        <span class="label">兑换汇率：</span>
+                        <span class="value neon-text gold" id="exchangeRate">1:10000</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">最小提现：</span>
+                        <span class="value neon-text" id="minAmount">100</span>
+                        <span class="unit">金币</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">最大提现：</span>
+                        <span class="value neon-text" id="maxAmount">10000</span>
+                        <span class="unit">金币</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="neon-text">提现金币数量</label>
+                    <input type="number" id="withdrawAmount" placeholder="请输入金币数量" min="100" max="10000" step="1">
+                    <div class="input-hint">
+                        <span class="neon-text">可用余额: <span id="availableBalance" class="gold">0</span> 金币</span>
+                    </div>
+                </div>
+
+                <div class="conversion-display">
+                    <div class="conversion-arrow">↓</div>
+                    <div class="buff-coins-display">
+                        <span class="label">将获得哈夫币：</span>
+                        <span class="value neon-text gold" id="buffCoinsDisplay">0</span>
+                    </div>
+                </div>
+
+                <button class="btn-withdraw" onclick="submitWithdrawal()">
+                    <span class="btn-icon">💰</span>
+                    <span class="btn-text">提交提现申请</span>
+                </button>
+            </div>
+
+            <!-- 提现记录 -->
+            <div class="withdrawal-records-card">
+                <h3 class="neon-text">我的提现记录</h3>
+                
+                <div class="tabs">
+                    <button class="tab-btn active" onclick="switchTab('pending')">待处理</button>
+                    <button class="tab-btn" onclick="switchTab('history')">历史记录</button>
+                </div>
+
+                <div id="pendingTab" class="tab-content active">
+                    <div id="pendingList" class="records-list">
+                        <div class="empty-state">暂无待处理的提现申请</div>
+                    </div>
+                </div>
+
+                <div id="historyTab" class="tab-content">
+                    <div id="historyList" class="records-list">
+                        <div class="empty-state">暂无历史记录</div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -140,39 +199,254 @@
             opacity: 0.8;
         }
 
-        .shop-content {
-            min-height: 400px;
+        .withdrawal-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
         }
 
-        .coming-soon {
-            text-align: center;
-            padding: 80px 20px;
+        .withdrawal-form-card,
+        .withdrawal-records-card {
+            background: rgba(0, 0, 0, 0.6);
+            border: 2px solid #ffd700;
+            border-radius: 20px;
+            padding: 30px;
         }
 
-        .coming-soon-icon {
-            font-size: 120px;
+        .withdrawal-form-card h3,
+        .withdrawal-records-card h3 {
+            font-size: 24px;
+            margin-bottom: 25px;
+            color: #ffd700;
+        }
+
+        .exchange-info {
+            background: rgba(255, 215, 0, 0.1);
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            border-radius: 12px;
+            padding: 20px;
             margin-bottom: 30px;
-            animation: pulse 2s ease-in-out infinite;
         }
 
-        .coming-soon h2 {
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255, 215, 0, 0.2);
+        }
+
+        .info-item:last-child {
+            border-bottom: none;
+        }
+
+        .info-item .label {
+            opacity: 0.8;
+        }
+
+        .info-item .value {
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .info-item .unit {
+            margin-left: 5px;
+            opacity: 0.6;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid #ffd700;
+            border-radius: 12px;
+            color: #fff;
+            font-size: 18px;
+            box-sizing: border-box;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+        }
+
+        .input-hint {
+            margin-top: 10px;
+            font-size: 14px;
+            opacity: 0.8;
+        }
+
+        .conversion-display {
+            text-align: center;
+            margin: 30px 0;
+            padding: 25px;
+            background: rgba(255, 215, 0, 0.05);
+            border: 2px dashed rgba(255, 215, 0, 0.3);
+            border-radius: 12px;
+        }
+
+        .conversion-arrow {
+            font-size: 32px;
+            color: #ffd700;
+            margin-bottom: 15px;
+        }
+
+        .buff-coins-display {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .buff-coins-display .label {
+            font-size: 14px;
+            opacity: 0.8;
+        }
+
+        .buff-coins-display .value {
             font-size: 36px;
+            font-weight: bold;
+        }
+
+        .btn-withdraw {
+            width: 100%;
+            padding: 18px;
+            background: linear-gradient(135deg, #ffd700, #ffed4e);
+            border: none;
+            border-radius: 12px;
+            color: #000;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .btn-withdraw:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(255, 215, 0, 0.4);
+        }
+
+        .btn-withdraw:active {
+            transform: translateY(0);
+        }
+
+        .btn-icon {
+            font-size: 24px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
             margin-bottom: 20px;
         }
 
-        .coming-soon p {
-            font-size: 18px;
-            opacity: 0.7;
+        .tab-btn {
+            flex: 1;
+            padding: 12px;
+            background: transparent;
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            border-radius: 8px;
+            color: #ffd700;
+            cursor: pointer;
+            transition: all 0.3s ease;
         }
 
-        @keyframes pulse {
-            0%, 100% {
-                transform: scale(1);
-                opacity: 1;
-            }
-            50% {
-                transform: scale(1.1);
-                opacity: 0.8;
+        .tab-btn:hover {
+            background: rgba(255, 215, 0, 0.1);
+        }
+
+        .tab-btn.active {
+            background: rgba(255, 215, 0, 0.2);
+            border-color: #ffd700;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .records-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .record-item {
+            padding: 15px;
+            background: rgba(255, 215, 0, 0.05);
+            border: 1px solid rgba(255, 215, 0, 0.2);
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+
+        .record-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .record-amount {
+            font-size: 18px;
+            font-weight: bold;
+            color: #ffd700;
+        }
+
+        .record-status {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .status-pending {
+            background: rgba(255, 165, 0, 0.2);
+            color: #ffa500;
+        }
+
+        .status-completed {
+            background: rgba(0, 255, 0, 0.2);
+            color: #00ff00;
+        }
+
+        .status-rejected {
+            background: rgba(255, 0, 0, 0.2);
+            color: #ff4444;
+        }
+
+        .record-details {
+            font-size: 14px;
+            opacity: 0.8;
+        }
+
+        .record-details div {
+            margin: 5px 0;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            opacity: 0.6;
+        }
+
+        @media (max-width: 768px) {
+            .withdrawal-content {
+                grid-template-columns: 1fr;
             }
         }
     </style>
@@ -180,12 +454,16 @@
     <script src="../../js/api-client.js"></script>
     <script src="../../js/effects.js"></script>
     <script>
+        let config = null;
+        let userBalance = 0;
+
         // 加载用户信息
         async function loadUserInfo() {
             try {
                 const result = await api.getUserProfile();
                 if (result.success) {
                     const user = result.user;
+                    userBalance = parseFloat(user.balance);
                     
                     // 处理头像路径
                     let avatarSrc = user.avatar || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiByeD0iNTAiIGZpbGw9IiNmZmQ3MDAiLz4KPHN2ZyB4PSIyNSIgeT0iMjAiIHdpZHRoPSI1MCIgaGVpZ2h0PSI2MCI+CjxjaXJjbGUgY3g9IjI1IiBjeT0iMjAiIHI9IjE1IiBmaWxsPSIjMTExIi8+CjxlbGxpcHNlIGN4PSIyNSIgY3k9IjUwIiByeD0iMjAiIHJ5PSIxNSIgZmlsbD0iIzExMSIvPgo8L3N2Zz4KPC9zdmc+';
@@ -195,11 +473,211 @@
                     
                     document.getElementById('userAvatar').src = avatarSrc;
                     document.getElementById('userNickname').textContent = user.nickname;
-                    document.getElementById('userBalance').textContent = `余额: ${parseFloat(user.balance).toFixed(2)}`;
+                    document.getElementById('userBalance').textContent = `余额: ${userBalance.toFixed(2)}`;
+                    document.getElementById('availableBalance').textContent = userBalance.toFixed(2);
                 }
             } catch (error) {
                 console.error('加载用户信息失败:', error);
             }
+        }
+
+        // 加载提现配置
+        async function loadConfig() {
+            try {
+                const response = await fetch('../../server/api/withdrawal.php?action=config', {
+                    credentials: 'include'
+                });
+                const data = await response.json();
+                
+                if (data.success && data.config) {
+                    config = data.config;
+                    // 固定显示为 1:10000
+                    document.getElementById('exchangeRate').textContent = '1:10000';
+                    document.getElementById('minAmount').textContent = config.min_amount || 100;
+                    document.getElementById('maxAmount').textContent = config.max_amount || 10000;
+                    
+                    const input = document.getElementById('withdrawAmount');
+                    input.min = config.min_amount || 100;
+                    input.max = config.max_amount || 10000;
+                } else {
+                    console.error('配置加载失败:', data.error);
+                    // 使用默认配置
+                    config = {
+                        exchange_rate: 10000,
+                        min_amount: 100,
+                        max_amount: 10000,
+                        is_enabled: 1
+                    };
+                    document.getElementById('exchangeRate').textContent = '1:10000';
+                    document.getElementById('minAmount').textContent = '100';
+                    document.getElementById('maxAmount').textContent = '10000';
+                }
+            } catch (error) {
+                console.error('加载配置失败:', error);
+                // 使用默认配置
+                config = {
+                    exchange_rate: 10000,
+                    min_amount: 100,
+                    max_amount: 10000,
+                    is_enabled: 1
+                };
+                document.getElementById('exchangeRate').textContent = '1:10000';
+                document.getElementById('minAmount').textContent = '100';
+                document.getElementById('maxAmount').textContent = '10000';
+            }
+        }
+
+        // 计算哈夫币
+        document.getElementById('withdrawAmount').addEventListener('input', function() {
+            const amount = parseFloat(this.value) || 0;
+            const buffCoins = amount * 10000; // 固定汇率 1:10000
+            document.getElementById('buffCoinsDisplay').textContent = buffCoins.toFixed(0);
+        });
+
+        // 提交提现申请
+        async function submitWithdrawal() {
+            const amount = parseFloat(document.getElementById('withdrawAmount').value);
+            
+            if (!amount) {
+                alert('请输入提现金额');
+                return;
+            }
+            
+            const minAmount = config ? config.min_amount : 100;
+            const maxAmount = config ? config.max_amount : 10000;
+            
+            if (amount < minAmount) {
+                alert(`提现金额不能少于 ${minAmount} 金币`);
+                return;
+            }
+            
+            if (amount > maxAmount) {
+                alert(`提现金额不能超过 ${maxAmount} 金币`);
+                return;
+            }
+            
+            if (amount > userBalance) {
+                alert('余额不足');
+                return;
+            }
+            
+            if (!confirm(`确认提现 ${amount} 金币吗？\n将获得 ${(amount * 10000).toFixed(0)} 哈夫币`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('../../server/api/withdrawal.php?action=submit', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        amount: amount
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('提现申请已提交！');
+                    document.getElementById('withdrawAmount').value = '';
+                    document.getElementById('buffCoinsDisplay').textContent = '0';
+                    loadUserInfo();
+                    loadRecords();
+                } else {
+                    alert('提现失败: ' + data.error);
+                }
+            } catch (error) {
+                console.error('提现失败:', error);
+                alert('提现失败，请稍后重试');
+            }
+        }
+
+        // 切换标签
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById(tab + 'Tab').classList.add('active');
+        }
+
+        // 加载提现记录
+        async function loadRecords() {
+            try {
+                // 加载待处理的申请
+                const pendingResponse = await fetch('../../server/api/withdrawal.php?action=user_requests', {
+                    credentials: 'include'
+                });
+                const pendingData = await pendingResponse.json();
+                
+                if (pendingData.success) {
+                    renderPendingRecords(pendingData.requests);
+                }
+                
+                // 加载历史记录
+                const historyResponse = await fetch('../../server/api/withdrawal.php?action=user_history', {
+                    credentials: 'include'
+                });
+                const historyData = await historyResponse.json();
+                
+                if (historyData.success) {
+                    renderHistoryRecords(historyData.history);
+                }
+            } catch (error) {
+                console.error('加载记录失败:', error);
+            }
+        }
+
+        // 渲染待处理记录
+        function renderPendingRecords(records) {
+            const container = document.getElementById('pendingList');
+            
+            if (records.length === 0) {
+                container.innerHTML = '<div class="empty-state">暂无待处理的提现申请</div>';
+                return;
+            }
+            
+            container.innerHTML = records.map(record => `
+                <div class="record-item">
+                    <div class="record-header">
+                        <div class="record-amount">${record.amount} 金币 → ${record.buff_coins} 哈夫币</div>
+                        <div class="record-status status-${record.status}">
+                            ${record.status === 'pending' ? '待处理' : '处理中'}
+                        </div>
+                    </div>
+                    <div class="record-details">
+                        <div>申请时间: ${new Date(record.created_at).toLocaleString()}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 渲染历史记录
+        function renderHistoryRecords(records) {
+            const container = document.getElementById('historyList');
+            
+            if (records.length === 0) {
+                container.innerHTML = '<div class="empty-state">暂无历史记录</div>';
+                return;
+            }
+            
+            container.innerHTML = records.map(record => `
+                <div class="record-item">
+                    <div class="record-header">
+                        <div class="record-amount">${record.amount} 金币 → ${record.buff_coins} 哈夫币</div>
+                        <div class="record-status status-${record.status}">
+                            ${record.status === 'completed' ? '已完成' : '已拒绝'}
+                        </div>
+                    </div>
+                    <div class="record-details">
+                        <div>申请时间: ${new Date(record.created_at).toLocaleString()}</div>
+                        <div>处理时间: ${new Date(record.processed_at).toLocaleString()}</div>
+                        ${record.reject_reason ? `<div style="color: #ff4444;">拒绝原因: ${record.reject_reason}</div>` : ''}
+                    </div>
+                </div>
+            `).join('');
         }
 
         function goToHome() {
@@ -209,6 +687,8 @@
         // 页面加载时执行
         document.addEventListener('DOMContentLoaded', function() {
             loadUserInfo();
+            loadConfig();
+            loadRecords();
         });
     </script>
 </body>

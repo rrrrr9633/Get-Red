@@ -339,3 +339,60 @@ INSERT INTO users (username, password, nickname, user_type, secret_key, balance,
 VALUES ('admin', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', '默认超级管理员', 'super_admin', 'admin', 9999999.00, 'active', NOW());
 
 SELECT '数据库初始化完成！默认超级管理员已创建（用户名: admin, 密码: password, 身份码: admin）' AS message;
+
+
+-- ========================================
+-- 提现系统相关表
+-- ========================================
+
+-- 23. 跑刀提现申请表（待处理的提现请求）
+CREATE TABLE IF NOT EXISTS withdrawal_requests (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    amount DECIMAL(10,2) NOT NULL COMMENT '提现金币数量',
+    buff_coins DECIMAL(10,2) NOT NULL COMMENT '转换后的哈夫币数量（固定汇率1:10000）',
+    status ENUM('pending', 'processing', 'completed', 'rejected') DEFAULT 'pending' COMMENT '状态：待处理、处理中、已完成、已拒绝',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '申请时间',
+    processed_at TIMESTAMP NULL COMMENT '处理时间',
+    processed_by INT NULL COMMENT '处理人ID',
+    reject_reason VARCHAR(255) NULL COMMENT '拒绝原因',
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_user_id (user_id),
+    INDEX idx_status (status),
+    INDEX idx_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='跑刀提现申请表（只做跑刀提现，金币换哈夫币）';
+
+-- 24. 跑刀提现历史记录表（已处理的提现记录）
+CREATE TABLE IF NOT EXISTS withdrawal_history (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    amount DECIMAL(10,2) NOT NULL COMMENT '提现金币数量',
+    buff_coins DECIMAL(10,2) NOT NULL COMMENT '转换后的哈夫币数量（固定汇率1:10000）',
+    status ENUM('completed', 'rejected') NOT NULL COMMENT '最终状态',
+    created_at TIMESTAMP NOT NULL COMMENT '申请时间',
+    processed_at TIMESTAMP NOT NULL COMMENT '处理时间',
+    processed_by INT NULL COMMENT '处理人ID',
+    reject_reason VARCHAR(255) NULL COMMENT '拒绝原因',
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_user_id (user_id),
+    INDEX idx_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='跑刀提现历史记录表';
+
+-- 25. 跑刀提现配置表
+CREATE TABLE IF NOT EXISTS withdrawal_config (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    config_key VARCHAR(50) NOT NULL UNIQUE COMMENT '配置键',
+    config_value VARCHAR(255) NOT NULL COMMENT '配置值',
+    description VARCHAR(255) COMMENT '配置说明',
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='跑刀提现配置表（固定汇率1:10000）';
+
+-- 插入跑刀提现配置
+INSERT INTO withdrawal_config (config_key, config_value, description) VALUES
+('exchange_rate', '10000', '兑换汇率（1金币=10000哈夫币，固定不变）'),
+('min_amount', '100', '最小提现金币数'),
+('max_amount', '10000', '最大提现金币数'),
+('is_enabled', '1', '是否启用提现功能（1=启用，0=禁用）')
+ON DUPLICATE KEY UPDATE config_key=config_key;
+
+SELECT '提现系统表创建完成！' AS message;
