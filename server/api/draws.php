@@ -113,6 +113,18 @@ function performLuckyDraw($userId, $count = 1, $page = 'lucky1.html') {
         $stmt = $pdo->prepare("INSERT INTO lottery_records (user_id, game_type, cost, reward, result, page) VALUES (?, 'lucky_drop', ?, ?, ?, ?)");
         $stmt->execute([$userId, $cost, $totalValue, json_encode($results, JSON_UNESCAPED_UNICODE), $page]);
         
+        // 检查是否抽中传说物品，如果是则记录到限时掉落中奖列表
+        require_once 'limited-drop.php';
+        $stmt = $pdo->prepare("SELECT username FROM users WHERE id = ?");
+        $stmt->execute([$userId]);
+        $username = $stmt->fetchColumn() ?: '未知用户';
+        
+        foreach ($results as $prize) {
+            if (isset($prize['rarity']) && $prize['rarity'] === 'legendary') {
+                recordWinner($page, $userId, $username, $prize['name'], $prize['value']);
+            }
+        }
+        
         // 提交事务
         $pdo->commit();
         

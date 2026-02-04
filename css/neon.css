@@ -1,175 +1,94 @@
-/* 霓虹文字效果 */
+/* 简化的霓虹效果 - 草绿色和红色配色 */
+
+/* 基础霓虹文字效果 */
 .neon-text {
-    text-shadow: 
-        0 0 5px currentColor,
-        0 0 10px currentColor,
-        0 0 20px currentColor,
-        0 0 40px currentColor;
-    animation: neonPulse 2s ease-in-out infinite alternate;
+    color: var(--primary-green);
 }
 
-@keyframes neonPulse {
-    from {
-        text-shadow: 
-            0 0 5px currentColor,
-            0 0 10px currentColor,
-            0 0 20px currentColor,
-            0 0 40px currentColor;
-    }
-    to {
-        text-shadow: 
-            0 0 2px currentColor,
-            0 0 5px currentColor,
-            0 0 10px currentColor,
-            0 0 20px currentColor;
-    }
+.neon-text.gold,
+.neon-text.green {
+    color: var(--primary-green);
 }
 
-/* 不同颜色的霓虹效果 */
-.neon-text.gold {
-    color: #ffd700;
-    text-shadow: 
-        0 0 5px #ffd700,
-        0 0 10px #ffd700,
-        0 0 20px #ffd700,
-        0 0 40px #ffd700,
-        0 0 80px #ffd700;
+.neon-text.red {
+    color: var(--primary-red);
 }
 
 .neon-pink {
-    color: #ff1493;
-    text-shadow: 
-        0 0 5px #ff1493,
-        0 0 10px #ff1493,
-        0 0 20px #ff1493,
-        0 0 40px #ff1493;
+    color: var(--primary-red-light);
 }
 
 .neon-blue {
-    color: #00ffff;
-    text-shadow: 
-        0 0 5px #00ffff,
-        0 0 10px #00ffff,
-        0 0 20px #00ffff,
-        0 0 40px #00ffff;
+    color: var(--primary-green-light);
 }
 
 .neon-purple {
-    color: #8a2be2;
-    text-shadow: 
-        0 0 5px #8a2be2,
-        0 0 10px #8a2be2,
-        0 0 20px #8a2be2,
-        0 0 40px #8a2be2;
+    color: var(--primary-green);
 }
 
-/* 霓虹按钮效果 */
+/* 霓虹按钮效果 - 简化版 */
 .neon-btn {
-    background: linear-gradient(45deg, #ffd700, #ffed4e);
+    background: var(--primary-green);
     border: none;
     color: #000;
     position: relative;
     overflow: hidden;
-    box-shadow: 
-        0 0 20px rgba(255, 215, 0, 0.5),
-        inset 0 0 20px rgba(255, 255, 255, 0.2);
-    transition: all 0.3s ease;
-}
-
-.neon-btn::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
-    transition: left 0.6s ease;
-}
-
-.neon-btn:hover::before {
-    left: 100%;
+    box-shadow: var(--shadow-green);
+    transition: all 0.2s ease;
+    font-weight: 600;
 }
 
 .neon-btn:hover {
-    transform: translateY(-3px);
-    box-shadow: 
-        0 5px 25px rgba(255, 215, 0, 0.6),
-        0 0 50px rgba(255, 215, 0, 0.3),
-        inset 0 0 30px rgba(255, 255, 255, 0.3);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-green-hover);
+    background: var(--primary-green-light);
 }
 
 .neon-btn:active {
-    transform: translateY(-1px);
+    transform: translateY(0);
 }
 
 .neon-btn span {
     position: relative;
     z-index: 2;
-    font-weight: bold;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 /* 不同颜色的霓虹按钮 */
-.neon-btn.blue {
-    background: linear-gradient(45deg, #00ffff, #40e0d0);
+.neon-btn.red {
+    background: var(--primary-red);
+    color: #fff;
+    box-shadow: var(--shadow-red);
 }
 
-.neon-btn.blue:hover {
-    box-shadow: 
-        0 5px 25px rgba(0, 255, 255, 0.6),
-        0 0 50px rgba(0, 255, 255, 0.3),
-        inset 0 0 30px rgba(255, 255, 255, 0.3);
+.neon-btn.red:hover {
+    background: var(--primary-red-light);
+    box-shadow: var(--shadow-red-hover);
 }
 
-.neon-btn.purple {
-    background: linear-gradient(45deg, #8a2be2, #da70d6);
-}
-
-.neon-btn.purple:hover {
-    box-shadow: 
-        0 5px 25px rgba(138, 43, 226, 0.6),
-        0 0 50px rgba(138, 43, 226, 0.3),
-        inset 0 0 30px rgba(255, 255, 255, 0.3);
-}
-
+.neon-btn.blue,
+.neon-btn.purple,
 .neon-btn.pink {
-    background: linear-gradient(45deg, #ff1493, #ff69b4);
+    background: var(--primary-green);
+    color: #000;
+    box-shadow: var(--shadow-green);
 }
 
+.neon-btn.blue:hover,
+.neon-btn.purple:hover,
 .neon-btn.pink:hover {
-    box-shadow: 
-        0 5px 25px rgba(255, 20, 147, 0.6),
-        0 0 50px rgba(255, 20, 147, 0.3),
-        inset 0 0 30px rgba(255, 255, 255, 0.3);
+    background: var(--primary-green-light);
+    box-shadow: var(--shadow-green-hover);
 }
 
-/* 霓虹边框效果 */
+/* 简化的边框效果 */
 .neon-border-box {
     position: relative;
-    border-radius: 15px;
+    border-radius: 12px;
     overflow: hidden;
+    border: 1px solid var(--border-green);
 }
 
-.neon-border-box::before {
-    content: '';
-    position: absolute;
-    top: -2px;
-    left: -2px;
-    right: -2px;
-    bottom: -2px;
-    background: linear-gradient(45deg, #ff00ff, #00ffff, #ffff00, #ff00ff);
-    border-radius: 17px;
-    z-index: -1;
-    animation: rotateBorder 3s linear infinite;
-}
-
-@keyframes rotateBorder {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-/* 荧光涟漪效果 */
+/* 涟漪效果 - 保留但简化 */
 .ripple-effect {
     position: relative;
     overflow: hidden;
@@ -182,81 +101,13 @@
     left: 50%;
     width: 0;
     height: 0;
-    background: radial-gradient(circle, rgba(255, 255, 255, 0.3) 0%, transparent 70%);
+    background: radial-gradient(circle, var(--primary-green-glow) 0%, transparent 70%);
     border-radius: 50%;
     transform: translate(-50%, -50%);
-    transition: all 0.6s ease;
+    transition: all 0.5s ease;
 }
 
 .ripple-effect:hover::after {
-    width: 300px;
-    height: 300px;
-}
-
-/* 闪烁效果 */
-@keyframes flicker {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.8; }
-}
-
-.flicker {
-    animation: flicker 1.5s ease-in-out infinite;
-}
-
-/* 霓虹光晕效果 */
-.neon-glow {
-    position: relative;
-}
-
-.neon-glow::after {
-    content: '';
-    position: absolute;
-    top: -10px;
-    left: -10px;
-    right: -10px;
-    bottom: -10px;
-    background: inherit;
-    border-radius: inherit;
-    filter: blur(20px);
-    opacity: 0.7;
-    z-index: -1;
-    animation: glowPulse 2s ease-in-out infinite;
-}
-
-@keyframes glowPulse {
-    0%, 100% { transform: scale(1); opacity: 0.7; }
-    50% { transform: scale(1.05); opacity: 0.9; }
-}
-
-/* 彩虹文字效果 */
-.rainbow-text {
-    background: linear-gradient(45deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #9400d3);
-    background-size: 400% 400%;
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-    animation: rainbowAnimation 3s ease-in-out infinite;
-}
-
-@keyframes rainbowAnimation {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
-}
-
-/* 电流效果 */
-.electric-border {
-    position: relative;
-    border: 2px solid transparent;
-    background: linear-gradient(45deg, #000, #111) padding-box,
-                linear-gradient(45deg, #ff00ff, #00ffff) border-box;
-    animation: electricPulse 2s linear infinite;
-}
-
-@keyframes electricPulse {
-    0% { box-shadow: 0 0 5px #ff00ff; }
-    25% { box-shadow: 0 0 10px #00ffff, 0 0 20px #00ffff; }
-    50% { box-shadow: 0 0 15px #ffff00, 0 0 30px #ffff00; }
-    75% { box-shadow: 0 0 10px #ff00ff, 0 0 20px #ff00ff; }
-    100% { box-shadow: 0 0 5px #ff00ff; }
+    width: 200px;
+    height: 200px;
 }

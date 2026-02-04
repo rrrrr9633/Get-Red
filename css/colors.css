@@ -1,0 +1,63 @@
+/* 配色方案 - 草绿色和红色 */
+
+:root {
+    /* 主色调 - 草绿色 */
+    --primary-green: #4ade80;        /* 草绿色 - 主要强调色 */
+    --primary-green-light: #6ee7a7;  /* 浅草绿 */
+    --primary-green-dark: #22c55e;   /* 深草绿 */
+    --primary-green-glow: rgba(74, 222, 128, 0.3);
+    
+    /* 次要色 - 红色 */
+    --primary-red: #ef4444;          /* 红色 - 警告/重要 */
+    --primary-red-light: #f87171;    /* 浅红 */
+    --primary-red-dark: #dc2626;     /* 深红 */
+    --primary-red-glow: rgba(239, 68, 68, 0.3);
+    
+    /* 背景色 */
+    --bg-primary: #0f1419;           /* 主背景 */
+    --bg-secondary: #1a1f2e;         /* 次级背景 */
+    --bg-tertiary: #252b3a;          /* 三级背景 */
+    
+    /* 文字色 */
+    --text-primary: #e0e0e0;         /* 主要文字 */
+    --text-secondary: #a0a0a0;       /* 次要文字 */
+    --text-muted: #707070;           /* 弱化文字 */
+    
+    /* 边框色 */
+    --border-green: rgba(74, 222, 128, 0.3);
+    --border-green-hover: rgba(74, 222, 128, 0.6);
+    --border-red: rgba(239, 68, 68, 0.3);
+    --border-red-hover: rgba(239, 68, 68, 0.6);
+    
+    /* 阴影 */
+    --shadow-green: 0 4px 12px rgba(74, 222, 128, 0.2);
+    --shadow-green-hover: 0 8px 24px rgba(74, 222, 128, 0.3);
+    --shadow-red: 0 4px 12px rgba(239, 68, 68, 0.2);
+    --shadow-red-hover: 0 8px 24px rgba(239, 68, 68, 0.3);
+    --shadow-default: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* 配色使用规范 */
+
+/* 草绿色用于：
+   - 主要标题和品牌
+   - 成功状态
+   - 余额显示
+   - 主要按钮
+   - 积极的交互元素
+*/
+
+/* 红色用于：
+   - 价格和消耗
+   - 警告和错误
+   - 删除/退出操作
+   - 重要提示
+   - 限时/紧急信息
+*/
+
+/* 通用文字色：
+   - 标题：草绿色
+   - 正文：白色/灰色
+   - 次要信息：灰色
+   - 价格/消耗：红色
+*/

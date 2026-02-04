@@ -546,6 +546,17 @@ function deleteUser() {
         $stmt = $db->prepare("DELETE FROM users WHERE id = ?");
         $stmt->execute([$id]);
         
+        // 检查是否删除的是超级管理员
+        $stmt = $db->prepare("SELECT COUNT(*) as count FROM users WHERE user_type = 'super_admin' AND status = 'active'");
+        $stmt->execute();
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        // 如果没有活跃的超级管理员了，重新激活默认admin账户
+        if ($result['count'] == 0) {
+            $stmt = $db->prepare("UPDATE users SET status = 'active' WHERE username = 'admin' AND user_type = 'super_admin' AND nickname = '默认超级管理员'");
+            $stmt->execute();
+        }
+        
         // 提交事务
         $db->commit();
         
@@ -856,20 +867,27 @@ function createLuckyPage() {
             );
         }
         
-        // 如果有图片，添加背景图片样式
+        // 如果有图片，修改中心展示图片
         if ($imageFileName) {
-            // 添加自定义样式到头部
-            $customStyle = "<style>\n";
-            $customStyle .= ".game-container {\n";
-            $customStyle .= "    background-image: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url('../images/{$imageFileName}');\n";
-            $customStyle .= "    background-size: cover;\n";
-            $customStyle .= "    background-position: center;\n";
-            $customStyle .= "    background-repeat: no-repeat;\n";
-            $customStyle .= "}\n";
-            $customStyle .= "</style>\n";
+            // 创建图片HTML，使用适合展示区的样式
+            $showcaseImageHtml = '<img src="../images/' . $imageFileName . '" alt="' . htmlspecialchars($displayName) . '" style="max-width: 180px; max-height: 180px; object-fit: contain; border-radius: 15px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); filter: drop-shadow(0 10px 30px rgba(0, 0, 0, 0.5));">';
+            
+            // 替换展示区的emoji图标为图片
+            $newContent = str_replace(
+                '<div class="showcase-icon">🎁</div>',
+                '<div class="showcase-icon">' . $showcaseImageHtml . '</div>',
+                $newContent
+            );
+            
+            // 同时调整showcase-icon的CSS以适应图片
+            $imageStyle = "<style>\n";
+            $imageStyle .= ".showcase-icon img {\n";
+            $imageStyle .= "    animation: float 3s ease-in-out infinite;\n";
+            $imageStyle .= "}\n";
+            $imageStyle .= "</style>\n";
             
             // 在</head>前插入样式
-            $newContent = str_replace('</head>', $customStyle . '</head>', $newContent);
+            $newContent = str_replace('</head>', $imageStyle . '</head>', $newContent);
         }
         
         // 调整CSS路径（模板在根目录，新文件在pages目录）

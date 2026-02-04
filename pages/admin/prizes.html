@@ -303,6 +303,7 @@
         .modal-header {
             text-align: center;
             margin-bottom: 20px;
+            position: relative;
         }
 
         .modal-header h2 {
@@ -658,6 +659,9 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2 id="modalTitle">添加奖品</h2>
+                <a href="../../luckytemp.html" target="_blank" style="position: absolute; top: 15px; right: 15px; font-size: 11px; color: #666; text-decoration: none; padding: 4px 8px; border: 1px solid #444; border-radius: 4px; background: rgba(0,0,0,0.3); transition: all 0.2s;" onmouseover="this.style.color='#4ade80'; this.style.borderColor='#4ade80';" onmouseout="this.style.color='#666'; this.style.borderColor='#444';" title="开发人员预览模板页面">
+                    🔧 预览模板
+                </a>
             </div>
             
             <form id="prizeForm">
@@ -1532,6 +1536,20 @@
                 </div>
             </div>
 
+            <div class="form-group" style="margin-top: 30px;">
+                <label style="font-size: 18px; color: #ffd700; margin-bottom: 15px; display: block;">
+                    📋 本次限时掉落中奖记录
+                </label>
+                <div id="winnersListContainer" style="max-height: 300px; overflow-y: auto; background: rgba(0,0,0,0.5); border-radius: 10px; padding: 15px;">
+                    <div id="winnersList" style="display: grid; gap: 10px;">
+                        <!-- 中奖记录将动态加载 -->
+                    </div>
+                </div>
+                <p style="font-size: 12px; color: #999; margin-top: 10px;">
+                    💡 提示：开启新的限时掉落时，上次的中奖记录将自动清空
+                </p>
+            </div>
+
             <div class="modal-actions">
                 <button type="button" class="btn-primary" onclick="saveLimitedDropConfig()">保存配置</button>
                 <button type="button" class="btn-secondary" onclick="closeLimitedDropModal()">取消</button>
@@ -1672,11 +1690,44 @@
                 await loadLimitedDropConfig();
                 // 获取传说级奖品
                 await loadLegendaryPrizes();
+                // 加载中奖用户列表
+                await loadWinnersList();
                 
                 document.getElementById('limitedDropModal').style.display = 'block';
             } catch (error) {
                 console.error('打开限时掉落配置失败:', error);
                 alert('打开配置失败，请重试');
+            }
+        }
+        
+        // 加载中奖用户列表
+        async function loadWinnersList() {
+            try {
+                const response = await fetch(`../../server/api/limited-drop.php?action=get_winners&page=${currentPage}`);
+                const data = await response.json();
+                
+                const container = document.getElementById('winnersList');
+                
+                if (data.success && data.winners && data.winners.length > 0) {
+                    container.innerHTML = data.winners.map((winner, index) => `
+                        <div style="background: rgba(255,215,0,0.1); border: 1px solid rgba(255,215,0,0.3); border-radius: 8px; padding: 12px; display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <span style="color: #ffd700; font-weight: bold;">#${index + 1}</span>
+                                <span style="color: #fff; margin-left: 10px;">${winner.username}</span>
+                                <span style="color: #4ade80; margin-left: 10px;">获得: ${winner.prize_name}</span>
+                            </div>
+                            <div style="text-align: right;">
+                                <div style="color: #ffd700; font-weight: bold;">${winner.prize_value}</div>
+                                <div style="color: #999; font-size: 12px;">${winner.win_time}</div>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    container.innerHTML = '<div style="text-align: center; color: #666; padding: 20px;">暂无中奖记录</div>';
+                }
+            } catch (error) {
+                console.error('加载中奖记录失败:', error);
+                document.getElementById('winnersList').innerHTML = '<div style="text-align: center; color: #ef4444; padding: 20px;">加载失败</div>';
             }
         }
 
@@ -1786,6 +1837,7 @@
         async function saveLimitedDropConfig() {
             try {
                 const configData = {
+                    action: 'update_config', // 添加 action 字段
                     page: currentPage, // 添加页面参数
                     is_active: document.getElementById('limitedDropEnabled').checked ? 1 : 0,
                     window_title: document.getElementById('windowTitle').value || '限时掉落，爆率提升',
@@ -1794,7 +1846,7 @@
                     selected_prize_ids: limitedDropConfig.selected_prize_ids || []
                 };
                 
-                const response = await fetch('../../server/api/limited-drop.php?action=update_config', {
+                const response = await fetch('../../server/api/limited-drop.php', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'

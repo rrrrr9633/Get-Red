@@ -1,6 +1,6 @@
 /* 抽奖页面样式 */
 #lottery-page {
-    background: radial-gradient(ellipse at center, #1a0a2e 0%, #16213e 50%, #0f3460 100%);
+    background: var(--bg-primary);
     min-height: 100vh;
     display: flex;
     justify-content: center;
@@ -8,59 +8,17 @@
     position: relative;
 }
 
-#lottery-page::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: 
-        radial-gradient(circle at 20% 20%, rgba(255, 0, 255, 0.1) 0%, transparent 50%),
-        radial-gradient(circle at 80% 80%, rgba(0, 255, 255, 0.1) 0%, transparent 50%),
-        radial-gradient(circle at 40% 60%, rgba(255, 255, 0, 0.05) 0%, transparent 50%);
-    animation: backgroundShift 10s ease-in-out infinite;
-}
-
-@keyframes backgroundShift {
-    0%, 100% { transform: scale(1) rotate(0deg); }
-    50% { transform: scale(1.1) rotate(5deg); }
-}
-
 .lottery-container {
     text-align: center;
-    background: rgba(20, 20, 40, 0.9);
+    background: var(--bg-secondary);
     padding: 40px;
-    border-radius: 25px;
-    box-shadow: 
-        0 0 50px rgba(255, 215, 0, 0.3),
-        0 0 100px rgba(255, 0, 255, 0.2),
-        inset 0 0 50px rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(15px);
-    border: 3px solid transparent;
-    background-clip: padding-box;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    border: 1px solid var(--border-green);
     position: relative;
     z-index: 10;
     max-width: 600px;
     width: 90vw;
-}
-
-.lottery-container::before {
-    content: '';
-    position: absolute;
-    top: -3px;
-    left: -3px;
-    right: -3px;
-    bottom: -3px;
-    background: linear-gradient(45deg, #ffd700, #ff00ff, #00ffff, #ffd700);
-    border-radius: 28px;
-    z-index: -1;
-    animation: borderRotation 4s linear infinite;
-}
-
-@keyframes borderRotation {
-    0% { transform: rotate(0deg); filter: hue-rotate(0deg); }
-    100% { transform: rotate(360deg); filter: hue-rotate(360deg); }
 }
 
 .back-btn {
@@ -68,29 +26,25 @@
     top: 20px;
     left: 20px;
     padding: 12px 20px;
-    background: rgba(255, 255, 255, 0.1);
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    border-radius: 10px;
-    color: #fff;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-green);
+    border-radius: 8px;
+    color: var(--primary-green);
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
     font-size: 16px;
-    backdrop-filter: blur(10px);
 }
 
 .back-btn:hover {
-    background: rgba(255, 255, 255, 0.2);
-    transform: translateX(-5px);
-    box-shadow: 0 5px 15px rgba(255, 255, 255, 0.2);
+    background: var(--bg-tertiary);
+    transform: translateX(-2px);
+    border-color: var(--border-green-hover);
 }
 
 .lottery-container h2 {
     font-size: 36px;
     margin-bottom: 40px;
-    text-shadow: 
-        0 0 10px #ffd700,
-        0 0 20px #ffd700,
-        0 0 30px #ffd700;
+    color: var(--primary-green);
 }
 
 /* 老虎机样式 */
@@ -103,69 +57,23 @@
     justify-content: center;
     gap: 20px;
     margin-bottom: 40px;
-    background: rgba(0, 0, 0, 0.5);
+    background: rgba(0, 0, 0, 0.3);
     padding: 30px;
-    border-radius: 20px;
-    border: 3px solid #ffd700;
-    box-shadow: 
-        0 0 30px rgba(255, 215, 0, 0.5),
-        inset 0 0 30px rgba(0, 0, 0, 0.5);
+    border-radius: 12px;
+    border: 2px solid var(--border-green);
     position: relative;
     overflow: hidden;
-}
-
-.slot-display::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: 
-        repeating-linear-gradient(
-            45deg,
-            transparent,
-            transparent 10px,
-            rgba(255, 215, 0, 0.05) 10px,
-            rgba(255, 215, 0, 0.05) 20px
-        );
-    animation: diagonalMove 3s linear infinite;
-}
-
-@keyframes diagonalMove {
-    0% { transform: translateX(-50%) translateY(-50%); }
-    100% { transform: translateX(-30%) translateY(-30%); }
 }
 
 .slot-reel {
     width: 120px;
     height: 120px;
-    background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
-    border: 4px solid #ffd700;
-    border-radius: 15px;
+    background: var(--bg-secondary);
+    border: 2px solid var(--border-green);
+    border-radius: 8px;
     overflow: hidden;
     position: relative;
-    box-shadow: 
-        0 10px 20px rgba(0, 0, 0, 0.5),
-        inset 0 0 20px rgba(255, 215, 0, 0.1);
-}
-
-.slot-reel::before {
-    content: '';
-    position: absolute;
-    top: -2px;
-    left: -2px;
-    right: -2px;
-    bottom: -2px;
-    background: linear-gradient(45deg, #ffd700, #ffed4e, #ffd700);
-    border-radius: 17px;
-    z-index: -1;
-    animation: reelGlow 2s ease-in-out infinite;
-}
-
-@keyframes reelGlow {
-    0%, 100% { box-shadow: 0 0 10px rgba(255, 215, 0, 0.5); }
-    50% { box-shadow: 0 0 25px rgba(255, 215, 0, 0.8); }
+    box-shadow: var(--shadow-default);
 }
 
 .slot-item {
@@ -175,8 +83,8 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(145deg, #333, #222);
-    border-bottom: 1px solid rgba(255, 215, 0, 0.3);
+    background: var(--bg-tertiary);
+    border-bottom: 1px solid var(--border-green);
     transition: all 0.1s ease;
     position: relative;
     padding: 5px;
@@ -184,22 +92,6 @@
 
 .slot-item:last-child {
     border-bottom: none;
-}
-
-.slot-item::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-    opacity: 0;
-    transition: opacity 0.3s ease;
-}
-
-.slot-item:hover::before {
-    opacity: 1;
 }
 
 /* 奖项图片区域 */
@@ -230,12 +122,10 @@
     color: rgba(255, 255, 255, 0.5);
 }
 
-/* 奖项名称 */
 .prize-name {
     font-size: 12px;
-    color: #ffd700;
+    color: var(--primary-green);
     text-align: center;
-    text-shadow: 0 0 5px #ffd700;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -281,24 +171,13 @@
 
 /* 中奖效果 */
 .slot-reel.winning {
-    animation: winningPulse 1s ease-in-out infinite;
-    border-color: #ff00ff;
-    box-shadow: 
-        0 0 30px rgba(255, 0, 255, 0.8),
-        0 0 60px rgba(255, 0, 255, 0.4);
-}
-
-@keyframes winningPulse {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.05); }
+    border-color: var(--primary-green);
+    box-shadow: var(--shadow-green-hover);
 }
 
 .slot-reel.winning .slot-item {
-    background: linear-gradient(145deg, #444, #333);
-    color: #ff00ff;
-    text-shadow: 
-        0 0 10px #ff00ff,
-        0 0 20px #ff00ff;
+    background: var(--bg-tertiary);
+    color: var(--primary-green);
 }
 
 /* 开始按钮 */
@@ -321,10 +200,8 @@
 }
 
 .spin-btn:not(:disabled):hover {
-    transform: translateY(-5px);
-    box-shadow: 
-        0 10px 30px rgba(255, 20, 147, 0.6),
-        0 0 60px rgba(255, 20, 147, 0.3);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-green-hover);
 }
 
 .spin-btn:not(:disabled):active {
@@ -346,17 +223,8 @@
 }
 
 .result-display.win {
-    background: rgba(255, 0, 255, 0.1);
-    border-color: #ff00ff;
-    animation: resultWin 2s ease-in-out;
-}
-
-@keyframes resultWin {
-    0% { transform: scale(1); }
-    25% { transform: scale(1.05); }
-    50% { transform: scale(1.1); }
-    75% { transform: scale(1.05); }
-    100% { transform: scale(1); }
+    background: var(--primary-green-glow);
+    border-color: var(--primary-green);
 }
 
 .result-display.lose {

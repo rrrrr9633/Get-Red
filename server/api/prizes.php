@@ -260,6 +260,28 @@ function drawPrizes($gameType, $count, $userId, $page = '') {
             ]);
         }
         
+        // 检查是否抽中传说物品，如果是则记录到限时掉落中奖列表
+        if ($page) {
+            // 设置标志，防止 limited-drop.php 执行请求处理逻辑
+            define('INCLUDED_FROM_PRIZES', true);
+            require_once 'limited-drop.php';
+            
+            // 获取用户名
+            $stmt = $pdo->prepare("SELECT username FROM users WHERE id = ?");
+            $stmt->execute([$userId]);
+            $username = $stmt->fetchColumn() ?: '未知用户';
+            
+            // 处理页面名称格式（去掉.html后缀）
+            $pageName = str_replace('.html', '', $page);
+            
+            // 记录所有传说物品的中奖信息
+            foreach ($results as $prize) {
+                if (isset($prize['rarity']) && $prize['rarity'] === 'legendary') {
+                    recordWinner($pageName, $userId, $username, $prize['name'], $prize['value']);
+                }
+            }
+        }
+        
         // 提交事务
         $pdo->commit();
         

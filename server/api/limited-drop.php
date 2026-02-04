@@ -1,39 +1,25 @@
 <?php
-header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization');
+// 只在直接访问时设置 headers 和处理请求
+if (!defined('INCLUDED_FROM_PRIZES')) {
+    header('Content-Type: application/json');
+    header('Access-Control-Allow-Origin: *');
+    header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+    header('Access-Control-Allow-Headers: Content-Type, Authorization');
 
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    exit(0);
+    if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+        exit(0);
+    }
 }
 
 require_once '../config/database.php';
 
-$database = new Database();
-$pdo = $database->getConnection();
-
-$action = $_GET['action'] ?? '';
-
-switch ($action) {
-    case 'get_config':
-        echo json_encode(getLimitedDropConfig($_GET['page'] ?? 'luckytemp'));
-        break;
-    case 'update_config':
-        $input = json_decode(file_get_contents('php://input'), true);
-        echo json_encode(updateLimitedDropConfig($input));
-        break;
-    case 'get_legendary_prizes':
-        echo json_encode(getLegendaryPrizes($_GET['page'] ?? 'luckytemp'));
-        break;
-    case 'get_display_data':
-        echo json_encode(getDisplayData($_GET['page'] ?? 'luckytemp'));
-        break;
-    default:
-        echo json_encode(['success' => false, 'message' => '无效的操作']);
-        break;
+// 如果 $database 和 $pdo 还未定义，则初始化
+if (!isset($pdo)) {
+    $database = new Database();
+    $pdo = $database->getConnection();
 }
 
+// 函数定义（总是可用）
 function getLimitedDropConfig($page) {
     global $pdo;
     
@@ -266,6 +252,161 @@ function getDisplayData($page) {
             'success' => false,
             'message' => '获取展示数据失败: ' . $e->getMessage()
         ];
+    }
+}
+
+// 切换限时掉落状态
+function toggleLimitedDrop($data) {
+    global $pdo;
+    
+    try {
+        $page = $data['page'] ?? 'luckytemp';
+        $isActive = $data['is_active'] ?? 0;
+        
+        // 如果是开启限时掉落，清空上次的中奖记录
+        if ($isActive) {
+            clearWinners($page);
+        }
+        
+        // 更新启用状态
+        $stmt = $pdo->prepare("
+            INSERT INTO system_settings (setting_key, setting_value) 
+            VALUES (?, ?)
+            ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)
+        ");
+        $stmt->execute(["limited_drop_enabled_{$page}", $isActive]);
+        
+        return [
+            'success' => true,
+            'message' => $isActive ? '限时掉落已开启' : '限时掉落已关闭'
+        ];
+    } catch (Exception $e) {
+        return [
+            'success' => false,
+            'message' => '切换状态失败: ' . $e->getMessage()
+        ];
+    }
+}
+
+// 清空中奖记录
+function clearWinners($page) {
+    global $pdo;
+    
+    try {
+        $stmt = $pdo->prepare("DELETE FROM system_settings WHERE setting_key = ?");
+        $stmt->execute(["limited_drop_winners_{$page}"]);
+        return true;
+    } catch (Exception $e) {
+        error_log("清空中奖记录失败: " . $e->getMessage());
+        return false;
+    }
+}
+
+// 获取中奖用户列表
+function getWinners($page) {
+    global $pdo;
+    
+    try {
+        $stmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = ?");
+        $stmt->execute(["limited_drop_winners_{$page}"]);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        $winners = [];
+        if ($result && $result['setting_value']) {
+            $winners = json_decode($result['setting_value'], true) ?: [];
+        }
+        
+        return [
+            'success' => true,
+            'winners' => $winners
+        ];
+    } catch (Exception $e) {
+        return [
+            'success' => false,
+            'message' => '获取中奖记录失败: ' . $e->getMessage()
+        ];
+    }
+}
+
+// 记录中奖用户（由draws.php调用）
+function recordWinner($page, $userId, $username, $prizeName, $prizeValue) {
+    global $pdo;
+    
+    try {
+        // 获取现有记录
+        $stmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = ?");
+        $stmt->execute(["limited_drop_winners_{$page}"]);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        $winners = [];
+        if ($result && $result['setting_value']) {
+            $winners = json_decode($result['setting_value'], true) ?: [];
+        }
+        
+        // 添加新记录
+        $winners[] = [
+            'user_id' => $userId,
+            'username' => $username,
+            'prize_name' => $prizeName,
+            'prize_value' => $prizeValue,
+            'win_time' => date('Y-m-d H:i:s')
+        ];
+        
+        // 保存记录
+        $winnersJson = json_encode($winners);
+        $stmt = $pdo->prepare("
+            INSERT INTO system_settings (setting_key, setting_value) 
+            VALUES (?, ?)
+            ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)
+        ");
+        $stmt->execute(["limited_drop_winners_{$page}", $winnersJson]);
+        
+        return true;
+    } catch (Exception $e) {
+        error_log("记录中奖用户失败: " . $e->getMessage());
+        return false;
+    }
+}
+
+// 只有在直接访问此文件时才执行请求处理逻辑
+if (!defined('INCLUDED_FROM_PRIZES')) {
+    $action = $_GET['action'] ?? '';
+
+    // 处理POST请求
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        $input = json_decode(file_get_contents('php://input'), true);
+        $action = $input['action'] ?? '';
+        
+        switch ($action) {
+            case 'toggle_limited_drop':
+                echo json_encode(toggleLimitedDrop($input));
+                break;
+            case 'update_config':
+                echo json_encode(updateLimitedDropConfig($input));
+                break;
+            default:
+                echo json_encode(['success' => false, 'message' => '无效的操作']);
+                break;
+        }
+        exit;
+    }
+
+    switch ($action) {
+        case 'get_config':
+            echo json_encode(getLimitedDropConfig($_GET['page'] ?? 'luckytemp'));
+            break;
+        case 'get_legendary_prizes':
+            echo json_encode(getLegendaryPrizes($_GET['page'] ?? 'luckytemp'));
+            break;
+        case 'get_display_data':
+            echo json_encode(getDisplayData($_GET['page'] ?? 'luckytemp'));
+            break;
+        case 'get_winners':
+            echo json_encode(getWinners($_GET['page'] ?? 'luckytemp'));
+            break;
+        default:
+            echo json_encode(['success' => false, 'message' => '无效的操作']);
+            break;
     }
 }
 ?>

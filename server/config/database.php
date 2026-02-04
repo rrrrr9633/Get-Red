@@ -247,8 +247,8 @@
 // 数据库配置
 define('DB_HOST', 'localhost');
 define('DB_NAME', 'lucky_draw');
-define('DB_USER', 'web_user');
-define('DB_PASS', 'web_password');
+define('DB_USER', 'root');
+define('DB_PASS', '');
 define('DB_CHARSET', 'utf8mb4');
 
 // 创建数据库连接

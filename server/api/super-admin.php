@@ -314,6 +314,12 @@ function createUser() {
             $defaultBalance
         ]);
         
+        // 如果创建的是超级管理员，禁用默认的admin账户
+        if ($userType === 'super_admin') {
+            $stmt = $db->prepare("UPDATE users SET status = 'inactive' WHERE username = 'admin' AND user_type = 'super_admin' AND nickname = '默认超级管理员'");
+            $stmt->execute();
+        }
+        
         // 记录安全日志
         logSecurityAction($_SESSION['super_admin_id'], $username, 'create_user', 'success', "Created $userType user: $username");
         
