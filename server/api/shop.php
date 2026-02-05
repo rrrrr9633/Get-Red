@@ -55,6 +55,15 @@ function handleGet($pdo, $action) {
         case 'admin_items':
             getAdminItems($pdo);
             break;
+        case 'my_legendary_items':
+            getMyLegendaryItems($pdo);
+            break;
+        case 'legendary_exchange_items':
+            getLegendaryExchangeItems($pdo);
+            break;
+        case 'legendary_exchange_config':
+            getLegendaryExchangeConfig($pdo);
+            break;
         default:
             http_response_code(400);
             echo json_encode(['success' => false, 'error' => '无效的操作']);
@@ -72,6 +81,12 @@ function handlePost($pdo, $action) {
             break;
         case 'process_purchase':
             processPurchase($pdo);
+            break;
+        case 'legendary_exchange':
+            legendaryExchange($pdo);
+            break;
+        case 'save_legendary_exchange_config':
+            saveLegendaryExchangeConfig($pdo);
             break;
         default:
             http_response_code(400);
@@ -602,6 +617,378 @@ function deleteShopItem($pdo) {
     } catch (Exception $e) {
         http_response_code(500);
         echo json_encode(['success' => false, 'error' => '删除商品失败: ' . $e->getMessage()]);
+    }
+}
+
+// ========== 传说级兑换相关功能 ==========
+
+function getMyLegendaryItems($pdo) {
+    if (!isset($_SESSION['user_id'])) {
+        http_response_code(401);
+        echo json_encode(['success' => false, 'error' => '未登录']);
+        return;
+    }
+    
+    try {
+        $stmt = $pdo->prepare("
+            SELECT * FROM user_items 
+            WHERE user_id = ? AND rarity = 'legendary' AND decomposed = 0
+            ORDER BY obtained_at DESC
+        ");
+        $stmt->execute([$_SESSION['user_id']]);
+        $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        echo json_encode([
+            'success' => true,
+            'items' => $items
+        ]);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'error' => '获取传说级物品失败: ' . $e->getMessage()]);
+    }
+}
+
+function getLegendaryExchangeItems($pdo) {
+    try {
+        // 获取所有启用的传说级兑换配置
+        $stmt = $pdo->prepare("
+            SELECT lec.*, si.name, si.icon, si.image_url, si.description, si.item_type, si.rarity
+            FROM legendary_exchange_config lec
+            JOIN shop_items si ON lec.shop_item_id = si.id
+            WHERE lec.is_active = 1 AND si.is_active = 1
+            ORDER BY lec.sort_order ASC, lec.created_at DESC
+        ");
+        $stmt->execute();
+        $configs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // 解析每个配置的所需物品
+        $items = [];
+        foreach ($configs as $config) {
+            $requiredItems = json_decode($config['required_items'], true);
+            
+            // 获取每个所需物品的详细信息
+            $requiredItemsDetails = [];
+            foreach ($requiredItems as $reqItem) {
+                $stmt = $pdo->prepare("SELECT name, icon, value FROM prizes WHERE id = ?");
+                $stmt->execute([$reqItem['prize_id']]);
+                $prizeInfo = $stmt->fetch(PDO::FETCH_ASSOC);
+                
+                if ($prizeInfo) {
+                    $requiredItemsDetails[] = [
+                        'prize_id' => $reqItem['prize_id'],
+                        'name' => $prizeInfo['name'],
+                        'icon' => $prizeInfo['icon'],
+                        'value' => $prizeInfo['value'],
+                        'quantity' => $reqItem['quantity']
+                    ];
+                }
+            }
+            
+            $items[] = [
+                'id' => $config['id'],
+                'shop_item_id' => $config['shop_item_id'],
+                'name' => $config['name'],
+                'icon' => $config['icon'],
+                'image_url' => $config['image_url'],
+                'description' => $config['description'],
+                'item_type' => $config['item_type'],
+                'rarity' => $config['rarity'],
+                'required_items' => $requiredItemsDetails
+            ];
+        }
+        
+        echo json_encode([
+            'success' => true,
+            'items' => $items
+        ]);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'error' => '获取兑换商品失败: ' . $e->getMessage()]);
+    }
+}
+
+function legendaryExchange($pdo) {
+    if (!isset($_SESSION['user_id'])) {
+        http_response_code(401);
+        echo json_encode(['success' => false, 'error' => '未登录']);
+        return;
+    }
+    
+    $input = json_decode(file_get_contents('php://input'), true);
+    
+    if (!isset($input['item_id']) || !isset($input['player_id'])) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => '缺少必要参数']);
+        return;
+    }
+    
+    $userId = $_SESSION['user_id'];
+    $configId = $input['item_id'];
+    $playerId = $input['player_id'];
+    
+    try {
+        $pdo->beginTransaction();
+        
+        // 获取兑换配置
+        $stmt = $pdo->prepare("
+            SELECT lec.*, si.name, si.item_type
+            FROM legendary_exchange_config lec
+            JOIN shop_items si ON lec.shop_item_id = si.id
+            WHERE lec.id = ? AND lec.is_active = 1 AND si.is_active = 1
+        ");
+        $stmt->execute([$configId]);
+        $config = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$config) {
+            throw new Exception('兑换配置不存在或已禁用');
+        }
+        
+        $requiredItems = json_decode($config['required_items'], true);
+        
+        // 获取用户的传说级物品
+        $stmt = $pdo->prepare("
+            SELECT * FROM user_items 
+            WHERE user_id = ? AND rarity = 'legendary' AND decomposed = 0
+        ");
+        $stmt->execute([$userId]);
+        $userItems = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // 统计用户物品数量
+        $userItemCounts = [];
+        $userItemIds = [];
+        foreach ($userItems as $item) {
+            $key = $item['prize_id'];
+            if (!isset($userItemCounts[$key])) {
+                $userItemCounts[$key] = 0;
+                $userItemIds[$key] = [];
+            }
+            $userItemCounts[$key]++;
+            $userItemIds[$key][] = $item['id'];
+        }
+        
+        // 检查是否满足兑换条件
+        $itemsToConsume = [];
+        foreach ($requiredItems as $reqItem) {
+            $prizeId = $reqItem['prize_id'];
+            $requiredQty = $reqItem['quantity'];
+            $userQty = $userItemCounts[$prizeId] ?? 0;
+            
+            if ($userQty < $requiredQty) {
+                throw new Exception('传说级物品数量不足');
+            }
+            
+            // 记录要消耗的物品ID
+            $itemsToConsume = array_merge($itemsToConsume, array_slice($userItemIds[$prizeId], 0, $requiredQty));
+        }
+        
+        // 标记物品为已分解（消耗）
+        foreach ($itemsToConsume as $itemId) {
+            $stmt = $pdo->prepare("
+                UPDATE user_items 
+                SET decomposed = 1, decomposed_at = NOW() 
+                WHERE id = ?
+            ");
+            $stmt->execute([$itemId]);
+        }
+        
+        // 获取用户信息
+        $stmt = $pdo->prepare("SELECT username FROM users WHERE id = ?");
+        $stmt->execute([$userId]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        // 创建购买记录
+        $usedItemsJson = json_encode($requiredItems);
+        $stmt = $pdo->prepare("
+            INSERT INTO shop_purchase_history 
+            (user_id, shop_item_id, item_name, item_type, price, purchase_type, used_items, player_id, status)
+            VALUES (?, ?, ?, ?, 0, 'legendary', ?, ?, 'pending')
+        ");
+        $stmt->execute([
+            $userId,
+            $config['shop_item_id'],
+            $config['name'],
+            $config['item_type'],
+            $usedItemsJson,
+            $playerId
+        ]);
+        
+        // 查找负责该用户的客服并发送通知
+        $stmt = $pdo->prepare("
+            SELECT service_user_id FROM service_user_assignments 
+            WHERE regular_user_id = ? AND status = 'active'
+        ");
+        $stmt->execute([$userId]);
+        $assignment = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($assignment && $assignment['service_user_id']) {
+            // 查找或创建聊天会话
+            $stmt = $pdo->prepare("
+                SELECT session_id FROM chat_sessions 
+                WHERE user_id = ? AND service_user_id = ? AND status != 'closed'
+                ORDER BY created_at DESC LIMIT 1
+            ");
+            $stmt->execute([$userId, $assignment['service_user_id']]);
+            $session = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$session) {
+                $sessionId = 'session_' . $userId . '_' . $assignment['service_user_id'] . '_' . time();
+                $stmt = $pdo->prepare("
+                    INSERT INTO chat_sessions (user_id, service_user_id, session_id, status)
+                    VALUES (?, ?, ?, 'active')
+                ");
+                $stmt->execute([$userId, $assignment['service_user_id'], $sessionId]);
+            } else {
+                $sessionId = $session['session_id'];
+            }
+            
+            // 构建消息
+            $itemsList = '';
+            foreach ($requiredItems as $reqItem) {
+                $stmt = $pdo->prepare("SELECT name FROM prizes WHERE id = ?");
+                $stmt->execute([$reqItem['prize_id']]);
+                $prizeInfo = $stmt->fetch(PDO::FETCH_ASSOC);
+                $itemsList .= "\n- {$prizeInfo['name']} x{$reqItem['quantity']}";
+            }
+            
+            $message = "【传说级兑换通知】用户 {$user['username']} 使用传说级物品兑换了：{$config['name']}（{$config['item_type']}）\n使用的物品：{$itemsList}\n玩家ID：{$playerId}\n请及时处理订单。";
+            
+            $stmt = $pdo->prepare("
+                INSERT INTO chat_messages (session_id, sender_id, sender_type, message, message_type)
+                VALUES (?, ?, 'user', ?, 'text')
+            ");
+            $stmt->execute([$sessionId, $userId, $message]);
+        }
+        
+        $pdo->commit();
+        
+        echo json_encode([
+            'success' => true,
+            'message' => '兑换成功，请等待客服处理'
+        ]);
+        
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+}
+
+function getLegendaryExchangeConfig($pdo) {
+    if (!isset($_SESSION['super_admin_verified'])) {
+        http_response_code(401);
+        echo json_encode(['success' => false, 'error' => '未登录或无权限']);
+        return;
+    }
+    
+    try {
+        $shopItemId = $_GET['shop_item_id'] ?? null;
+        
+        if ($shopItemId) {
+            $stmt = $pdo->prepare("
+                SELECT * FROM legendary_exchange_config 
+                WHERE shop_item_id = ?
+            ");
+            $stmt->execute([$shopItemId]);
+            $config = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if ($config) {
+                $config['required_items'] = json_decode($config['required_items'], true);
+            }
+            
+            echo json_encode([
+                'success' => true,
+                'config' => $config
+            ]);
+        } else {
+            $stmt = $pdo->prepare("
+                SELECT lec.*, si.name as shop_item_name
+                FROM legendary_exchange_config lec
+                JOIN shop_items si ON lec.shop_item_id = si.id
+                ORDER BY lec.sort_order ASC, lec.created_at DESC
+            ");
+            $stmt->execute();
+            $configs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            foreach ($configs as &$config) {
+                $config['required_items'] = json_decode($config['required_items'], true);
+            }
+            
+            echo json_encode([
+                'success' => true,
+                'configs' => $configs
+            ]);
+        }
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'error' => '获取配置失败: ' . $e->getMessage()]);
+    }
+}
+
+function saveLegendaryExchangeConfig($pdo) {
+    if (!isset($_SESSION['super_admin_verified'])) {
+        http_response_code(401);
+        echo json_encode(['success' => false, 'error' => '未登录或无权限']);
+        return;
+    }
+    
+    $input = json_decode(file_get_contents('php://input'), true);
+    
+    if (!isset($input['shop_item_id']) || !isset($input['required_items'])) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => '缺少必要参数']);
+        return;
+    }
+    
+    try {
+        $shopItemId = $input['shop_item_id'];
+        $requiredItems = $input['required_items'];
+        $isActive = $input['is_active'] ?? 1;
+        $sortOrder = $input['sort_order'] ?? 0;
+        
+        // 验证商品是否存在
+        $stmt = $pdo->prepare("SELECT id FROM shop_items WHERE id = ?");
+        $stmt->execute([$shopItemId]);
+        if (!$stmt->fetch()) {
+            throw new Exception('商品不存在');
+        }
+        
+        // 验证所需物品
+        if (empty($requiredItems)) {
+            throw new Exception('至少需要选择一个传说级物品');
+        }
+        
+        $requiredItemsJson = json_encode($requiredItems);
+        
+        // 检查是否已存在配置
+        $stmt = $pdo->prepare("SELECT id FROM legendary_exchange_config WHERE shop_item_id = ?");
+        $stmt->execute([$shopItemId]);
+        $existing = $stmt->fetch();
+        
+        if ($existing) {
+            // 更新现有配置
+            $stmt = $pdo->prepare("
+                UPDATE legendary_exchange_config 
+                SET required_items = ?, is_active = ?, sort_order = ?, updated_at = NOW()
+                WHERE shop_item_id = ?
+            ");
+            $stmt->execute([$requiredItemsJson, $isActive, $sortOrder, $shopItemId]);
+        } else {
+            // 创建新配置
+            $stmt = $pdo->prepare("
+                INSERT INTO legendary_exchange_config 
+                (shop_item_id, required_items, is_active, sort_order)
+                VALUES (?, ?, ?, ?)
+            ");
+            $stmt->execute([$shopItemId, $requiredItemsJson, $isActive, $sortOrder]);
+        }
+        
+        echo json_encode([
+            'success' => true,
+            'message' => '传说级兑换配置保存成功'
+        ]);
+    } catch (Exception $e) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
     }
 }
 ?>

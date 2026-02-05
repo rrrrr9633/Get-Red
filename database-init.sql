@@ -292,6 +292,7 @@ CREATE TABLE IF NOT EXISTS draw_prices (
     page_name VARCHAR(100),
     price_type ENUM('single','triple','quintuple'),
     price_value DECIMAL(10,2),
+    button_name VARCHAR(50) DEFAULT NULL COMMENT '按钮显示名称',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE unique_page_price (page_name, price_type)
@@ -482,3 +483,32 @@ CREATE TABLE IF NOT EXISTS legendary_exchange_config (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='传说级兑换配置表';
 
 SELECT '传说级兑换系统表创建完成！' AS message;
+
+-- ========================================
+-- 商店图标配置表
+-- ========================================
+
+-- 29. 商店图标配置表
+CREATE TABLE IF NOT EXISTS shop_icon_config (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    icon_key VARCHAR(50) NOT NULL UNIQUE COMMENT '图标键名（gold-escort, knife-exchange, skin-exchange, legendary-exchange）',
+    icon_name VARCHAR(100) NOT NULL COMMENT '图标显示名称',
+    icon_url VARCHAR(500) COMMENT '图标图片URL',
+    fallback_icon VARCHAR(20) DEFAULT '🎁' COMMENT '备用图标（Emoji）',
+    description TEXT COMMENT '描述',
+    sort_order INT DEFAULT 0 COMMENT '排序顺序',
+    is_active TINYINT(1) DEFAULT 1 COMMENT '是否启用',
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_icon_key (icon_key),
+    INDEX idx_is_active (is_active)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='商店图标配置表';
+
+-- 插入默认图标配置
+INSERT INTO shop_icon_config (icon_key, icon_name, icon_url, fallback_icon, description, sort_order) VALUES
+('gold-escort', '金牌护航', '../images/shop/gold-escort.png', '🛡️', '保障您的每一次抽奖体验', 1),
+('knife-exchange', '1:1跑刀', '../images/shop/knife-exchange.png', '🔪', '公平公正的刀具兑换服务', 2),
+('skin-exchange', '皮肤兑换', '../images/shop/skin-exchange.png', '🎨', '精美皮肤，随心兑换', 3),
+('legendary-exchange', '传说级兑换', '../images/shop/legendary-exchange.png', '⭐', '顶级稀有物品，尊享兑换', 4)
+ON DUPLICATE KEY UPDATE icon_key=icon_key;
+
+SELECT '商店图标配置表创建完成！' AS message;

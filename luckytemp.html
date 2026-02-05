@@ -482,27 +482,127 @@
         }
         
         .arrow-left, .arrow-right {
-            width: 50px;
-            height: 50px;
+            width: 60px;
+            height: 60px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 40px;
-            color: rgba(239, 68, 68, 0.6);
-            background: rgba(30, 20, 20, 0.8);
-            border: 2px solid rgba(239, 68, 68, 0.3);
+            font-size: 0;
+            color: transparent;
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(220, 38, 38, 0.25));
+            border: 2px solid rgba(239, 68, 68, 0.4);
             border-radius: 50%;
             cursor: pointer;
             pointer-events: all;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 
+                0 4px 20px rgba(239, 68, 68, 0.2),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1),
+                inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        /* 箭头内部装饰 */
+        .arrow-left::before, .arrow-right::before {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at center, rgba(239, 68, 68, 0.3) 0%, transparent 70%);
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+        
+        /* 箭头图标 */
+        .arrow-left::after, .arrow-right::after {
+            content: '';
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            border-top: 3px solid rgba(239, 68, 68, 0.8);
+            border-right: 3px solid rgba(239, 68, 68, 0.8);
             transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .arrow-left::after {
+            transform: rotate(-135deg);
+            margin-right: -4px;
+        }
+        
+        .arrow-right::after {
+            transform: rotate(45deg);
+            margin-left: -4px;
+        }
+        
+        /* 外圈装饰环 */
+        .arrow-left, .arrow-right {
+            box-shadow: 
+                0 0 0 0 rgba(239, 68, 68, 0.4),
+                0 4px 20px rgba(239, 68, 68, 0.2),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1),
+                inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+            animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        
+        @keyframes pulse-ring {
+            0%, 100% {
+                box-shadow: 
+                    0 0 0 0 rgba(239, 68, 68, 0.4),
+                    0 4px 20px rgba(239, 68, 68, 0.2),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+                    inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+            }
+            50% {
+                box-shadow: 
+                    0 0 0 8px rgba(239, 68, 68, 0),
+                    0 4px 20px rgba(239, 68, 68, 0.3),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+                    inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+            }
         }
         
         .arrow-left:hover, .arrow-right:hover {
-            color: rgba(239, 68, 68, 1);
-            border-color: rgba(239, 68, 68, 0.6);
-            background: rgba(30, 20, 20, 1);
-            box-shadow: 0 0 25px rgba(239, 68, 68, 0.5);
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.3), rgba(220, 38, 38, 0.4));
+            border-color: rgba(239, 68, 68, 0.8);
+            transform: scale(1.1);
+            box-shadow: 
+                0 0 0 0 rgba(239, 68, 68, 0),
+                0 8px 30px rgba(239, 68, 68, 0.5),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2),
+                inset 0 -1px 0 rgba(0, 0, 0, 0.3);
+            animation: none;
+        }
+        
+        .arrow-left:hover::before, .arrow-right:hover::before {
+            opacity: 1;
+        }
+        
+        .arrow-left:hover::after, .arrow-right:hover::after {
+            border-color: rgba(239, 68, 68, 1);
+            filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.8));
+        }
+        
+        .arrow-left:active, .arrow-right:active {
+            transform: scale(0.95);
+            box-shadow: 
+                0 0 0 0 rgba(239, 68, 68, 0),
+                0 2px 10px rgba(239, 68, 68, 0.4),
+                inset 0 2px 4px rgba(0, 0, 0, 0.4);
+        }
+        
+        /* 添加闪光效果 */
+        .arrow-left:hover, .arrow-right:hover {
+            animation: shine 1.5s ease-in-out infinite;
+        }
+        
+        @keyframes shine {
+            0%, 100% {
+                filter: brightness(1);
+            }
+            50% {
+                filter: brightness(1.2);
+            }
         }
         
         .game-header {
@@ -1612,6 +1712,23 @@
                 if (data.success) {
                     drawPrices = data.prices;
                     console.log('加载的抽奖价格:', drawPrices);
+                    
+                    // 更新按钮名称
+                    if (data.names) {
+                        const singleBtn = document.querySelector('.mode-btn[data-mode="1"]');
+                        const tripleBtn = document.querySelector('.mode-btn[data-mode="3"]');
+                        const quintupleBtn = document.querySelector('.mode-btn[data-mode="5"]');
+                        
+                        if (singleBtn && data.names.single) {
+                            singleBtn.textContent = data.names.single;
+                        }
+                        if (tripleBtn && data.names.triple) {
+                            tripleBtn.textContent = data.names.triple;
+                        }
+                        if (quintupleBtn && data.names.quintuple) {
+                            quintupleBtn.textContent = data.names.quintuple;
+                        }
+                    }
                 } else {
                     console.warn('加载价格失败，使用默认价格:', data.error);
                 }

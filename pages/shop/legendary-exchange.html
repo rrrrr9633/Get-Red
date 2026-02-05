@@ -10,10 +10,9 @@
 <body>
     <div class="particles"></div>
     
-    <!-- 导航栏 -->
     <nav class="navbar">
         <div class="nav-brand">
-            <h1 class="neon-text gold" onclick="goToHome()" style="cursor: pointer;" title="返回主页">大红行动</h1>
+            <h1 class="neon-text gold" onclick="goToHome()" style="cursor: pointer;">大红行动</h1>
         </div>
         
         <div class="nav-user">
@@ -25,22 +24,64 @@
             <div class="nav-links">
                 <a href="../main.html" class="neon-text">返回主页</a>
                 <a href="../user/profile.html" class="neon-text">个人中心</a>
+                <a href="../user/operator.html" class="neon-text">联系客服</a>
             </div>
         </div>
     </nav>
 
-    <!-- 主内容区 -->
     <div class="shop-container">
         <div class="shop-header">
-            <h1 class="neon-text gold">⭐ 传说级兑换</h1>
-            <p class="neon-text">传说级道具专属兑换</p>
+            <h1 class="neon-text gold">👑 传说级兑换</h1>
+            <p class="neon-text">使用传说级物品兑换珍稀奖励</p>
+            <div class="exchange-notice">
+                <span style="color: #ffd700;">💡 提示：</span>
+                <span>使用您的传说级物品兑换金牌护航和稀有皮肤</span>
+            </div>
         </div>
 
-        <div class="shop-content">
-            <div class="coming-soon">
-                <div class="coming-soon-icon">🚧</div>
-                <h2 class="neon-text gold">功能开发中</h2>
-                <p class="neon-text">传说级兑换功能即将上线，敬请期待！</p>
+        <!-- 我的传说级物品 -->
+        <div class="my-legendary-section">
+            <h2 class="section-title">我的传说级物品</h2>
+            <div id="myLegendaryItems" class="legendary-items-grid">
+                <div class="loading">加载中...</div>
+            </div>
+        </div>
+
+        <!-- 可兑换商品 -->
+        <div class="exchange-items-section">
+            <h2 class="section-title">可兑换商品</h2>
+            <div id="exchangeItemsContainer" class="shop-items-grid">
+                <div class="loading">加载中...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 兑换确认模态框 -->
+    <div id="exchangeModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>确认兑换</h2>
+                <p style="color: #ccc; margin-top: 10px;">
+                    目标商品: <span id="modalItemName" style="color: #ffd700;"></span>
+                </p>
+            </div>
+            
+            <div class="exchange-requirements">
+                <h3 style="color: #ffd700; margin-bottom: 15px;">需要以下传说级物品：</h3>
+                <div id="requiredItemsList" class="required-items-list"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="playerIdInput">玩家ID（提现账号）</label>
+                <input type="text" id="playerIdInput" placeholder="请输入您的游戏玩家ID" required>
+                <small style="color: #888; font-size: 12px; display: block; margin-top: 5px;">
+                    兑换后客服会联系您完成交易
+                </small>
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn-primary" onclick="confirmExchange()">确认兑换</button>
+                <button class="btn-secondary" onclick="closeExchangeModal()">取消</button>
             </div>
         </div>
     </div>
@@ -116,7 +157,7 @@
         .shop-container {
             margin-top: 70px;
             padding: 40px 20px;
-            max-width: 1200px;
+            max-width: 1400px;
             margin-left: auto;
             margin-right: auto;
         }
@@ -138,41 +179,351 @@
         .shop-header p {
             font-size: 18px;
             opacity: 0.8;
+            margin-bottom: 15px;
         }
 
-        .shop-content {
-            min-height: 400px;
+        .exchange-notice {
+            background: rgba(255, 215, 0, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
         }
 
-        .coming-soon {
+        .my-legendary-section,
+        .exchange-items-section {
+            margin-bottom: 50px;
+        }
+
+        .section-title {
+            color: #ffd700;
+            font-size: 28px;
+            margin-bottom: 25px;
             text-align: center;
-            padding: 80px 20px;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
         }
 
-        .coming-soon-icon {
-            font-size: 120px;
+        .legendary-items-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
             margin-bottom: 30px;
-            animation: pulse 2s ease-in-out infinite;
         }
 
-        .coming-soon h2 {
-            font-size: 36px;
+        .legendary-item-card {
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid rgba(255, 215, 0, 0.5);
+            border-radius: 15px;
+            padding: 15px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .legendary-item-card:hover {
+            border-color: #ffd700;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+            transform: translateY(-3px);
+        }
+
+        .legendary-item-card.selected {
+            border-color: #4ade80;
+            box-shadow: 0 0 20px rgba(74, 222, 128, 0.5);
+        }
+
+        .item-icon-large {
+            font-size: 60px;
+            margin-bottom: 10px;
+        }
+
+        .item-name-small {
+            color: #ffd700;
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .item-value-small {
+            color: #ccc;
+            font-size: 12px;
+        }
+
+        .shop-items-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 25px;
+            padding: 20px 0;
+        }
+
+        .shop-item-card {
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid rgba(255, 215, 0, 0.3);
+            border-radius: 15px;
+            padding: 20px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .shop-item-card:hover {
+            border-color: #ffd700;
+            box-shadow: 0 0 25px rgba(255, 215, 0, 0.4);
+            transform: translateY(-5px);
+        }
+
+        .item-image-container {
+            text-align: center;
+            margin-bottom: 15px;
+            height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .item-image {
+            max-width: 100%;
+            max-height: 100px;
+            object-fit: contain;
+            border-radius: 10px;
+        }
+
+        .item-icon {
+            font-size: 80px;
+        }
+
+        .item-info {
+            text-align: center;
+        }
+
+        .item-name {
+            color: #ffd700;
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .item-description {
+            color: #ccc;
+            font-size: 14px;
+            margin-bottom: 15px;
+            min-height: 40px;
+        }
+
+        .exchange-cost {
+            background: rgba(255, 215, 0, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+
+        .exchange-cost-title {
+            color: #ffd700;
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .required-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+
+        .required-item-icon {
+            font-size: 24px;
+        }
+
+        .required-item-info {
+            flex: 1;
+            text-align: left;
+        }
+
+        .required-item-name {
+            color: #fff;
+            font-size: 13px;
+            font-weight: bold;
+        }
+
+        .required-item-quantity {
+            color: #ffd700;
+            font-size: 12px;
+        }
+
+        .item-rarity {
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: bold;
+            display: inline-block;
+            margin-bottom: 10px;
+        }
+
+        .rarity-legendary {
+            background: linear-gradient(45deg, #ffd700, #ff6b00);
+            color: #000;
+        }
+
+        .btn-exchange {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(45deg, #ffd700, #ffed4e);
+            color: #000;
+            border: none;
+            border-radius: 25px;
+            font-weight: bold;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-exchange:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 215, 0, 0.4);
+        }
+
+        .btn-exchange:disabled {
+            background: #6b7280;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: rgba(0, 0, 0, 0.95);
+            border: 2px solid #ffd700;
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            text-align: center;
             margin-bottom: 20px;
         }
 
-        .coming-soon p {
-            font-size: 18px;
-            opacity: 0.7;
+        .modal-header h2 {
+            color: #ffd700;
+            font-size: 24px;
+            margin-bottom: 10px;
         }
 
-        @keyframes pulse {
-            0%, 100% {
-                transform: scale(1);
-                opacity: 1;
+        .exchange-requirements {
+            background: rgba(255, 215, 0, 0.05);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .required-items-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            color: #ffd700;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ffd700;
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            font-size: 14px;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #ffd700, #ffed4e);
+            color: #000;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 25px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 215, 0, 0.4);
+        }
+
+        .btn-secondary {
+            background: #6b7280;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-secondary:hover {
+            background: #4b5563;
+        }
+
+        .loading {
+            text-align: center;
+            color: #ffd700;
+            font-size: 18px;
+            padding: 40px;
+        }
+
+        .empty-message {
+            text-align: center;
+            color: #888;
+            font-size: 16px;
+            padding: 40px;
+        }
+
+        @media (max-width: 768px) {
+            .shop-items-grid {
+                grid-template-columns: 1fr;
             }
-            50% {
-                transform: scale(1.1);
-                opacity: 0.8;
+            
+            .legendary-items-grid {
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
             }
         }
     </style>
@@ -180,19 +531,19 @@
     <script src="../../js/api-client.js"></script>
     <script src="../../js/effects.js"></script>
     <script>
-        // 加载用户信息
+        let myLegendaryItems = [];
+        let exchangeItems = [];
+        let currentExchangeItem = null;
+
         async function loadUserInfo() {
             try {
                 const result = await api.getUserProfile();
                 if (result.success) {
                     const user = result.user;
-                    
-                    // 处理头像路径
                     let avatarSrc = user.avatar || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiByeD0iNTAiIGZpbGw9IiNmZmQ3MDAiLz4KPHN2ZyB4PSIyNSIgeT0iMjAiIHdpZHRoPSI1MCIgaGVpZ2h0PSI2MCI+CjxjaXJjbGUgY3g9IjI1IiBjeT0iMjAiIHI9IjE1IiBmaWxsPSIjMTExIi8+CjxlbGxpcHNlIGN4PSIyNSIgY3k9IjUwIiByeD0iMjAiIHJ5PSIxNSIgZmlsbD0iIzExMSIvPgo8L3N2Zz4KPC9zdmc+';
                     if (avatarSrc && !avatarSrc.startsWith('data:') && !avatarSrc.startsWith('http')) {
                         avatarSrc = '../../' + avatarSrc;
                     }
-                    
                     document.getElementById('userAvatar').src = avatarSrc;
                     document.getElementById('userNickname').textContent = user.nickname;
                     document.getElementById('userBalance').textContent = `余额: ${parseFloat(user.balance).toFixed(2)}`;
@@ -202,13 +553,228 @@
             }
         }
 
+        async function loadMyLegendaryItems() {
+            try {
+                const response = await fetch('../../server/api/shop.php?action=my_legendary_items', {
+                    credentials: 'include'
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    myLegendaryItems = data.items;
+                    renderMyLegendaryItems();
+                } else {
+                    showError('加载传说级物品失败');
+                }
+            } catch (error) {
+                console.error('加载传说级物品失败:', error);
+                showError('网络错误，请稍后重试');
+            }
+        }
+
+        function renderMyLegendaryItems() {
+            const container = document.getElementById('myLegendaryItems');
+            
+            if (myLegendaryItems.length === 0) {
+                container.innerHTML = '<div class="empty-message">您还没有传说级物品<br>快去抽奖获取吧！</div>';
+                return;
+            }
+
+            // 按物品ID分组统计数量
+            const itemGroups = {};
+            myLegendaryItems.forEach(item => {
+                const key = item.prize_id || item.name;
+                if (!itemGroups[key]) {
+                    itemGroups[key] = {
+                        ...item,
+                        count: 0,
+                        ids: []
+                    };
+                }
+                itemGroups[key].count++;
+                itemGroups[key].ids.push(item.id);
+            });
+
+            container.innerHTML = Object.values(itemGroups).map(group => `
+                <div class="legendary-item-card">
+                    <div class="item-icon-large">${group.icon || '👑'}</div>
+                    <div class="item-name-small">${group.name}</div>
+                    <div class="item-value-small">价值: ${parseFloat(group.value).toFixed(0)}</div>
+                    <div class="item-value-small" style="color: #ffd700; font-weight: bold; margin-top: 5px;">
+                        拥有: ${group.count} 个
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function loadExchangeItems() {
+            try {
+                const response = await fetch('../../server/api/shop.php?action=legendary_exchange_items');
+                const data = await response.json();
+                
+                if (data.success) {
+                    exchangeItems = data.items;
+                    renderExchangeItems();
+                } else {
+                    showError('加载兑换商品失败');
+                }
+            } catch (error) {
+                console.error('加载兑换商品失败:', error);
+                showError('网络错误，请稍后重试');
+            }
+        }
+
+        function renderExchangeItems() {
+            const container = document.getElementById('exchangeItemsContainer');
+            
+            if (exchangeItems.length === 0) {
+                container.innerHTML = '<div class="empty-message">暂无可兑换商品</div>';
+                return;
+            }
+
+            container.innerHTML = exchangeItems.map(item => {
+                const canExchange = checkCanExchange(item.required_items);
+                
+                return `
+                    <div class="shop-item-card" onclick="${canExchange ? `showExchangeModal(${item.id})` : ''}">
+                        <div class="item-image-container">
+                            ${item.image_url ? 
+                                `<img src="${item.image_url}" alt="${item.name}" class="item-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                                 <span class="item-icon" style="display:none;">${item.icon || '🎁'}</span>` :
+                                `<span class="item-icon">${item.icon || '🎁'}</span>`
+                            }
+                        </div>
+                        <div class="item-info">
+                            <div class="item-name">${item.name}</div>
+                            <div class="item-description">${item.description || '使用传说级物品兑换'}</div>
+                            <span class="item-rarity rarity-legendary">传说兑换</span>
+                            <div class="exchange-cost">
+                                <div class="exchange-cost-title">需要传说级物品：</div>
+                                ${item.required_items.map(req => `
+                                    <div class="required-item">
+                                        <span class="required-item-icon">${req.icon || '👑'}</span>
+                                        <div class="required-item-info">
+                                            <div class="required-item-name">${req.name}</div>
+                                            <div class="required-item-quantity">需要 ${req.quantity} 个</div>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                            <button class="btn-exchange" ${!canExchange ? 'disabled' : ''} onclick="event.stopPropagation(); ${canExchange ? `showExchangeModal(${item.id})` : ''}">
+                                ${canExchange ? '立即兑换' : '物品不足'}
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function checkCanExchange(requiredItems) {
+            // 统计我的传说级物品数量
+            const myItemCounts = {};
+            myLegendaryItems.forEach(item => {
+                const key = item.prize_id || item.name;
+                myItemCounts[key] = (myItemCounts[key] || 0) + 1;
+            });
+
+            // 检查是否满足所有需求
+            return requiredItems.every(req => {
+                const myCount = myItemCounts[req.prize_id] || 0;
+                return myCount >= req.quantity;
+            });
+        }
+
+        async function showExchangeModal(itemId) {
+            const item = exchangeItems.find(i => i.id == itemId);
+            if (!item) return;
+
+            currentExchangeItem = item;
+            
+            document.getElementById('modalItemName').textContent = item.name;
+            document.getElementById('playerIdInput').value = '';
+            
+            const requiredList = document.getElementById('requiredItemsList');
+            requiredList.innerHTML = item.required_items.map(req => `
+                <div class="required-item">
+                    <span class="required-item-icon">${req.icon || '👑'}</span>
+                    <div class="required-item-info">
+                        <div class="required-item-name">${req.name}</div>
+                        <div class="required-item-quantity">需要 ${req.quantity} 个</div>
+                    </div>
+                </div>
+            `).join('');
+            
+            document.getElementById('exchangeModal').classList.add('show');
+        }
+
+        function closeExchangeModal() {
+            document.getElementById('exchangeModal').classList.remove('show');
+            currentExchangeItem = null;
+        }
+
+        async function confirmExchange() {
+            const playerId = document.getElementById('playerIdInput').value.trim();
+            
+            if (!playerId) {
+                alert('请输入玩家ID');
+                return;
+            }
+            
+            if (!currentExchangeItem) {
+                alert('商品信息错误');
+                return;
+            }
+            
+            try {
+                const response = await fetch('../../server/api/shop.php?action=legendary_exchange', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        item_id: currentExchangeItem.id,
+                        player_id: playerId
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('兑换成功！请等待客服处理，稍后会联系您');
+                    closeExchangeModal();
+                    loadUserInfo();
+                    loadMyLegendaryItems();
+                    loadExchangeItems();
+                } else {
+                    alert('兑换失败: ' + data.error);
+                }
+            } catch (error) {
+                console.error('兑换失败:', error);
+                alert('网络错误，请稍后重试');
+            }
+        }
+
+        function showError(message) {
+            const containers = [
+                document.getElementById('myLegendaryItems'),
+                document.getElementById('exchangeItemsContainer')
+            ];
+            containers.forEach(container => {
+                if (container && container.querySelector('.loading')) {
+                    container.innerHTML = `<div class="loading" style="color:#ef4444;">${message}</div>`;
+                }
+            });
+        }
+
         function goToHome() {
             window.location.href = '../main.html';
         }
 
-        // 页面加载时执行
         document.addEventListener('DOMContentLoaded', function() {
             loadUserInfo();
+            loadMyLegendaryItems();
+            loadExchangeItems();
         });
     </script>
 </body>

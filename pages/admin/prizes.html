@@ -751,6 +751,8 @@
                             <input type="number" id="singleDrawPrice" min="1" value="10">
                             <button type="button" onclick="updateDrawPrice('single')" class="btn-update">更新</button>
                         </div>
+                        <label for="singleDrawName" style="margin-top:10px;">按钮名称</label>
+                        <input type="text" id="singleDrawName" placeholder="单抽" maxlength="20" style="width:100%;padding:8px;border-radius:5px;border:1px solid #444;background:rgba(0,0,0,0.8);color:#fff;margin-top:5px;">
                     </div>
                     
                     <div class="price-item">
@@ -759,6 +761,8 @@
                             <input type="number" id="tripleDrawPrice" min="1" value="30">
                             <button type="button" onclick="updateDrawPrice('triple')" class="btn-update">更新</button>
                         </div>
+                        <label for="tripleDrawName" style="margin-top:10px;">按钮名称</label>
+                        <input type="text" id="tripleDrawName" placeholder="三连抽" maxlength="20" style="width:100%;padding:8px;border-radius:5px;border:1px solid #444;background:rgba(0,0,0,0.8);color:#fff;margin-top:5px;">
                     </div>
                     
                     <div class="price-item">
@@ -767,6 +771,8 @@
                             <input type="number" id="quintupleDrawPrice" min="1" value="50">
                             <button type="button" onclick="updateDrawPrice('quintuple')" class="btn-update">更新</button>
                         </div>
+                        <label for="quintupleDrawName" style="margin-top:10px;">按钮名称</label>
+                        <input type="text" id="quintupleDrawName" placeholder="五连抽" maxlength="20" style="width:100%;padding:8px;border-radius:5px;border:1px solid #444;background:rgba(0,0,0,0.8);color:#fff;margin-top:5px;">
                     </div>
                 </div>
                 
@@ -1291,6 +1297,11 @@
                     document.getElementById('singleDrawPrice').value = data.prices.single || 10;
                     document.getElementById('tripleDrawPrice').value = data.prices.triple || 30;
                     document.getElementById('quintupleDrawPrice').value = data.prices.quintuple || 50;
+                    
+                    // 加载按钮名称
+                    document.getElementById('singleDrawName').value = data.names.single || '';
+                    document.getElementById('tripleDrawName').value = data.names.triple || '';
+                    document.getElementById('quintupleDrawName').value = data.names.quintuple || '';
                 } else {
                     console.warn('加载价格失败，使用默认值:', data.error);
                 }
@@ -1301,22 +1312,28 @@
 
         // 更新单个抽奖价格
         async function updateDrawPrice(type) {
-            let price, element, typeName;
+            let price, name, element, nameElement, typeName;
             
             switch(type) {
                 case 'single':
                     element = document.getElementById('singleDrawPrice');
+                    nameElement = document.getElementById('singleDrawName');
                     price = element.value;
+                    name = nameElement.value;
                     typeName = '单抽';
                     break;
                 case 'triple':
                     element = document.getElementById('tripleDrawPrice');
+                    nameElement = document.getElementById('tripleDrawName');
                     price = element.value;
+                    name = nameElement.value;
                     typeName = '三连抽';
                     break;
                 case 'quintuple':
                     element = document.getElementById('quintupleDrawPrice');
+                    nameElement = document.getElementById('quintupleDrawName');
                     price = element.value;
+                    name = nameElement.value;
                     typeName = '五连抽';
                     break;
                 default:
@@ -1338,14 +1355,15 @@
                     body: JSON.stringify({
                         page: window.currentLuckyPage,
                         type: type,
-                        price: parseInt(price)
+                        price: parseInt(price),
+                        button_name: name || null
                     })
                 });
 
                 const data = await response.json();
                 
                 if (data.success) {
-                    showSuccess(`${typeName}价格已更新为 ${price} 金币`);
+                    showSuccess(`${typeName}${name ? '（' + name + '）' : ''}价格已更新为 ${price} 金币`);
                     loadPriceHistory(); // 刷新历史记录
                 } else {
                     showError('更新失败: ' + data.error);

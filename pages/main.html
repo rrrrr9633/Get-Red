@@ -79,66 +79,8 @@
                 <p class="neon-text">使用您的金币兑换各种精美物品！</p>
             </div>
             
-            <div class="shop-categories-grid">
-                <div class="shop-card" onclick="navigateToShop('gold-escort')">
-                    <div class="shop-card-image">
-                        <img src="../images/shop/gold-escort.png" alt="金牌护航" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-                        <div class="shop-card-icon" style="display: none;">🛡️</div>
-                    </div>
-                    <div class="shop-card-content">
-                        <h3 class="neon-text">金牌护航</h3>
-                        <p class="neon-text">保障您的每一次抽奖体验</p>
-                    </div>
-                    <button class="shop-btn">
-                        <span class="btn-text">立即查看</span>
-                        <span class="btn-arrow">→</span>
-                    </button>
-                </div>
-                
-                <div class="shop-card" onclick="navigateToShop('knife-exchange')">
-                    <div class="shop-card-image">
-                        <img src="../images/shop/knife-exchange.png" alt="1:1跑刀" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-                        <div class="shop-card-icon" style="display: none;">🔪</div>
-                    </div>
-                    <div class="shop-card-content">
-                        <h3 class="neon-text">1:1跑刀</h3>
-                        <p class="neon-text">公平公正的刀具兑换服务</p>
-                    </div>
-                    <button class="shop-btn">
-                        <span class="btn-text">立即查看</span>
-                        <span class="btn-arrow">→</span>
-                    </button>
-                </div>
-                
-                <div class="shop-card" onclick="navigateToShop('skin-exchange')">
-                    <div class="shop-card-image">
-                        <img src="../images/shop/skin-exchange.png" alt="皮肤兑换" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-                        <div class="shop-card-icon" style="display: none;">🎨</div>
-                    </div>
-                    <div class="shop-card-content">
-                        <h3 class="neon-text">皮肤兑换</h3>
-                        <p class="neon-text">精美皮肤，随心兑换</p>
-                    </div>
-                    <button class="shop-btn">
-                        <span class="btn-text">立即查看</span>
-                        <span class="btn-arrow">→</span>
-                    </button>
-                </div>
-                
-                <div class="shop-card" onclick="navigateToShop('legendary-exchange')">
-                    <div class="shop-card-image">
-                        <img src="../images/shop/legendary-exchange.png" alt="传说级兑换" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-                        <div class="shop-card-icon" style="display: none;">⭐</div>
-                    </div>
-                    <div class="shop-card-content">
-                        <h3 class="neon-text">传说级兑换</h3>
-                        <p class="neon-text">顶级稀有物品，尊享兑换</p>
-                    </div>
-                    <button class="shop-btn">
-                        <span class="btn-text">立即查看</span>
-                        <span class="btn-arrow">→</span>
-                    </button>
-                </div>
+            <div class="shop-categories-grid" id="shopCategoriesGrid">
+                <div style="text-align:center;color:#ffd700;padding:40px;">加载中...</div>
             </div>
         </div>
     </div>
@@ -1045,7 +987,76 @@
                 window.location.href = 'auth/login.html';
             }
         }
-        
+        // 加载商店图标配置
+        async function loadShopIcons() {
+            try {
+                const response = await fetch('../server/api/admin.php?action=get_shop_icons');
+                const data = await response.json();
+                
+                if (data.success && data.icons) {
+                    renderShopCards(data.icons);
+                } else {
+                    // 如果加载失败，使用默认配置
+                    renderDefaultShopCards();
+                }
+            } catch (error) {
+                console.error('加载商店图标失败:', error);
+                renderDefaultShopCards();
+            }
+        }
+
+        // 渲染商店卡片
+        function renderShopCards(icons) {
+            const container = document.getElementById('shopCategoriesGrid');
+            
+            container.innerHTML = icons.map(icon => `
+                <div class="shop-card" onclick="navigateToShop('${icon.icon_key}')">
+                    <div class="shop-card-image">
+                        ${icon.icon_url ? 
+                            `<img src="${icon.icon_url}" alt="${icon.icon_name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                             <div class="shop-card-icon" style="display: none;">${icon.fallback_icon}</div>` :
+                            `<div class="shop-card-icon">${icon.fallback_icon}</div>`
+                        }
+                    </div>
+                    <div class="shop-card-content">
+                        <h3 class="neon-text">${icon.icon_name}</h3>
+                        <p class="neon-text">${icon.description || ''}</p>
+                    </div>
+                    <button class="shop-btn">
+                        <span class="btn-text">立即查看</span>
+                        <span class="btn-arrow">→</span>
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        // 渲染默认商店卡片（备用）
+        function renderDefaultShopCards() {
+            const container = document.getElementById('shopCategoriesGrid');
+            const defaultCards = [
+                { key: 'gold-escort', name: '金牌护航', icon: '🛡️', desc: '保障您的每一次抽奖体验' },
+                { key: 'knife-exchange', name: '1:1跑刀', icon: '🔪', desc: '公平公正的刀具兑换服务' },
+                { key: 'skin-exchange', name: '皮肤兑换', icon: '🎨', desc: '精美皮肤，随心兑换' },
+                { key: 'legendary-exchange', name: '传说级兑换', icon: '⭐', desc: '顶级稀有物品，尊享兑换' }
+            ];
+            
+            container.innerHTML = defaultCards.map(card => `
+                <div class="shop-card" onclick="navigateToShop('${card.key}')">
+                    <div class="shop-card-image">
+                        <div class="shop-card-icon">${card.icon}</div>
+                    </div>
+                    <div class="shop-card-content">
+                        <h3 class="neon-text">${card.name}</h3>
+                        <p class="neon-text">${card.desc}</p>
+                    </div>
+                    <button class="shop-btn">
+                        <span class="btn-text">立即查看</span>
+                        <span class="btn-arrow">→</span>
+                    </button>
+                </div>
+            `).join('');
+        }
+
         // 跳转到商城页面
         function navigateToShop(shopType) {
             if (api.isLoggedIn()) {
@@ -1080,6 +1091,7 @@
             
             loadUserInfo();
             loadLuckyPages();
+            loadShopIcons(); // 加载商店图标
             createParticles();
         });
 

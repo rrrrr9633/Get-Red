@@ -285,6 +285,7 @@
             <div style="display:flex;gap:10px;justify-content:center;margin-bottom:20px;border-bottom:2px solid #ffd700;">
                 <button onclick="switchPrizeTab('lucky')" id="luckyTabBtn" class="prize-tab-btn active" style="padding:12px 24px;background:rgba(255,215,0,0.1);color:#ffd700;border:none;border-bottom:3px solid #ffd700;cursor:pointer;font-size:16px;font-weight:bold;">Lucky页面控制</button>
                 <button onclick="switchPrizeTab('shop')" id="shopTabBtn" class="prize-tab-btn" style="padding:12px 24px;background:transparent;color:#fff;border:none;border-bottom:3px solid transparent;cursor:pointer;font-size:16px;">商城奖品管理</button>
+                <button onclick="switchPrizeTab('icons')" id="iconsTabBtn" class="prize-tab-btn" style="padding:12px 24px;background:transparent;color:#fff;border:none;border-bottom:3px solid transparent;cursor:pointer;font-size:16px;">图标更改</button>
             </div>
             
             <!-- Lucky页面控制内容 -->
@@ -334,6 +335,18 @@
                         </select>
                     </div>
                     <div id="ordersList" style="max-height:400px;overflow-y:auto;"></div>
+                </div>
+            </div>
+            
+            <!-- 图标更改内容 -->
+            <div id="iconsTabContent" class="prize-tab-content" style="display:none;">
+                <div style="background:rgba(255,215,0,0.05);padding:15px;border-radius:10px;margin-bottom:20px;">
+                    <p style="color:#ffd700;margin-bottom:10px;">💡 说明：</p>
+                    <p style="color:#ccc;font-size:14px;">在这里可以更改主页商店区域四个卡片的图标图片。修改后会立即在主页显示。</p>
+                </div>
+                
+                <div id="shopIconsList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px;">
+                    <div style="color:#888;text-align:center;padding:40px;">加载中...</div>
                 </div>
             </div>
             
@@ -861,69 +874,153 @@
 
     <!-- 商城物品表单模态框 -->
     <div id="shopItemModal" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.8);z-index:2200;align-items:center;justify-content:center;">
-        <div style="background:#222;padding:30px;border-radius:20px;max-width:500px;width:90%;box-shadow:0 0 30px #ffd700;max-height:90vh;overflow-y:auto;">
+        <div style="background:#222;padding:30px;border-radius:20px;max-width:700px;width:90%;box-shadow:0 0 30px #ffd700;max-height:90vh;overflow-y:auto;">
             <h2 id="shopItemModalTitle" style="color:#ffd700;text-align:center;margin-bottom:20px;">添加商品</h2>
-            <form id="shopItemForm">
-                <input type="hidden" id="shopItemId">
-                <input type="hidden" id="shopItemType">
-                
-                <div style="margin-bottom:15px;">
-                    <label style="color:#fff;display:block;margin-bottom:5px;">物品名称:</label>
-                    <input type="text" id="shopItemName" style="width:100%;padding:8px;border-radius:5px;border:1px solid #ffd700;background:#333;color:#fff;" required>
+            
+            <!-- 标签页导航 -->
+            <div style="display:flex;gap:10px;justify-content:center;margin-bottom:20px;border-bottom:2px solid #ffd700;">
+                <button onclick="switchShopItemTab('basic')" id="basicTabBtn" class="shop-item-tab-btn" style="padding:10px 20px;background:rgba(255,215,0,0.1);color:#ffd700;border:none;border-bottom:3px solid #ffd700;cursor:pointer;font-size:14px;font-weight:bold;">基本信息</button>
+                <button onclick="switchShopItemTab('legendary')" id="legendaryTabBtn" class="shop-item-tab-btn" style="padding:10px 20px;background:transparent;color:#fff;border:none;border-bottom:3px solid transparent;cursor:pointer;font-size:14px;">传说级兑换</button>
+            </div>
+            
+            <!-- 基本信息标签页 -->
+            <div id="basicTabContent" class="shop-item-tab-content">
+                <form id="shopItemForm">
+                    <input type="hidden" id="shopItemId">
+                    <input type="hidden" id="shopItemType">
+                    
+                    <div style="margin-bottom:15px;">
+                        <label style="color:#fff;display:block;margin-bottom:5px;">物品名称:</label>
+                        <input type="text" id="shopItemName" style="width:100%;padding:8px;border-radius:5px;border:1px solid #ffd700;background:#333;color:#fff;" required>
+                    </div>
+                    
+                    <div style="margin-bottom:15px;">
+                        <label style="color:#fff;display:block;margin-bottom:5px;">物品图标 (Emoji):</label>
+                        <input type="text" id="shopItemIcon" placeholder="🎁" style="width:100%;padding:8px;border-radius:5px;border:1px solid #ffd700;background:#333;color:#fff;">
+                    </div>
+                    
+                    <div style="margin-bottom:15px;">
+                        <label style="color:#fff;display:block;margin-bottom:5px;">物品图片URL:</label>
+                        <input type="url" id="shopItemImageUrl" placeholder="https://example.com/image.jpg" style="width:100%;padding:8px;border-radius:5px;border:1px solid #ffd700;background:#333;color:#fff;">
+                    </div>
+                    
+                    <div style="margin-bottom:15px;">
+                        <label style="color:#fff;display:block;margin-bottom:5px;">物品描述:</label>
+                        <textarea id="shopItemDescription" rows="3" style="width:100%;padding:8px;border-radius:5px;border:1px solid #ffd700;background:#333;color:#fff;"></textarea>
+                    </div>
+                    
+                    <div style="margin-bottom:15px;">
+                        <label style="color:#fff;display:block;margin-bottom:5px;">价格（金币）:</label>
+                        <input type="number" id="shopItemPrice" min="0" step="0.01" style="width:100%;padding:8px;border-radius:5px;border:1px solid #ffd700;background:#333;color:#fff;" required>
+                    </div>
+                    
+                    <div style="margin-bottom:15px;">
+                        <label style="color:#fff;display:block;margin-bottom:5px;">稀有度:</label>
+                        <select id="shopItemRarity" style="width:100%;padding:8px;border-radius:5px;border:1px solid #ffd700;background:#333;color:#fff;" required>
+                            <option value="common">普通</option>
+                            <option value="rare">稀有</option>
+                            <option value="epic">史诗</option>
+                            <option value="legendary">传说</option>
+                        </select>
+                    </div>
+                    
+                    <div style="margin-bottom:15px;">
+                        <label style="color:#fff;display:block;margin-bottom:5px;">库存数量:</label>
+                        <input type="number" id="shopItemStock" value="-1" min="-1" style="width:100%;padding:8px;border-radius:5px;border:1px solid #ffd700;background:#333;color:#fff;">
+                        <small style="color:#888;">-1 表示无限库存</small>
+                    </div>
+                    
+                    <div style="margin-bottom:15px;">
+                        <label style="color:#fff;display:block;margin-bottom:5px;">排序顺序:</label>
+                        <input type="number" id="shopItemSortOrder" value="0" min="0" style="width:100%;padding:8px;border-radius:5px;border:1px solid #ffd700;background:#333;color:#fff;">
+                    </div>
+                    
+                    <div style="margin-bottom:15px;">
+                        <label style="color:#fff;display:block;margin-bottom:5px;">状态:</label>
+                        <select id="shopItemActive" style="width:100%;padding:8px;border-radius:5px;border:1px solid #ffd700;background:#333;color:#fff;" required>
+                            <option value="1">上架</option>
+                            <option value="0">下架</option>
+                        </select>
+                    </div>
+                    
+                    <div style="display:flex;gap:10px;justify-content:center;">
+                        <button type="submit" style="padding:10px 30px;border-radius:20px;background:#ffd700;color:#222;font-weight:bold;border:none;cursor:pointer;">保存</button>
+                        <button type="button" onclick="closeShopItemModal()" style="padding:10px 30px;border-radius:20px;background:#666;color:#fff;font-weight:bold;border:none;cursor:pointer;">取消</button>
+                    </div>
+                </form>
+            </div>
+            
+            <!-- 传说级兑换标签页 -->
+            <div id="legendaryTabContent" class="shop-item-tab-content" style="display:none;">
+                <div style="background:rgba(255,215,0,0.05);padding:15px;border-radius:10px;margin-bottom:20px;">
+                    <p style="color:#ffd700;margin-bottom:10px;">💡 配置说明：</p>
+                    <p style="color:#ccc;font-size:14px;">设置用户可以使用哪些传说级物品来兑换此商品。用户需要拥有所有指定的传说级物品才能完成兑换。</p>
                 </div>
                 
                 <div style="margin-bottom:15px;">
-                    <label style="color:#fff;display:block;margin-bottom:5px;">物品图标 (Emoji):</label>
-                    <input type="text" id="shopItemIcon" placeholder="🎁" style="width:100%;padding:8px;border-radius:5px;border:1px solid #ffd700;background:#333;color:#fff;">
+                    <label style="color:#fff;display:block;margin-bottom:10px;font-weight:bold;">选择所需传说级物品：</label>
+                    <div id="legendaryItemsSelection" style="max-height:400px;overflow-y:auto;background:#333;border:1px solid #ffd700;border-radius:10px;padding:15px;">
+                        <div style="color:#888;text-align:center;padding:20px;">加载中...</div>
+                    </div>
                 </div>
                 
                 <div style="margin-bottom:15px;">
-                    <label style="color:#fff;display:block;margin-bottom:5px;">物品图片URL:</label>
-                    <input type="url" id="shopItemImageUrl" placeholder="https://example.com/image.jpg" style="width:100%;padding:8px;border-radius:5px;border:1px solid #ffd700;background:#333;color:#fff;">
-                </div>
-                
-                <div style="margin-bottom:15px;">
-                    <label style="color:#fff;display:block;margin-bottom:5px;">物品描述:</label>
-                    <textarea id="shopItemDescription" rows="3" style="width:100%;padding:8px;border-radius:5px;border:1px solid #ffd700;background:#333;color:#fff;"></textarea>
-                </div>
-                
-                <div style="margin-bottom:15px;">
-                    <label style="color:#fff;display:block;margin-bottom:5px;">价格（金币）:</label>
-                    <input type="number" id="shopItemPrice" min="0" step="0.01" style="width:100%;padding:8px;border-radius:5px;border:1px solid #ffd700;background:#333;color:#fff;" required>
-                </div>
-                
-                <div style="margin-bottom:15px;">
-                    <label style="color:#fff;display:block;margin-bottom:5px;">稀有度:</label>
-                    <select id="shopItemRarity" style="width:100%;padding:8px;border-radius:5px;border:1px solid #ffd700;background:#333;color:#fff;" required>
-                        <option value="common">普通</option>
-                        <option value="rare">稀有</option>
-                        <option value="epic">史诗</option>
-                        <option value="legendary">传说</option>
-                    </select>
-                </div>
-                
-                <div style="margin-bottom:15px;">
-                    <label style="color:#fff;display:block;margin-bottom:5px;">库存数量:</label>
-                    <input type="number" id="shopItemStock" value="-1" min="-1" style="width:100%;padding:8px;border-radius:5px;border:1px solid #ffd700;background:#333;color:#fff;">
-                    <small style="color:#888;">-1 表示无限库存</small>
-                </div>
-                
-                <div style="margin-bottom:15px;">
-                    <label style="color:#fff;display:block;margin-bottom:5px;">排序顺序:</label>
-                    <input type="number" id="shopItemSortOrder" value="0" min="0" style="width:100%;padding:8px;border-radius:5px;border:1px solid #ffd700;background:#333;color:#fff;">
-                </div>
-                
-                <div style="margin-bottom:15px;">
-                    <label style="color:#fff;display:block;margin-bottom:5px;">状态:</label>
-                    <select id="shopItemActive" style="width:100%;padding:8px;border-radius:5px;border:1px solid #ffd700;background:#333;color:#fff;" required>
-                        <option value="1">上架</option>
-                        <option value="0">下架</option>
+                    <label style="color:#fff;display:block;margin-bottom:5px;">启用传说级兑换:</label>
+                    <select id="legendaryExchangeActive" style="width:100%;padding:8px;border-radius:5px;border:1px solid #ffd700;background:#333;color:#fff;">
+                        <option value="1">启用</option>
+                        <option value="0">禁用</option>
                     </select>
                 </div>
                 
                 <div style="display:flex;gap:10px;justify-content:center;">
-                    <button type="submit" style="padding:10px 30px;border-radius:20px;background:#ffd700;color:#222;font-weight:bold;border:none;cursor:pointer;">保存</button>
+                    <button type="button" onclick="saveLegendaryExchangeConfig()" style="padding:10px 30px;border-radius:20px;background:#ffd700;color:#222;font-weight:bold;border:none;cursor:pointer;">保存配置</button>
                     <button type="button" onclick="closeShopItemModal()" style="padding:10px 30px;border-radius:20px;background:#666;color:#fff;font-weight:bold;border:none;cursor:pointer;">取消</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 图标编辑模态框 -->
+    <div id="iconEditModal" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.8);z-index:2300;align-items:center;justify-content:center;">
+        <div style="background:#222;padding:30px;border-radius:20px;max-width:500px;width:90%;box-shadow:0 0 30px #ffd700;">
+            <h2 id="iconEditModalTitle" style="color:#ffd700;text-align:center;margin-bottom:20px;">编辑图标</h2>
+            
+            <form id="iconEditForm">
+                <input type="hidden" id="iconEditId">
+                <input type="hidden" id="iconEditKey">
+                
+                <div style="margin-bottom:15px;">
+                    <label style="color:#fff;display:block;margin-bottom:5px;">图标名称:</label>
+                    <input type="text" id="iconEditName" readonly style="width:100%;padding:8px;border-radius:5px;border:1px solid #666;background:#444;color:#aaa;">
+                </div>
+                
+                <div style="margin-bottom:15px;">
+                    <label style="color:#fff;display:block;margin-bottom:5px;">图标图片URL:</label>
+                    <input type="url" id="iconEditUrl" placeholder="https://example.com/image.png" style="width:100%;padding:8px;border-radius:5px;border:1px solid #ffd700;background:#333;color:#fff;">
+                    <small style="color:#888;">留空则使用备用图标（Emoji）</small>
+                </div>
+                
+                <div style="margin-bottom:15px;">
+                    <label style="color:#fff;display:block;margin-bottom:5px;">备用图标 (Emoji):</label>
+                    <input type="text" id="iconEditFallback" placeholder="🎁" maxlength="5" style="width:100%;padding:8px;border-radius:5px;border:1px solid #ffd700;background:#333;color:#fff;">
+                </div>
+                
+                <div style="margin-bottom:15px;">
+                    <label style="color:#fff;display:block;margin-bottom:5px;">描述:</label>
+                    <textarea id="iconEditDescription" rows="2" style="width:100%;padding:8px;border-radius:5px;border:1px solid #ffd700;background:#333;color:#fff;"></textarea>
+                </div>
+                
+                <div style="margin-bottom:20px;text-align:center;">
+                    <div style="color:#888;margin-bottom:10px;">预览:</div>
+                    <div id="iconPreview" style="background:#333;border:2px solid #ffd700;border-radius:10px;padding:20px;display:inline-block;">
+                        <img id="iconPreviewImg" src="" alt="预览" style="max-width:150px;max-height:150px;display:none;" onerror="this.style.display='none'; document.getElementById('iconPreviewEmoji').style.display='block';">
+                        <div id="iconPreviewEmoji" style="font-size:80px;">🎁</div>
+                    </div>
+                </div>
+                
+                <div style="display:flex;gap:10px;justify-content:center;">
+                    <button type="submit" style="padding:10px 30px;border-radius:20px;background:#ffd700;color:#222;font-weight:bold;border:none;cursor:pointer;">保存</button>
+                    <button type="button" onclick="closeIconEditModal()" style="padding:10px 30px;border-radius:20px;background:#666;color:#fff;font-weight:bold;border:none;cursor:pointer;">取消</button>
                 </div>
             </form>
         </div>
@@ -944,19 +1041,27 @@
                 btn.style.borderBottom = '3px solid transparent';
             });
             
+            document.querySelectorAll('.prize-tab-content').forEach(content => {
+                content.style.display = 'none';
+            });
+            
             if (tab === 'lucky') {
                 document.getElementById('luckyTabBtn').style.background = 'rgba(255,215,0,0.1)';
                 document.getElementById('luckyTabBtn').style.color = '#ffd700';
                 document.getElementById('luckyTabBtn').style.borderBottom = '3px solid #ffd700';
                 document.getElementById('luckyTabContent').style.display = 'block';
-                document.getElementById('shopTabContent').style.display = 'none';
             } else if (tab === 'shop') {
                 document.getElementById('shopTabBtn').style.background = 'rgba(255,215,0,0.1)';
                 document.getElementById('shopTabBtn').style.color = '#ffd700';
                 document.getElementById('shopTabBtn').style.borderBottom = '3px solid #ffd700';
-                document.getElementById('luckyTabContent').style.display = 'none';
                 document.getElementById('shopTabContent').style.display = 'block';
                 switchShopSubTab('skin');
+            } else if (tab === 'icons') {
+                document.getElementById('iconsTabBtn').style.background = 'rgba(255,215,0,0.1)';
+                document.getElementById('iconsTabBtn').style.color = '#ffd700';
+                document.getElementById('iconsTabBtn').style.borderBottom = '3px solid #ffd700';
+                document.getElementById('iconsTabContent').style.display = 'block';
+                loadShopIcons();
             }
         }
 
@@ -1056,10 +1161,17 @@
         // 显示添加商品模态框
         function showAddShopItemModal(type) {
             editingShopItemId = null;
+            selectedLegendaryItems = [];
             document.getElementById('shopItemModalTitle').textContent = `添加${type === 'skin' ? '皮肤' : '护航'}`;
             document.getElementById('shopItemForm').reset();
             document.getElementById('shopItemId').value = '';
             document.getElementById('shopItemType').value = type;
+            document.getElementById('legendaryExchangeActive').value = '0';
+            document.getElementById('legendaryItemsSelection').dataset.loaded = '';
+            
+            // 切换到基本信息标签页
+            switchShopItemTab('basic');
+            
             document.getElementById('shopItemModal').style.display = 'flex';
         }
 
@@ -1090,11 +1202,204 @@
                     document.getElementById('shopItemSortOrder').value = item.sort_order;
                     document.getElementById('shopItemActive').value = item.is_active;
                     
+                    // 切换到基本信息标签页
+                    switchShopItemTab('basic');
+                    
+                    // 加载传说级兑换配置
+                    loadLegendaryExchangeConfig(id);
+                    
                     document.getElementById('shopItemModal').style.display = 'flex';
                 }
             } catch (error) {
                 console.error('加载商品信息失败:', error);
                 alert('加载失败');
+            }
+        }
+
+        // 切换商品编辑标签页
+        function switchShopItemTab(tab) {
+            document.querySelectorAll('.shop-item-tab-btn').forEach(btn => {
+                btn.style.background = 'transparent';
+                btn.style.color = '#fff';
+                btn.style.borderBottom = '3px solid transparent';
+            });
+            
+            document.querySelectorAll('.shop-item-tab-content').forEach(content => {
+                content.style.display = 'none';
+            });
+            
+            if (tab === 'basic') {
+                document.getElementById('basicTabBtn').style.background = 'rgba(255,215,0,0.1)';
+                document.getElementById('basicTabBtn').style.color = '#ffd700';
+                document.getElementById('basicTabBtn').style.borderBottom = '3px solid #ffd700';
+                document.getElementById('basicTabContent').style.display = 'block';
+            } else if (tab === 'legendary') {
+                document.getElementById('legendaryTabBtn').style.background = 'rgba(255,215,0,0.1)';
+                document.getElementById('legendaryTabBtn').style.color = '#ffd700';
+                document.getElementById('legendaryTabBtn').style.borderBottom = '3px solid #ffd700';
+                document.getElementById('legendaryTabContent').style.display = 'block';
+                
+                // 如果还没有加载传说级物品，现在加载
+                if (!document.getElementById('legendaryItemsSelection').dataset.loaded) {
+                    loadLegendaryItemsForSelection();
+                }
+            }
+        }
+
+        // 加载传说级物品供选择
+        let allLegendaryPrizes = [];
+        let selectedLegendaryItems = [];
+
+        async function loadLegendaryItemsForSelection() {
+            try {
+                const response = await fetch('../../server/api/admin.php?action=prizes');
+                const data = await response.json();
+                
+                if (data.success) {
+                    allLegendaryPrizes = data.prizes.filter(p => p.rarity === 'legendary');
+                    renderLegendaryItemsSelection();
+                    document.getElementById('legendaryItemsSelection').dataset.loaded = 'true';
+                } else {
+                    document.getElementById('legendaryItemsSelection').innerHTML = '<div style="color:#ef4444;text-align:center;padding:20px;">加载失败</div>';
+                }
+            } catch (error) {
+                console.error('加载传说级物品失败:', error);
+                document.getElementById('legendaryItemsSelection').innerHTML = '<div style="color:#ef4444;text-align:center;padding:20px;">网络错误</div>';
+            }
+        }
+
+        function renderLegendaryItemsSelection() {
+            const container = document.getElementById('legendaryItemsSelection');
+            
+            if (allLegendaryPrizes.length === 0) {
+                container.innerHTML = '<div style="color:#888;text-align:center;padding:20px;">暂无传说级物品</div>';
+                return;
+            }
+
+            container.innerHTML = allLegendaryPrizes.map(prize => {
+                const selected = selectedLegendaryItems.find(item => item.prize_id == prize.id);
+                const quantity = selected ? selected.quantity : 1;
+                
+                return `
+                    <div style="background:${selected ? 'rgba(255,215,0,0.1)' : '#444'};border:2px solid ${selected ? '#ffd700' : '#666'};border-radius:10px;padding:12px;margin-bottom:10px;display:flex;align-items:center;gap:15px;">
+                        <input type="checkbox" 
+                               id="legendary_${prize.id}" 
+                               ${selected ? 'checked' : ''} 
+                               onchange="toggleLegendaryItem(${prize.id})"
+                               style="width:20px;height:20px;cursor:pointer;">
+                        <div style="flex:1;">
+                            <div style="color:#ffd700;font-weight:bold;margin-bottom:5px;">
+                                ${prize.icon || '👑'} ${prize.name}
+                            </div>
+                            <div style="color:#ccc;font-size:12px;">价值: ${parseFloat(prize.value).toFixed(0)} | 剩余: ${prize.quantity || '∞'}</div>
+                        </div>
+                        <div style="display:${selected ? 'flex' : 'none'};align-items:center;gap:5px;" id="quantity_control_${prize.id}">
+                            <label style="color:#fff;font-size:12px;">数量:</label>
+                            <input type="number" 
+                                   id="quantity_${prize.id}" 
+                                   value="${quantity}" 
+                                   min="1" 
+                                   max="10"
+                                   onchange="updateLegendaryItemQuantity(${prize.id}, this.value)"
+                                   style="width:60px;padding:5px;border-radius:5px;border:1px solid #ffd700;background:#333;color:#fff;text-align:center;">
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function toggleLegendaryItem(prizeId) {
+            const checkbox = document.getElementById(`legendary_${prizeId}`);
+            const quantityControl = document.getElementById(`quantity_control_${prizeId}`);
+            
+            if (checkbox.checked) {
+                const prize = allLegendaryPrizes.find(p => p.id == prizeId);
+                selectedLegendaryItems.push({
+                    prize_id: prizeId,
+                    name: prize.name,
+                    quantity: 1
+                });
+                quantityControl.style.display = 'flex';
+            } else {
+                selectedLegendaryItems = selectedLegendaryItems.filter(item => item.prize_id != prizeId);
+                quantityControl.style.display = 'none';
+            }
+            
+            renderLegendaryItemsSelection();
+        }
+
+        function updateLegendaryItemQuantity(prizeId, quantity) {
+            const item = selectedLegendaryItems.find(item => item.prize_id == prizeId);
+            if (item) {
+                item.quantity = parseInt(quantity) || 1;
+            }
+        }
+
+        // 加载传说级兑换配置
+        async function loadLegendaryExchangeConfig(shopItemId) {
+            try {
+                const response = await fetch(`../../server/api/shop.php?action=legendary_exchange_config&shop_item_id=${shopItemId}`);
+                const data = await response.json();
+                
+                if (data.success && data.config) {
+                    const config = data.config;
+                    selectedLegendaryItems = config.required_items || [];
+                    document.getElementById('legendaryExchangeActive').value = config.is_active;
+                    
+                    // 如果传说级物品已加载，重新渲染
+                    if (document.getElementById('legendaryItemsSelection').dataset.loaded) {
+                        renderLegendaryItemsSelection();
+                    }
+                } else {
+                    // 没有配置，重置为空
+                    selectedLegendaryItems = [];
+                    document.getElementById('legendaryExchangeActive').value = '0';
+                }
+            } catch (error) {
+                console.error('加载传说级兑换配置失败:', error);
+            }
+        }
+
+        // 保存传说级兑换配置
+        async function saveLegendaryExchangeConfig() {
+            const shopItemId = document.getElementById('shopItemId').value;
+            
+            if (!shopItemId) {
+                alert('请先保存商品基本信息');
+                return;
+            }
+            
+            if (selectedLegendaryItems.length === 0) {
+                if (!confirm('未选择任何传说级物品，这将禁用此商品的传说级兑换功能。是否继续？')) {
+                    return;
+                }
+            }
+            
+            try {
+                const response = await fetch('../../server/api/shop.php?action=save_legendary_exchange_config', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        shop_item_id: shopItemId,
+                        required_items: selectedLegendaryItems,
+                        is_active: parseInt(document.getElementById('legendaryExchangeActive').value),
+                        sort_order: 0
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('传说级兑换配置保存成功！');
+                } else {
+                    alert('保存失败: ' + data.error);
+                }
+            } catch (error) {
+                console.error('保存传说级兑换配置失败:', error);
+                alert('网络错误');
             }
         }
 
@@ -1288,6 +1593,174 @@
                 alert('网络错误');
             }
         }
+
+        // ========== 图标管理功能 ==========
+        
+        // 加载商店图标列表
+        async function loadShopIcons() {
+            try {
+                const response = await fetch('../../server/api/admin.php?action=get_shop_icons', {
+                    credentials: 'include'
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    renderShopIcons(data.icons);
+                } else {
+                    document.getElementById('shopIconsList').innerHTML = '<div style="color:#ef4444;text-align:center;padding:40px;">加载失败</div>';
+                }
+            } catch (error) {
+                console.error('加载图标失败:', error);
+                document.getElementById('shopIconsList').innerHTML = '<div style="color:#ef4444;text-align:center;padding:40px;">网络错误</div>';
+            }
+        }
+
+        // 渲染图标列表
+        function renderShopIcons(icons) {
+            const container = document.getElementById('shopIconsList');
+            
+            if (icons.length === 0) {
+                container.innerHTML = '<div style="color:#888;text-align:center;padding:40px;">暂无图标配置</div>';
+                return;
+            }
+
+            container.innerHTML = icons.map(icon => `
+                <div style="background:#333;border:2px solid #ffd700;border-radius:15px;padding:20px;text-align:center;">
+                    <div style="margin-bottom:15px;">
+                        ${icon.icon_url ? 
+                            `<img src="${icon.icon_url}" alt="${icon.icon_name}" style="max-width:150px;max-height:150px;border-radius:10px;" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                             <div style="font-size:80px;display:none;">${icon.fallback_icon}</div>` :
+                            `<div style="font-size:80px;">${icon.fallback_icon}</div>`
+                        }
+                    </div>
+                    <h3 style="color:#ffd700;margin-bottom:10px;">${icon.icon_name}</h3>
+                    <p style="color:#ccc;font-size:14px;margin-bottom:15px;">${icon.description || ''}</p>
+                    <button onclick="editShopIcon(${icon.id})" style="padding:8px 20px;border-radius:15px;background:#3b82f6;color:#fff;font-weight:bold;border:none;cursor:pointer;">编辑图标</button>
+                </div>
+            `).join('');
+        }
+
+        // 编辑图标
+        async function editShopIcon(id) {
+            try {
+                const response = await fetch('../../server/api/admin.php?action=get_shop_icons', {
+                    credentials: 'include'
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    const icon = data.icons.find(i => i.id == id);
+                    if (!icon) {
+                        alert('图标不存在');
+                        return;
+                    }
+                    
+                    document.getElementById('iconEditModalTitle').textContent = '编辑图标 - ' + icon.icon_name;
+                    document.getElementById('iconEditId').value = icon.id;
+                    document.getElementById('iconEditKey').value = icon.icon_key;
+                    document.getElementById('iconEditName').value = icon.icon_name;
+                    document.getElementById('iconEditUrl').value = icon.icon_url || '';
+                    document.getElementById('iconEditFallback').value = icon.fallback_icon || '';
+                    document.getElementById('iconEditDescription').value = icon.description || '';
+                    
+                    // 显示模态框
+                    document.getElementById('iconEditModal').style.display = 'flex';
+                    
+                    // 延迟更新预览，确保模态框已显示
+                    setTimeout(updateIconPreview, 100);
+                }
+            } catch (error) {
+                console.error('加载图标信息失败:', error);
+                alert('加载失败');
+            }
+        }
+
+        // 更新图标预览
+        function updateIconPreview() {
+            const url = document.getElementById('iconEditUrl').value.trim();
+            const fallback = document.getElementById('iconEditFallback').value.trim();
+            const previewImg = document.getElementById('iconPreviewImg');
+            const previewEmoji = document.getElementById('iconPreviewEmoji');
+            
+            if (url) {
+                previewImg.src = url;
+                previewImg.style.display = 'block';
+                previewEmoji.style.display = 'none';
+                
+                // 如果图片加载失败，显示备用图标
+                previewImg.onerror = function() {
+                    previewImg.style.display = 'none';
+                    previewEmoji.style.display = 'block';
+                    previewEmoji.textContent = fallback || '🎁';
+                };
+            } else {
+                previewImg.style.display = 'none';
+                previewEmoji.style.display = 'block';
+                previewEmoji.textContent = fallback || '🎁';
+            }
+        }
+
+        // 初始化输入监听
+        function initIconEditListeners() {
+            const urlInput = document.getElementById('iconEditUrl');
+            const fallbackInput = document.getElementById('iconEditFallback');
+            
+            if (urlInput) {
+                urlInput.addEventListener('input', updateIconPreview);
+                urlInput.addEventListener('change', updateIconPreview);
+            }
+            if (fallbackInput) {
+                fallbackInput.addEventListener('input', updateIconPreview);
+                fallbackInput.addEventListener('change', updateIconPreview);
+            }
+        }
+
+        // 页面加载时初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            initIconEditListeners();
+        });
+
+        // 关闭图标编辑模态框
+        function closeIconEditModal() {
+            document.getElementById('iconEditModal').style.display = 'none';
+        }
+
+        // 保存图标配置
+        document.getElementById('iconEditForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = {
+                id: document.getElementById('iconEditId').value,
+                icon_key: document.getElementById('iconEditKey').value,
+                icon_url: document.getElementById('iconEditUrl').value,
+                fallback_icon: document.getElementById('iconEditFallback').value,
+                description: document.getElementById('iconEditDescription').value
+            };
+            
+            try {
+                const response = await fetch('../../server/api/admin.php?action=update_shop_icon', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify(formData)
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('图标更新成功！');
+                    closeIconEditModal();
+                    loadShopIcons();
+                } else {
+                    alert('保存失败: ' + data.error);
+                }
+            } catch (error) {
+                console.error('保存图标失败:', error);
+                alert('网络错误');
+            }
+        });
     </script>
 </body>
 </html>

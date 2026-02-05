@@ -112,6 +112,12 @@ switch ($action) {
     case 'get_price_history':
         getPriceHistory();
         break;
+    case 'get_shop_icons':
+        getShopIcons();
+        break;
+    case 'update_shop_icon':
+        updateShopIcon();
+        break;
     default:
         http_response_code(400);
         echo json_encode(['error' => '无效的操作']);
@@ -1730,7 +1736,7 @@ function getDrawPrices() {
         
         // 查询当前页面的价格设置
         $stmt = $db->prepare("
-            SELECT price_type, price_value 
+            SELECT price_type, price_value, button_name 
             FROM draw_prices 
             WHERE page_name = ?
         ");
@@ -1744,13 +1750,21 @@ function getDrawPrices() {
             'quintuple' => 50
         ];
         
+        $nameData = [
+            'single' => '',
+            'triple' => '',
+            'quintuple' => ''
+        ];
+        
         foreach ($prices as $price) {
             $priceData[$price['price_type']] = (int)$price['price_value'];
+            $nameData[$price['price_type']] = $price['button_name'] ?? '';
         }
         
         echo json_encode([
             'success' => true,
-            'prices' => $priceData
+            'prices' => $priceData,
+            'names' => $nameData
         ]);
         
     } catch (Exception $e) {
@@ -1766,6 +1780,7 @@ function updateDrawPrice() {
         $page = $input['page'] ?? '';
         $type = $input['type'] ?? '';
         $price = $input['price'] ?? 0;
+        $buttonName = $input['button_name'] ?? null;
         
         if (empty($page) || empty($type) || $price <= 0) {
             throw new Exception('参数不完整或价格无效');
@@ -1782,15 +1797,16 @@ function updateDrawPrice() {
         $stmt->execute([$page, $type]);
         $oldPrice = $stmt->fetchColumn() ?: 0;
         
-        // 更新或插入价格
+        // 更新或插入价格和按钮名称
         $stmt = $db->prepare("
-            INSERT INTO draw_prices (page_name, price_type, price_value, updated_at) 
-            VALUES (?, ?, ?, NOW()) 
+            INSERT INTO draw_prices (page_name, price_type, price_value, button_name, updated_at) 
+            VALUES (?, ?, ?, ?, NOW()) 
             ON DUPLICATE KEY UPDATE 
-            price_value = VALUES(price_value), 
+            price_value = VALUES(price_value),
+            button_name = VALUES(button_name),
             updated_at = VALUES(updated_at)
         ");
-        $stmt->execute([$page, $type, $price]);
+        $stmt->execute([$page, $type, $price, $buttonName]);
         
         // 记录价格变更历史
         $stmt = $db->prepare("
@@ -1947,6 +1963,74 @@ function getPriceHistory() {
         
     } catch (Exception $e) {
         echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+}
+
+// ========== 商店图标管理功能 ==========
+
+function getShopIcons() {
+    global $db;
+    
+    try {
+        $stmt = $db->query("
+            SELECT * FROM shop_icon_config 
+            ORDER BY sort_order ASC, id ASC
+        ");
+        $icons = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        echo json_encode([
+            'success' => true,
+            'icons' => $icons
+        ]);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode([
+            'success' => false,
+            'error' => '获取图标配置失败: ' . $e->getMessage()
+        ]);
+    }
+}
+
+function updateShopIcon() {
+    global $db, $input;
+    
+    if (!isset($input['id']) || !isset($input['icon_key'])) {
+        http_response_code(400);
+        echo json_encode([
+            'success' => false,
+            'error' => '缺少必要参数'
+        ]);
+        return;
+    }
+    
+    try {
+        $stmt = $db->prepare("
+            UPDATE shop_icon_config 
+            SET icon_url = ?, 
+                fallback_icon = ?, 
+                description = ?,
+                updated_at = NOW()
+            WHERE id = ? AND icon_key = ?
+        ");
+        
+        $stmt->execute([
+            $input['icon_url'] ?? '',
+            $input['fallback_icon'] ?? '🎁',
+            $input['description'] ?? '',
+            $input['id'],
+            $input['icon_key']
+        ]);
+        
+        echo json_encode([
+            'success' => true,
+            'message' => '图标更新成功'
+        ]);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode([
+            'success' => false,
+            'error' => '更新图标失败: ' . $e->getMessage()
+        ]);
     }
 }
 ?>
