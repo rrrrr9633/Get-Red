@@ -1137,6 +1137,9 @@
                 // 构建卡片内容
                 let cardContent = '<div class="card-glow"></div>';
                 
+                // 获取描述文本，优先使用page.description，否则使用默认值
+                const description = page.description || '抽取心爱的大红';
+                
                 // 如果有小图片，显示大图片；否则显示icon
                 if (page.thumbImage) {
                     cardContent += `
@@ -1145,7 +1148,7 @@
                         </div>
                         <div class="card-content">
                             <h3>${page.displayName || page.fileName}</h3>
-                            <p>抽取心爱的大红</p>
+                            <p>${description}</p>
                         </div>
                     `;
                 } else {
@@ -1153,7 +1156,7 @@
                         <div class="card-icon">${page.icon || '🍎'}</div>
                         <div class="card-content">
                             <h3>${page.displayName || page.fileName}</h3>
-                            <p>抽取心爱的大红</p>
+                            <p>${description}</p>
                         </div>
                     `;
                 }

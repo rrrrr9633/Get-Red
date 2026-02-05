@@ -761,12 +761,22 @@ function listLuckyPages() {
                     }
                 }
                 
-                // 检查是否有小图片
-                $thumbImage = getPageThumbImage($fileName);
+                // 读取页面描述
+                $description = extractPageDescription($file);
+                if (!$description) {
+                    $description = '抽取心爱的大红';
+                }
+                
+                // 提取中心展示图片（优先）
+                $showcaseImage = extractShowcaseImage($file);
+                
+                // 如果没有中心展示图片，尝试获取缩略图
+                $thumbImage = $showcaseImage ?: getPageThumbImage($fileName);
                 
                 $pages[] = [
                     'fileName' => $fileName,
                     'displayName' => $displayName,
+                    'description' => $description,
                     'icon' => '🍎',
                     'thumbImage' => $thumbImage
                 ];
@@ -1086,14 +1096,10 @@ function deleteLuckyPage() {
             return;
         }
         
-        // 删除文件
-        if (!unlink($filePath)) {
-            http_response_code(500);
-            echo json_encode(['error' => '删除文件失败']);
-            return;
-        }
+        // 开始事务
+        $db->beginTransaction();
         
-        // 删除对应的数据表
+        // 1. 删除对应的独立奖品表（如 lucky1_prizes）
         $tableName = str_replace('.html', '_prizes', $fileName);
         $tableName = str_replace('-', '_', $tableName);
         
@@ -1105,8 +1111,70 @@ function deleteLuckyPage() {
             $db->exec($dropTableSQL);
         }
         
-        echo json_encode(['success' => true, 'message' => 'Lucky页面删除成功']);
+        // 2. 检查limited_drops表是否存在page_name字段，如果存在则删除
+        try {
+            $stmt = $db->prepare("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'limited_drops' AND COLUMN_NAME = 'page_name'");
+            $stmt->execute();
+            if ($stmt->fetchColumn() > 0) {
+                $stmt = $db->prepare("DELETE FROM limited_drops WHERE page_name = ?");
+                $stmt->execute([$fileName]);
+            }
+        } catch (Exception $e) {
+            // 表不存在或字段不存在，跳过
+        }
+        
+        // 3. 删除该页面的抽奖价格配置
+        try {
+            $stmt = $db->prepare("DELETE FROM draw_prices WHERE page_name = ?");
+            $stmt->execute([$fileName]);
+        } catch (Exception $e) {
+            // 表不存在，跳过
+        }
+        
+        // 4. 删除该页面的价格历史
+        try {
+            $stmt = $db->prepare("DELETE FROM price_history WHERE page_name = ?");
+            $stmt->execute([$fileName]);
+        } catch (Exception $e) {
+            // 表不存在，跳过
+        }
+        
+        // 5. 删除HTML文件
+        if (!unlink($filePath)) {
+            throw new Exception('删除文件失败');
+        }
+        
+        // 6. 删除对应的缩略图（如果存在）
+        $imagesDir = dirname(__DIR__, 2) . '/images/thumbs/';
+        $pageBaseName = pathinfo($fileName, PATHINFO_FILENAME);
+        $extensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+        foreach ($extensions as $ext) {
+            $thumbPath = $imagesDir . $pageBaseName . '.' . $ext;
+            if (file_exists($thumbPath)) {
+                @unlink($thumbPath);
+            }
+        }
+        
+        // 7. 删除对应的大图（如果存在）
+        $imagesDir = dirname(__DIR__, 2) . '/images/';
+        foreach ($extensions as $ext) {
+            // 查找所有以页面名开头的图片文件
+            $pattern = $imagesDir . $pageBaseName . '_*.' . $ext;
+            $files = glob($pattern);
+            foreach ($files as $file) {
+                @unlink($file);
+            }
+        }
+        
+        // 提交事务
+        $db->commit();
+        
+        echo json_encode(['success' => true, 'message' => 'Lucky页面及相关数据删除成功']);
     } catch (Exception $e) {
+        // 回滚事务
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
         http_response_code(500);
         echo json_encode(['error' => '删除Lucky页面失败: ' . $e->getMessage()]);
     }
@@ -1116,9 +1184,60 @@ function deleteLuckyPage() {
 function extractPageTitle($filePath) {
     try {
         $content = file_get_contents($filePath);
+        
+        // 优先从页面内的 <h2 class="neon-text rainbow"> 标签提取标题
+        if (preg_match('/<h2[^>]*class="[^"]*neon-text[^"]*rainbow[^"]*"[^>]*>(.*?)<\/h2>/s', $content, $matches)) {
+            return trim(strip_tags($matches[1]));
+        }
+        
+        // 备用方案：从 <title> 标签提取
         if (preg_match('/<title>(.*?) - 幸运降临<\/title>/', $content, $matches)) {
             return $matches[1];
         }
+        
+        // 再备用：从任意 <title> 标签提取
+        if (preg_match('/<title>(.*?)<\/title>/', $content, $matches)) {
+            $title = $matches[1];
+            // 移除常见的后缀
+            $title = preg_replace('/ - (幸运降临|幸运掉落|大红行动)$/', '', $title);
+            return trim($title);
+        }
+        
+        return null;
+    } catch (Exception $e) {
+        return null;
+    }
+}
+
+// 辅助函数：从HTML文件中提取页面描述
+function extractPageDescription($filePath) {
+    try {
+        $content = file_get_contents($filePath);
+        
+        // 从 game-header 区域的 <p class="neon-text"> 标签提取描述
+        if (preg_match('/<div class="game-header">.*?<p class="neon-text">(.*?)<\/p>/s', $content, $matches)) {
+            return trim(strip_tags($matches[1]));
+        }
+        
+        return null;
+    } catch (Exception $e) {
+        return null;
+    }
+}
+
+// 辅助函数：从HTML文件中提取中心展示图片
+function extractShowcaseImage($filePath) {
+    try {
+        $content = file_get_contents($filePath);
+        
+        // 从 showcase-icon 中提取图片 src
+        if (preg_match('/<div class="showcase-icon">.*?<img[^>]+src="([^"]+)"[^>]*>/s', $content, $matches)) {
+            $imageSrc = $matches[1];
+            // 移除路径前缀 ../ 
+            $imageSrc = str_replace('../', '', $imageSrc);
+            return $imageSrc;
+        }
+        
         return null;
     } catch (Exception $e) {
         return null;
