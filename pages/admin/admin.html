@@ -279,19 +279,66 @@
     <!-- 奖品页面选择弹窗 -->
     <div id="prizePageModal" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.7);z-index:2000;align-items:center;justify-content:center;">
         <div style="background:#222;padding:30px 40px;border-radius:20px;max-width:90vw;min-width:400px;box-shadow:0 0 30px #ffd700;">
-            <h2 style="color:#ffd700;text-align:center;margin-bottom:20px;">Lucky页面管理</h2>
+            <h2 style="color:#ffd700;text-align:center;margin-bottom:20px;">奖品管理</h2>
             
-            <!-- 管理按钮 -->
-            <div style="display:flex;gap:10px;justify-content:center;margin-bottom:20px;flex-wrap:wrap;">
-                <button onclick="showCreateLuckyModal()" style="padding:8px 16px;border-radius:15px;background:#4ade80;color:#000;font-weight:bold;border:none;cursor:pointer;">创建新Lucky</button>
-                <button onclick="showRenameLuckyModal()" style="padding:8px 16px;border-radius:15px;background:#f59e0b;color:#000;font-weight:bold;border:none;cursor:pointer;">重命名Lucky</button>
-                <button onclick="showThumbImageModal()" style="padding:8px 16px;border-radius:15px;background:#8b5cf6;color:#fff;font-weight:bold;border:none;cursor:pointer;">设置小图片</button>
-                <button onclick="showDeleteLuckyModal()" style="padding:8px 16px;border-radius:15px;background:#ef4444;color:#fff;font-weight:bold;border:none;cursor:pointer;">删除Lucky</button>
+            <!-- 选项卡 -->
+            <div style="display:flex;gap:10px;justify-content:center;margin-bottom:20px;border-bottom:2px solid #ffd700;">
+                <button onclick="switchPrizeTab('lucky')" id="luckyTabBtn" class="prize-tab-btn active" style="padding:12px 24px;background:rgba(255,215,0,0.1);color:#ffd700;border:none;border-bottom:3px solid #ffd700;cursor:pointer;font-size:16px;font-weight:bold;">Lucky页面控制</button>
+                <button onclick="switchPrizeTab('shop')" id="shopTabBtn" class="prize-tab-btn" style="padding:12px 24px;background:transparent;color:#fff;border:none;border-bottom:3px solid transparent;cursor:pointer;font-size:16px;">商城奖品管理</button>
             </div>
             
-            <div id="luckyPageList" style="display:flex;flex-wrap:wrap;gap:20px;justify-content:center;"></div>
+            <!-- Lucky页面控制内容 -->
+            <div id="luckyTabContent" class="prize-tab-content">
+                <div style="display:flex;gap:10px;justify-content:center;margin-bottom:20px;flex-wrap:wrap;">
+                    <button onclick="showCreateLuckyModal()" style="padding:8px 16px;border-radius:15px;background:#4ade80;color:#000;font-weight:bold;border:none;cursor:pointer;">创建新Lucky</button>
+                    <button onclick="showRenameLuckyModal()" style="padding:8px 16px;border-radius:15px;background:#f59e0b;color:#000;font-weight:bold;border:none;cursor:pointer;">重命名Lucky</button>
+                    <button onclick="showThumbImageModal()" style="padding:8px 16px;border-radius:15px;background:#8b5cf6;color:#fff;font-weight:bold;border:none;cursor:pointer;">设置小图片</button>
+                    <button onclick="showDeleteLuckyModal()" style="padding:8px 16px;border-radius:15px;background:#ef4444;color:#fff;font-weight:bold;border:none;cursor:pointer;">删除Lucky</button>
+                </div>
+                <div id="luckyPageList" style="display:flex;flex-wrap:wrap;gap:20px;justify-content:center;"></div>
+            </div>
+            
+            <!-- 商城奖品管理内容 -->
+            <div id="shopTabContent" class="prize-tab-content" style="display:none;">
+                <div style="display:flex;gap:10px;justify-content:center;margin-bottom:20px;">
+                    <button onclick="switchShopSubTab('skin')" id="skinSubTabBtn" class="shop-sub-tab-btn active" style="padding:10px 20px;border-radius:15px;background:#ffd700;color:#000;font-weight:bold;border:none;cursor:pointer;">🎨 皮肤奖品</button>
+                    <button onclick="switchShopSubTab('escort')" id="escortSubTabBtn" class="shop-sub-tab-btn" style="padding:10px 20px;border-radius:15px;background:#444;color:#fff;font-weight:bold;border:none;cursor:pointer;">🛡️ 护航奖品</button>
+                    <button onclick="switchShopSubTab('orders')" id="ordersSubTabBtn" class="shop-sub-tab-btn" style="padding:10px 20px;border-radius:15px;background:#444;color:#fff;font-weight:bold;border:none;cursor:pointer;">📦 购买订单</button>
+                </div>
+                
+                <!-- 皮肤奖品 -->
+                <div id="skinSubContent" class="shop-sub-content">
+                    <div style="text-align:right;margin-bottom:15px;">
+                        <button onclick="showAddShopItemModal('skin')" style="padding:8px 16px;border-radius:15px;background:#4ade80;color:#000;font-weight:bold;border:none;cursor:pointer;">+ 添加皮肤</button>
+                    </div>
+                    <div id="skinItemsList" style="max-height:400px;overflow-y:auto;"></div>
+                </div>
+                
+                <!-- 护航奖品 -->
+                <div id="escortSubContent" class="shop-sub-content" style="display:none;">
+                    <div style="text-align:right;margin-bottom:15px;">
+                        <button onclick="showAddShopItemModal('escort')" style="padding:8px 16px;border-radius:15px;background:#4ade80;color:#000;font-weight:bold;border:none;cursor:pointer;">+ 添加护航</button>
+                    </div>
+                    <div id="escortItemsList" style="max-height:400px;overflow-y:auto;"></div>
+                </div>
+                
+                <!-- 购买订单 -->
+                <div id="ordersSubContent" class="shop-sub-content" style="display:none;">
+                    <div style="margin-bottom:15px;">
+                        <select id="orderStatusFilter" onchange="loadShopOrders()" style="padding:8px;border-radius:5px;background:#333;color:#fff;border:1px solid #ffd700;">
+                            <option value="">全部订单</option>
+                            <option value="pending">待处理</option>
+                            <option value="processing">处理中</option>
+                            <option value="completed">已完成</option>
+                            <option value="cancelled">已取消</option>
+                        </select>
+                    </div>
+                    <div id="ordersList" style="max-height:400px;overflow-y:auto;"></div>
+                </div>
+            </div>
+            
             <div style="text-align:center;margin-top:20px;">
-                <button onclick="closePrizePageModal()" style="padding:10px 30px;border-radius:20px;background:#ffd700;color:#222;font-weight:bold;border:none;cursor:pointer;">取消</button>
+                <button onclick="closePrizePageModal()" style="padding:10px 30px;border-radius:20px;background:#ffd700;color:#222;font-weight:bold;border:none;cursor:pointer;">关闭</button>
             </div>
         </div>
     </div>
@@ -809,6 +856,437 @@
         function navigateToPage(pagePath) {
             // 直接跳转到目标页面，目标页面会自动验证超级管理员session
             window.location.href = pagePath;
+        }
+    </script>
+
+    <!-- 商城物品表单模态框 -->
+    <div id="shopItemModal" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.8);z-index:2200;align-items:center;justify-content:center;">
+        <div style="background:#222;padding:30px;border-radius:20px;max-width:500px;width:90%;box-shadow:0 0 30px #ffd700;max-height:90vh;overflow-y:auto;">
+            <h2 id="shopItemModalTitle" style="color:#ffd700;text-align:center;margin-bottom:20px;">添加商品</h2>
+            <form id="shopItemForm">
+                <input type="hidden" id="shopItemId">
+                <input type="hidden" id="shopItemType">
+                
+                <div style="margin-bottom:15px;">
+                    <label style="color:#fff;display:block;margin-bottom:5px;">物品名称:</label>
+                    <input type="text" id="shopItemName" style="width:100%;padding:8px;border-radius:5px;border:1px solid #ffd700;background:#333;color:#fff;" required>
+                </div>
+                
+                <div style="margin-bottom:15px;">
+                    <label style="color:#fff;display:block;margin-bottom:5px;">物品图标 (Emoji):</label>
+                    <input type="text" id="shopItemIcon" placeholder="🎁" style="width:100%;padding:8px;border-radius:5px;border:1px solid #ffd700;background:#333;color:#fff;">
+                </div>
+                
+                <div style="margin-bottom:15px;">
+                    <label style="color:#fff;display:block;margin-bottom:5px;">物品图片URL:</label>
+                    <input type="url" id="shopItemImageUrl" placeholder="https://example.com/image.jpg" style="width:100%;padding:8px;border-radius:5px;border:1px solid #ffd700;background:#333;color:#fff;">
+                </div>
+                
+                <div style="margin-bottom:15px;">
+                    <label style="color:#fff;display:block;margin-bottom:5px;">物品描述:</label>
+                    <textarea id="shopItemDescription" rows="3" style="width:100%;padding:8px;border-radius:5px;border:1px solid #ffd700;background:#333;color:#fff;"></textarea>
+                </div>
+                
+                <div style="margin-bottom:15px;">
+                    <label style="color:#fff;display:block;margin-bottom:5px;">价格（金币）:</label>
+                    <input type="number" id="shopItemPrice" min="0" step="0.01" style="width:100%;padding:8px;border-radius:5px;border:1px solid #ffd700;background:#333;color:#fff;" required>
+                </div>
+                
+                <div style="margin-bottom:15px;">
+                    <label style="color:#fff;display:block;margin-bottom:5px;">稀有度:</label>
+                    <select id="shopItemRarity" style="width:100%;padding:8px;border-radius:5px;border:1px solid #ffd700;background:#333;color:#fff;" required>
+                        <option value="common">普通</option>
+                        <option value="rare">稀有</option>
+                        <option value="epic">史诗</option>
+                        <option value="legendary">传说</option>
+                    </select>
+                </div>
+                
+                <div style="margin-bottom:15px;">
+                    <label style="color:#fff;display:block;margin-bottom:5px;">库存数量:</label>
+                    <input type="number" id="shopItemStock" value="-1" min="-1" style="width:100%;padding:8px;border-radius:5px;border:1px solid #ffd700;background:#333;color:#fff;">
+                    <small style="color:#888;">-1 表示无限库存</small>
+                </div>
+                
+                <div style="margin-bottom:15px;">
+                    <label style="color:#fff;display:block;margin-bottom:5px;">排序顺序:</label>
+                    <input type="number" id="shopItemSortOrder" value="0" min="0" style="width:100%;padding:8px;border-radius:5px;border:1px solid #ffd700;background:#333;color:#fff;">
+                </div>
+                
+                <div style="margin-bottom:15px;">
+                    <label style="color:#fff;display:block;margin-bottom:5px;">状态:</label>
+                    <select id="shopItemActive" style="width:100%;padding:8px;border-radius:5px;border:1px solid #ffd700;background:#333;color:#fff;" required>
+                        <option value="1">上架</option>
+                        <option value="0">下架</option>
+                    </select>
+                </div>
+                
+                <div style="display:flex;gap:10px;justify-content:center;">
+                    <button type="submit" style="padding:10px 30px;border-radius:20px;background:#ffd700;color:#222;font-weight:bold;border:none;cursor:pointer;">保存</button>
+                    <button type="button" onclick="closeShopItemModal()" style="padding:10px 30px;border-radius:20px;background:#666;color:#fff;font-weight:bold;border:none;cursor:pointer;">取消</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let currentPrizeTab = 'lucky';
+        let currentShopSubTab = 'skin';
+        let editingShopItemId = null;
+
+        // 切换奖品管理主选项卡
+        function switchPrizeTab(tab) {
+            currentPrizeTab = tab;
+            
+            document.querySelectorAll('.prize-tab-btn').forEach(btn => {
+                btn.style.background = 'transparent';
+                btn.style.color = '#fff';
+                btn.style.borderBottom = '3px solid transparent';
+            });
+            
+            if (tab === 'lucky') {
+                document.getElementById('luckyTabBtn').style.background = 'rgba(255,215,0,0.1)';
+                document.getElementById('luckyTabBtn').style.color = '#ffd700';
+                document.getElementById('luckyTabBtn').style.borderBottom = '3px solid #ffd700';
+                document.getElementById('luckyTabContent').style.display = 'block';
+                document.getElementById('shopTabContent').style.display = 'none';
+            } else if (tab === 'shop') {
+                document.getElementById('shopTabBtn').style.background = 'rgba(255,215,0,0.1)';
+                document.getElementById('shopTabBtn').style.color = '#ffd700';
+                document.getElementById('shopTabBtn').style.borderBottom = '3px solid #ffd700';
+                document.getElementById('luckyTabContent').style.display = 'none';
+                document.getElementById('shopTabContent').style.display = 'block';
+                switchShopSubTab('skin');
+            }
+        }
+
+        // 切换商城子选项卡
+        function switchShopSubTab(subTab) {
+            currentShopSubTab = subTab;
+            
+            document.querySelectorAll('.shop-sub-tab-btn').forEach(btn => {
+                btn.style.background = '#444';
+                btn.style.color = '#fff';
+            });
+            
+            document.querySelectorAll('.shop-sub-content').forEach(content => {
+                content.style.display = 'none';
+            });
+            
+            if (subTab === 'skin') {
+                document.getElementById('skinSubTabBtn').style.background = '#ffd700';
+                document.getElementById('skinSubTabBtn').style.color = '#000';
+                document.getElementById('skinSubContent').style.display = 'block';
+                loadShopItems('skin');
+            } else if (subTab === 'escort') {
+                document.getElementById('escortSubTabBtn').style.background = '#ffd700';
+                document.getElementById('escortSubTabBtn').style.color = '#000';
+                document.getElementById('escortSubContent').style.display = 'block';
+                loadShopItems('escort');
+            } else if (subTab === 'orders') {
+                document.getElementById('ordersSubTabBtn').style.background = '#ffd700';
+                document.getElementById('ordersSubTabBtn').style.color = '#000';
+                document.getElementById('ordersSubContent').style.display = 'block';
+                loadShopOrders();
+            }
+        }
+
+        // 加载商城物品
+        async function loadShopItems(type) {
+            try {
+                const response = await fetch('../../server/api/shop.php?action=admin_items');
+                const data = await response.json();
+                
+                if (data.success) {
+                    const items = data.items.filter(item => item.item_type === type);
+                    renderShopItems(items, type);
+                } else {
+                    alert('加载商品失败: ' + data.error);
+                }
+            } catch (error) {
+                console.error('加载商品失败:', error);
+                alert('网络错误');
+            }
+        }
+
+        // 渲染商城物品列表
+        function renderShopItems(items, type) {
+            const listId = type === 'skin' ? 'skinItemsList' : 'escortItemsList';
+            const container = document.getElementById(listId);
+            
+            if (items.length === 0) {
+                container.innerHTML = '<div style="color:#888;text-align:center;padding:20px;">暂无商品</div>';
+                return;
+            }
+
+            container.innerHTML = items.map(item => `
+                <div style="background:#333;border:2px solid ${item.is_active ? '#ffd700' : '#666'};border-radius:10px;padding:15px;margin-bottom:10px;">
+                    <div style="display:flex;justify-content:space-between;align-items:start;">
+                        <div style="flex:1;">
+                            <div style="color:#ffd700;font-size:18px;font-weight:bold;margin-bottom:5px;">
+                                ${item.icon || '🎁'} ${item.name}
+                            </div>
+                            <div style="color:#ccc;font-size:14px;margin-bottom:10px;">${item.description || ''}</div>
+                            <div style="display:flex;gap:15px;flex-wrap:wrap;">
+                                <span style="color:#fff;">价格: <span style="color:#ffd700;">${parseFloat(item.price).toFixed(0)} 金币</span></span>
+                                <span style="color:#fff;">稀有度: ${getRarityText(item.rarity)}</span>
+                                <span style="color:#fff;">库存: ${item.stock === -1 ? '无限' : item.stock}</span>
+                                <span style="color:#fff;">状态: ${item.is_active ? '✅ 上架' : '❌ 下架'}</span>
+                            </div>
+                        </div>
+                        <div style="display:flex;gap:5px;">
+                            <button onclick="editShopItem(${item.id})" style="padding:6px 12px;border-radius:8px;background:#3b82f6;color:#fff;border:none;cursor:pointer;font-size:12px;">编辑</button>
+                            <button onclick="deleteShopItem(${item.id})" style="padding:6px 12px;border-radius:8px;background:#ef4444;color:#fff;border:none;cursor:pointer;font-size:12px;">删除</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function getRarityText(rarity) {
+            const map = {
+                'common': '普通',
+                'rare': '稀有',
+                'epic': '史诗',
+                'legendary': '传说'
+            };
+            return map[rarity] || '普通';
+        }
+
+        // 显示添加商品模态框
+        function showAddShopItemModal(type) {
+            editingShopItemId = null;
+            document.getElementById('shopItemModalTitle').textContent = `添加${type === 'skin' ? '皮肤' : '护航'}`;
+            document.getElementById('shopItemForm').reset();
+            document.getElementById('shopItemId').value = '';
+            document.getElementById('shopItemType').value = type;
+            document.getElementById('shopItemModal').style.display = 'flex';
+        }
+
+        // 编辑商品
+        async function editShopItem(id) {
+            try {
+                const response = await fetch('../../server/api/shop.php?action=admin_items');
+                const data = await response.json();
+                
+                if (data.success) {
+                    const item = data.items.find(i => i.id == id);
+                    if (!item) {
+                        alert('商品不存在');
+                        return;
+                    }
+                    
+                    editingShopItemId = id;
+                    document.getElementById('shopItemModalTitle').textContent = '编辑商品';
+                    document.getElementById('shopItemId').value = item.id;
+                    document.getElementById('shopItemType').value = item.item_type;
+                    document.getElementById('shopItemName').value = item.name;
+                    document.getElementById('shopItemIcon').value = item.icon || '';
+                    document.getElementById('shopItemImageUrl').value = item.image_url || '';
+                    document.getElementById('shopItemDescription').value = item.description || '';
+                    document.getElementById('shopItemPrice').value = item.price;
+                    document.getElementById('shopItemRarity').value = item.rarity;
+                    document.getElementById('shopItemStock').value = item.stock;
+                    document.getElementById('shopItemSortOrder').value = item.sort_order;
+                    document.getElementById('shopItemActive').value = item.is_active;
+                    
+                    document.getElementById('shopItemModal').style.display = 'flex';
+                }
+            } catch (error) {
+                console.error('加载商品信息失败:', error);
+                alert('加载失败');
+            }
+        }
+
+        // 关闭商品模态框
+        function closeShopItemModal() {
+            document.getElementById('shopItemModal').style.display = 'none';
+        }
+
+        // 保存商品
+        document.getElementById('shopItemForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = {
+                id: document.getElementById('shopItemId').value,
+                name: document.getElementById('shopItemName').value,
+                icon: document.getElementById('shopItemIcon').value,
+                image_url: document.getElementById('shopItemImageUrl').value,
+                description: document.getElementById('shopItemDescription').value,
+                price: parseFloat(document.getElementById('shopItemPrice').value),
+                item_type: document.getElementById('shopItemType').value,
+                rarity: document.getElementById('shopItemRarity').value,
+                stock: parseInt(document.getElementById('shopItemStock').value),
+                sort_order: parseInt(document.getElementById('shopItemSortOrder').value),
+                is_active: parseInt(document.getElementById('shopItemActive').value)
+            };
+            
+            try {
+                const action = editingShopItemId ? 'update_item' : 'add_item';
+                const response = await fetch(`../../server/api/shop.php?action=${action}`, {
+                    method: editingShopItemId ? 'PUT' : 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify(formData)
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert(editingShopItemId ? '商品更新成功' : '商品添加成功');
+                    closeShopItemModal();
+                    loadShopItems(formData.item_type);
+                } else {
+                    alert('保存失败: ' + data.error);
+                }
+            } catch (error) {
+                console.error('保存商品失败:', error);
+                alert('网络错误');
+            }
+        });
+
+        // 删除商品
+        async function deleteShopItem(id) {
+            if (!confirm('确定要删除这个商品吗？')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`../../server/api/shop.php?action=delete_item&id=${id}`, {
+                    method: 'DELETE',
+                    credentials: 'include'
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('商品已删除');
+                    loadShopItems(currentShopSubTab);
+                } else {
+                    alert('删除失败: ' + data.error);
+                }
+            } catch (error) {
+                console.error('删除商品失败:', error);
+                alert('网络错误');
+            }
+        }
+
+        // 加载购买订单
+        async function loadShopOrders() {
+            try {
+                const status = document.getElementById('orderStatusFilter').value;
+                const url = status ? 
+                    `../../server/api/shop.php?action=admin_purchases&status=${status}` :
+                    `../../server/api/shop.php?action=admin_purchases`;
+                
+                const response = await fetch(url, {
+                    credentials: 'include'
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    renderOrders(data.purchases);
+                } else {
+                    alert('加载订单失败: ' + data.error);
+                }
+            } catch (error) {
+                console.error('加载订单失败:', error);
+                alert('网络错误');
+            }
+        }
+
+        // 渲染订单列表
+        function renderOrders(orders) {
+            const container = document.getElementById('ordersList');
+            
+            if (orders.length === 0) {
+                container.innerHTML = '<div style="color:#888;text-align:center;padding:20px;">暂无订单</div>';
+                return;
+            }
+
+            container.innerHTML = orders.map(order => {
+                const statusColors = {
+                    'pending': '#f59e0b',
+                    'processing': '#3b82f6',
+                    'completed': '#10b981',
+                    'cancelled': '#ef4444'
+                };
+                const statusTexts = {
+                    'pending': '待处理',
+                    'processing': '处理中',
+                    'completed': '已完成',
+                    'cancelled': '已取消'
+                };
+                
+                return `
+                    <div style="background:#333;border:2px solid ${statusColors[order.status]};border-radius:10px;padding:15px;margin-bottom:10px;">
+                        <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:10px;">
+                            <div>
+                                <span style="color:#ffd700;font-weight:bold;">订单 #${order.id}</span>
+                                <span style="color:#888;margin-left:10px;">${order.username} (${order.nickname})</span>
+                            </div>
+                            <span style="padding:4px 12px;border-radius:12px;background:${statusColors[order.status]};color:#fff;font-size:12px;font-weight:bold;">
+                                ${statusTexts[order.status]}
+                            </span>
+                        </div>
+                        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:10px;">
+                            <div><span style="color:#888;">商品:</span> <span style="color:#fff;">${order.item_name}</span></div>
+                            <div><span style="color:#888;">类型:</span> <span style="color:#fff;">${order.item_type === 'skin' ? '皮肤' : '护航'}</span></div>
+                            <div><span style="color:#888;">价格:</span> <span style="color:#ffd700;">${parseFloat(order.price).toFixed(0)} 金币</span></div>
+                            <div><span style="color:#888;">玩家ID:</span> <span style="color:#fff;">${order.player_id}</span></div>
+                            <div><span style="color:#888;">购买时间:</span> <span style="color:#fff;">${order.created_at}</span></div>
+                            ${order.processed_at ? `<div><span style="color:#888;">处理时间:</span> <span style="color:#fff;">${order.processed_at}</span></div>` : ''}
+                        </div>
+                        ${order.notes ? `<div style="color:#ccc;font-size:12px;margin-bottom:10px;">备注: ${order.notes}</div>` : ''}
+                        ${order.status === 'pending' || order.status === 'processing' ? `
+                            <div style="display:flex;gap:10px;justify-content:flex-end;">
+                                <button onclick="processOrder(${order.id}, 'complete')" style="padding:6px 12px;border-radius:8px;background:#10b981;color:#fff;border:none;cursor:pointer;font-size:12px;">完成订单</button>
+                                <button onclick="processOrder(${order.id}, 'cancel')" style="padding:6px 12px;border-radius:8px;background:#ef4444;color:#fff;border:none;cursor:pointer;font-size:12px;">取消订单</button>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // 处理订单
+        async function processOrder(orderId, action) {
+            const notes = action === 'cancel' ? 
+                prompt('请输入取消原因（可选）:') : 
+                prompt('请输入处理备注（可选）:');
+            
+            if (action === 'cancel' && notes === null) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`../../server/api/shop.php?action=process_purchase`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        purchase_id: orderId,
+                        action: action,
+                        notes: notes || ''
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert(data.message);
+                    loadShopOrders();
+                } else {
+                    alert('处理失败: ' + data.error);
+                }
+            } catch (error) {
+                console.error('处理订单失败:', error);
+                alert('网络错误');
+            }
         }
     </script>
 </body>

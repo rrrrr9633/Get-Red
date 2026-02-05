@@ -198,6 +198,49 @@ function submitWithdrawalRequest($db) {
         ");
         $stmt->execute([$userId, -$amount, "跑刀提现申请"]);
         
+        // 查找负责该用户的客服并发送通知
+        $stmt = $db->prepare("SELECT username FROM users WHERE id = ?");
+        $stmt->execute([$userId]);
+        $userInfo = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        $stmt = $db->prepare("
+            SELECT service_user_id FROM service_user_assignments 
+            WHERE regular_user_id = ? AND status = 'active'
+        ");
+        $stmt->execute([$userId]);
+        $assignment = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($assignment && $assignment['service_user_id']) {
+            // 查找或创建聊天会话
+            $stmt = $db->prepare("
+                SELECT session_id FROM chat_sessions 
+                WHERE user_id = ? AND service_user_id = ? AND status != 'closed'
+                ORDER BY created_at DESC LIMIT 1
+            ");
+            $stmt->execute([$userId, $assignment['service_user_id']]);
+            $session = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$session) {
+                // 创建新会话
+                $sessionId = 'session_' . $userId . '_' . $assignment['service_user_id'] . '_' . time();
+                $stmt = $db->prepare("
+                    INSERT INTO chat_sessions (user_id, service_user_id, session_id, status)
+                    VALUES (?, ?, ?, 'active')
+                ");
+                $stmt->execute([$userId, $assignment['service_user_id'], $sessionId]);
+            } else {
+                $sessionId = $session['session_id'];
+            }
+            
+            // 发送系统消息给客服
+            $message = "【系统通知】用户 {$userInfo['username']} 提交了跑刀提现申请，金额：{$amount} 金币（{$buffCoins} 哈夫币），请及时处理。";
+            $stmt = $db->prepare("
+                INSERT INTO chat_messages (session_id, sender_id, sender_type, message, message_type)
+                VALUES (?, ?, 'user', ?, 'text')
+            ");
+            $stmt->execute([$sessionId, $userId, $message]);
+        }
+        
         $db->commit();
         
         echo json_encode([

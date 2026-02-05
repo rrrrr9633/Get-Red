@@ -396,3 +396,89 @@ INSERT INTO withdrawal_config (config_key, config_value, description) VALUES
 ON DUPLICATE KEY UPDATE config_key=config_key;
 
 SELECT '提现系统表创建完成！' AS message;
+
+-- ========================================
+-- 商城系统相关表
+-- ========================================
+
+-- 26. 商城物品表（皮肤和护航）
+CREATE TABLE IF NOT EXISTS shop_items (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL COMMENT '物品名称',
+    icon VARCHAR(20) COMMENT '物品图标',
+    image_url VARCHAR(500) COMMENT '物品图片URL',
+    description TEXT COMMENT '物品描述',
+    price DECIMAL(10,2) NOT NULL COMMENT '物品价格（金币）',
+    item_type ENUM('skin', 'escort') NOT NULL COMMENT '物品类型：皮肤或护航',
+    rarity ENUM('common','rare','epic','legendary') DEFAULT 'common' COMMENT '稀有度',
+    stock INT DEFAULT -1 COMMENT '库存数量（-1表示无限）',
+    is_active TINYINT(1) DEFAULT 1 COMMENT '是否上架',
+    sort_order INT DEFAULT 0 COMMENT '排序顺序',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_item_type (item_type),
+    INDEX idx_is_active (is_active),
+    INDEX idx_sort_order (sort_order)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='商城物品表（皮肤和护航）';
+
+-- 27. 用户购买记录表
+CREATE TABLE IF NOT EXISTS shop_purchase_history (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    shop_item_id INT NOT NULL,
+    item_name VARCHAR(100) NOT NULL,
+    item_type ENUM('skin', 'escort') NOT NULL,
+    price DECIMAL(10,2) NOT NULL,
+    purchase_type ENUM('coin', 'legendary') DEFAULT 'coin' COMMENT '购买方式：金币或传说级兑换',
+    used_items TEXT COMMENT '使用的传说级物品JSON（仅传说级兑换）',
+    player_id VARCHAR(100) COMMENT '玩家ID（提现账号）',
+    status ENUM('pending', 'processing', 'completed', 'cancelled') DEFAULT 'pending' COMMENT '订单状态',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    processed_at TIMESTAMP NULL,
+    processed_by INT NULL COMMENT '处理人ID',
+    notes TEXT COMMENT '备注信息',
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (shop_item_id) REFERENCES shop_items(id) ON DELETE CASCADE,
+    INDEX idx_user_id (user_id),
+    INDEX idx_status (status),
+    INDEX idx_purchase_type (purchase_type),
+    INDEX idx_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户购买记录表';
+
+-- 插入示例商城物品
+INSERT INTO shop_items (name, icon, image_url, description, price, item_type, rarity, stock, sort_order) VALUES
+-- 皮肤类
+('AK-47 | 火蛇', '🔫', '', '经典红色火蛇皮肤，稀有度高', 2500.00, 'skin', 'legendary', 10, 1),
+('AWP | 龙狙', '🎯', '', '传说级龙狙皮肤', 3500.00, 'skin', 'legendary', 5, 2),
+('M4A4 | 咆哮', '💥', '', '史诗级咆哮皮肤', 1800.00, 'skin', 'epic', 20, 3),
+('沙漠之鹰 | 烈焰', '🔥', '', '稀有烈焰皮肤', 800.00, 'skin', 'rare', 50, 4),
+('格洛克 | 水元素', '💧', '', '普通水元素皮肤', 300.00, 'skin', 'common', -1, 5),
+
+-- 护航类
+('金牌护航 - 至尊版', '👑', '', '最高级别护航服务，全程保障', 5000.00, 'escort', 'legendary', 3, 1),
+('金牌护航 - 豪华版', '💎', '', '豪华护航服务，安全可靠', 3000.00, 'escort', 'epic', 10, 2),
+('金牌护航 - 标准版', '🛡️', '', '标准护航服务', 1500.00, 'escort', 'rare', 30, 3),
+('金牌护航 - 基础版', '🔰', '', '基础护航服务', 800.00, 'escort', 'common', -1, 4);
+
+SELECT '商城系统表创建完成！' AS message;
+
+-- ========================================
+-- 传说级兑换系统相关表
+-- ========================================
+
+-- 28. 传说级兑换配置表（简化版）
+CREATE TABLE IF NOT EXISTS legendary_exchange_config (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    shop_item_id INT NOT NULL COMMENT '目标商城物品ID',
+    required_items TEXT NOT NULL COMMENT '所需传说物品JSON数组 [{"prize_id":1,"name":"物品名","quantity":1}]',
+    is_active TINYINT(1) DEFAULT 1 COMMENT '是否启用',
+    sort_order INT DEFAULT 0 COMMENT '排序顺序',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (shop_item_id) REFERENCES shop_items(id) ON DELETE CASCADE,
+    INDEX idx_shop_item_id (shop_item_id),
+    INDEX idx_is_active (is_active),
+    INDEX idx_sort_order (sort_order)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='传说级兑换配置表';
+
+SELECT '传说级兑换系统表创建完成！' AS message;

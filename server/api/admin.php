@@ -138,9 +138,11 @@ function getUsers() {
                 u.updated_at,
                 u.user_type,
                 u.status,
-                COUNT(wr.id) as pending_withdrawals
+                COUNT(DISTINCT wr.id) as pending_withdrawals,
+                COUNT(DISTINCT sph.id) as pending_orders
             FROM users u
             LEFT JOIN withdrawal_requests wr ON u.id = wr.user_id AND wr.status IN ('pending', 'processing')
+            LEFT JOIN shop_purchase_history sph ON u.id = sph.user_id AND sph.status IN ('pending', 'processing')
             GROUP BY u.id
             ORDER BY u.created_at DESC
         ");
@@ -154,6 +156,7 @@ function getUsers() {
                 date('Y-m-d H:i:s', strtotime($user['last_activity'])) : '无活动记录';
             $user['online_status'] = $user['is_online'] ? '在线' : '离线';
             $user['pending_withdrawals'] = intval($user['pending_withdrawals']); // 确保是整数
+            $user['pending_orders'] = intval($user['pending_orders']); // 确保是整数
         }
         
         // 获取用户统计
@@ -171,6 +174,10 @@ function getUsers() {
         $stmt = $db->query("SELECT COUNT(*) as pending_withdrawals FROM withdrawal_requests WHERE status IN ('pending', 'processing')");
         $pendingWithdrawals = $stmt->fetch(PDO::FETCH_ASSOC)['pending_withdrawals'];
         
+        // 获取待处理订单总数
+        $stmt = $db->query("SELECT COUNT(*) as pending_orders FROM shop_purchase_history WHERE status IN ('pending', 'processing')");
+        $pendingOrders = $stmt->fetch(PDO::FETCH_ASSOC)['pending_orders'];
+        
         echo json_encode([
             'success' => true, 
             'users' => $users,
@@ -178,7 +185,7 @@ function getUsers() {
                 'total' => $totalUsers,
                 'online' => $onlineCount,
                 'today_new' => $todayNew,
-                'pending_withdrawals' => $pendingWithdrawals
+                'pending_withdrawals' => $pendingWithdrawals + $pendingOrders
             ]
         ]);
     } catch (Exception $e) {

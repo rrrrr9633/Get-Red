@@ -796,7 +796,7 @@
                 const isOnline = user.is_online == 1;
                 const lastLogin = user.last_login ? new Date(user.last_login).toLocaleString() : '从未登录';
                 const registerTime = new Date(user.created_at).toLocaleString();
-                const pendingWithdrawals = user.pending_withdrawals || 0; // 待处理提现数量
+                const pendingWithdrawals = (user.pending_withdrawals || 0) + (user.pending_orders || 0); // 待处理提现数量 + 待处理订单数量
                 
                 // 用户身份映射
                 const userTypeMap = {
@@ -1178,6 +1178,9 @@
                     <button class="withdrawal-tab-btn active" onclick="switchWithdrawalTab('pending')">
                         待处理申请
                     </button>
+                    <button class="withdrawal-tab-btn" onclick="switchWithdrawalTab('orders')">
+                        购买订单
+                    </button>
                     <button class="withdrawal-tab-btn" onclick="switchWithdrawalTab('history')">
                         历史记录
                     </button>
@@ -1186,6 +1189,11 @@
                 <div id="withdrawalPendingTab" class="withdrawal-tab-content active">
                     <h4 style="color: #ffd700; margin-bottom: 15px;">待处理申请</h4>
                     <div id="withdrawalPendingList"></div>
+                </div>
+
+                <div id="withdrawalOrdersTab" class="withdrawal-tab-content" style="display: none;">
+                    <h4 style="color: #ffd700; margin-bottom: 15px;">购买订单</h4>
+                    <div id="withdrawalOrdersList"></div>
                 </div>
 
                 <div id="withdrawalHistoryTab" class="withdrawal-tab-content" style="display: none;">
@@ -1322,6 +1330,7 @@
             currentWithdrawalUserId = userId;
             document.getElementById('withdrawalModal').classList.add('show');
             await loadUserWithdrawals(userId);
+            await loadUserOrders(userId);
         }
 
         // 关闭提现信息弹窗
@@ -1487,6 +1496,114 @@
             } catch (error) {
                 console.error('处理失败:', error);
                 alert('操作失败，请稍后重试');
+            }
+        }
+
+        // 加载用户购买订单
+        async function loadUserOrders(userId) {
+            try {
+                const response = await fetch(`../../server/api/shop.php?action=user_orders&user_id=${userId}`, {
+                    credentials: 'include'
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    renderUserOrders(data.orders);
+                } else {
+                    console.error('获取购买订单失败:', data.error);
+                    renderUserOrders([]);
+                }
+            } catch (error) {
+                console.error('加载购买订单失败:', error);
+                renderUserOrders([]);
+            }
+        }
+
+        // 渲染购买订单
+        function renderUserOrders(orders) {
+            const container = document.getElementById('withdrawalOrdersList');
+            
+            if (!orders || orders.length === 0) {
+                container.innerHTML = '<div class="empty-withdrawal">暂无购买订单</div>';
+                return;
+            }
+            
+            const statusColors = {
+                'pending': '#f59e0b',
+                'processing': '#3b82f6',
+                'completed': '#10b981',
+                'cancelled': '#ef4444'
+            };
+            const statusTexts = {
+                'pending': '待处理',
+                'processing': '处理中',
+                'completed': '已完成',
+                'cancelled': '已取消'
+            };
+            
+            container.innerHTML = orders.map(order => `
+                <div class="withdrawal-item">
+                    <div class="withdrawal-item-header">
+                        <div class="withdrawal-amount">${order.item_name}</div>
+                        <div class="withdrawal-type-badge" style="background: rgba(${statusColors[order.status]}, 0.2); color: ${statusColors[order.status]};">
+                            ${statusTexts[order.status]}
+                        </div>
+                    </div>
+                    <div class="withdrawal-item-details">
+                        <div><strong>订单号:</strong> #${order.id}</div>
+                        <div><strong>商品类型:</strong> ${order.item_type === 'skin' ? '皮肤' : '护航'}</div>
+                        <div><strong>价格:</strong> ${parseFloat(order.price).toFixed(0)} 金币</div>
+                        <div><strong>玩家ID:</strong> ${order.player_id}</div>
+                        <div><strong>购买时间:</strong> ${order.created_at}</div>
+                        ${order.processed_at ? `<div><strong>处理时间:</strong> ${order.processed_at}</div>` : ''}
+                        ${order.notes ? `<div><strong>备注:</strong> ${order.notes}</div>` : ''}
+                    </div>
+                    ${order.status === 'pending' || order.status === 'processing' ? `
+                        <div class="withdrawal-actions">
+                            <button class="btn-approve" onclick="processShopOrder(${order.id}, 'complete')">完成订单</button>
+                            <button class="btn-reject" onclick="processShopOrder(${order.id}, 'cancel')">取消订单</button>
+                        </div>
+                    ` : ''}
+                </div>
+            `).join('');
+        }
+
+        // 处理购买订单
+        async function processShopOrder(orderId, action) {
+            const notes = action === 'cancel' ? 
+                prompt('请输入取消原因（可选）:') : 
+                prompt('请输入处理备注（可选）:');
+            
+            if (action === 'cancel' && notes === null) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`../../server/api/shop.php?action=process_purchase`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        purchase_id: orderId,
+                        action: action,
+                        notes: notes || ''
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert(data.message);
+                    await loadUserOrders(currentWithdrawalUserId);
+                    await loadUsers(); // 刷新用户列表
+                } else {
+                    alert('处理失败: ' + data.error);
+                }
+            } catch (error) {
+                console.error('处理订单失败:', error);
+                alert('网络错误');
             }
         }
     </script>
