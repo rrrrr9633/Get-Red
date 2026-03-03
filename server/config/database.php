@@ -28,6 +28,9 @@
  *    - secret_key (VARCHAR(100), 超级管理员身份码)
  *    - ip_whitelist (TEXT, IP白名单)
  *    - status (ENUM('active','inactive'), 默认'active', 用户状态)
+ *    - session_token (VARCHAR(64), 当前登录会话token，用于单点登录控制, 索引)
+ *    - login_ip (VARCHAR(45), 最后登录IP地址)
+ *    - login_device (VARCHAR(255), 最后登录设备信息)
  * 
  * 2. prizes - 奖品表
  *    - id (INT, 主键, 自增)

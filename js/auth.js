@@ -193,6 +193,10 @@ class AuthSystem {
                 this.isLoggedIn = true;
                 
                 this.showMessage('登录成功！', 'success');
+                
+                // 启动会话检查（每30秒检查一次）
+                this.startSessionCheck();
+                
                 setTimeout(() => {
                     this.switchToMainPage();
                 }, 1000);
@@ -203,6 +207,50 @@ class AuthSystem {
         } catch (error) {
             this.showMessage('登录失败，请检查账号密码', 'error');
         }
+    }
+
+    // 启动会话检查
+    startSessionCheck() {
+        // 清除之前的定时器
+        if (this.sessionCheckTimer) {
+            clearInterval(this.sessionCheckTimer);
+        }
+        
+        // 每30秒检查一次会话状态
+        this.sessionCheckTimer = setInterval(async () => {
+            try {
+                const result = await api.getProfile();
+                
+                // 检查是否被挤掉
+                if (result.forceLogout || result.reason === 'kicked') {
+                    clearInterval(this.sessionCheckTimer);
+                    this.handleForceLogout(result.error || '您的账号已在其他设备登录');
+                }
+            } catch (error) {
+                // 如果是401错误，说明会话失效
+                if (error.status === 401) {
+                    clearInterval(this.sessionCheckTimer);
+                    this.handleForceLogout('登录已失效，请重新登录');
+                }
+            }
+        }, 30000); // 30秒检查一次
+    }
+
+    // 处理强制退出
+    handleForceLogout(message) {
+        this.isLoggedIn = false;
+        this.currentUser = null;
+        localStorage.removeItem('isLoggedIn');
+        localStorage.removeItem('userInfo');
+        localStorage.removeItem('currentUser');
+        
+        // 显示提示信息
+        this.showMessage(message, 'error');
+        
+        // 2秒后跳转到登录页
+        setTimeout(() => {
+            window.location.href = '../pages/auth/login.html';
+        }, 2000);
     }
 
     async handleRegister() {
@@ -286,6 +334,11 @@ class AuthSystem {
     }
 
     async logout() {
+        // 清除会话检查定时器
+        if (this.sessionCheckTimer) {
+            clearInterval(this.sessionCheckTimer);
+        }
+        
         try {
             // 调用真实的API退出登录
             await api.logout();

@@ -637,28 +637,42 @@ function checkServiceAccess() {
     session_start(); // 确保session已启动
     global $db;
     
-    // 检查客服人员session
-    if (!isset($_SESSION['service_user_id']) || !isset($_SESSION['service_verified']) || $_SESSION['service_verified'] !== true) {
+    // 检查是否有用户登录（支持普通登录和超级管理员登录）
+    $userId = null;
+    
+    // 优先检查超级管理员session
+    if (isset($_SESSION['super_admin_id']) && isset($_SESSION['super_admin_verified']) && $_SESSION['super_admin_verified'] === true) {
+        $userId = $_SESSION['super_admin_id'];
+    } 
+    // 其次检查普通用户session
+    elseif (isset($_SESSION['user_id'])) {
+        $userId = $_SESSION['user_id'];
+    }
+    // 最后检查客服专用session
+    elseif (isset($_SESSION['service_user_id']) && isset($_SESSION['service_verified']) && $_SESSION['service_verified'] === true) {
+        $userId = $_SESSION['service_user_id'];
+    }
+    
+    if (!$userId) {
         echo json_encode([
             'success' => false,
             'authenticated' => false,
-            'error' => '客服权限验证失败'
+            'error' => '未登录'
         ]);
         return;
     }
     
     try {
-        // 验证客服人员身份
-        $stmt = $db->prepare("SELECT id, username, user_type FROM users WHERE id = ? AND user_type = 'service' AND status = 'active'");
-        $stmt->execute([$_SESSION['service_user_id']]);
-        $serviceUser = $stmt->fetch(PDO::FETCH_ASSOC);
+        // 验证用户身份（客服或超级管理员都可以访问）
+        $stmt = $db->prepare("SELECT id, username, user_type FROM users WHERE id = ? AND user_type IN ('service', 'super_admin') AND status = 'active'");
+        $stmt->execute([$userId]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
         
-        if (!$serviceUser) {
-            session_destroy();
+        if (!$user) {
             echo json_encode([
                 'success' => false,
                 'authenticated' => false,
-                'error' => '客服账户不存在或已被禁用'
+                'error' => '需要客服或管理员权限'
             ]);
             return;
         }
@@ -666,14 +680,14 @@ function checkServiceAccess() {
         echo json_encode([
             'success' => true,
             'authenticated' => true,
-            'user' => $serviceUser
+            'user' => $user
         ]);
         
     } catch (Exception $e) {
         echo json_encode([
             'success' => false,
             'authenticated' => false,
-            'error' => '验证过程中发生错误'
+            'error' => '验证过程中发生错误: ' . $e->getMessage()
         ]);
     }
 }

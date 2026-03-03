@@ -21,7 +21,11 @@ CREATE TABLE IF NOT EXISTS users (
     secret_key VARCHAR(100),
     ip_whitelist TEXT,
     status ENUM('active','inactive') DEFAULT 'active',
-    INDEX idx_last_activity (last_activity)
+    session_token VARCHAR(64) COMMENT '当前登录会话token，用于单点登录控制',
+    login_ip VARCHAR(45) COMMENT '最后登录IP地址',
+    login_device VARCHAR(255) COMMENT '最后登录设备信息',
+    INDEX idx_last_activity (last_activity),
+    INDEX idx_session_token (session_token)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- 2. 奖品表
@@ -370,8 +374,8 @@ CREATE TABLE IF NOT EXISTS withdrawal_history (
     amount DECIMAL(10,2) NOT NULL COMMENT '提现金币数量',
     buff_coins DECIMAL(10,2) NOT NULL COMMENT '转换后的哈夫币数量（固定汇率1:10000）',
     status ENUM('completed', 'rejected') NOT NULL COMMENT '最终状态',
-    created_at TIMESTAMP NOT NULL COMMENT '申请时间',
-    processed_at TIMESTAMP NOT NULL COMMENT '处理时间',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '申请时间',
+    processed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '处理时间',
     processed_by INT NULL COMMENT '处理人ID',
     reject_reason VARCHAR(255) NULL COMMENT '拒绝原因',
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,

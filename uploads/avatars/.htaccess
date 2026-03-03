@@ -1,0 +1,20 @@
+# 禁止执行PHP脚本
+<FilesMatch "\.(php|php3|php4|php5|phtml|phar)$">
+    Order Deny,Allow
+    Deny from all
+</FilesMatch>
+
+# 仅允许访问图片文件
+<FilesMatch "\.(jpg|jpeg|png|gif|webp)$">
+    Order Allow,Deny
+    Allow from all
+</FilesMatch>
+
+# 禁止目录浏览
+Options -Indexes
+
+# 禁止访问隐藏文件
+<FilesMatch "^\.">
+    Order allow,deny
+    Deny from all
+</FilesMatch>

@@ -166,21 +166,44 @@ function login() {
     }
     
     // 只通过用户名查找用户
-    $stmt = $db->prepare("SELECT id, username, password, nickname, avatar, balance FROM users WHERE username = ?");
+    $stmt = $db->prepare("SELECT id, username, password, nickname, avatar, balance, session_token FROM users WHERE username = ?");
     $stmt->execute([$input['username']]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
     
     if($user && password_verify($input['password'], $user['password'])) {
-        // 更新用户在线状态和最后登录时间
-        $updateStmt = $db->prepare("UPDATE users SET is_online = 1, last_login = NOW(), last_activity = NOW() WHERE id = ?");
-        $updateStmt->execute([$user['id']]);
+        // 生成新的会话token
+        $newSessionToken = bin2hex(random_bytes(32));
+        
+        // 获取客户端IP和设备信息
+        $clientIp = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+        $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? 'unknown';
+        
+        // 更新用户在线状态、最后登录时间和会话token
+        $updateStmt = $db->prepare("
+            UPDATE users 
+            SET is_online = 1, 
+                last_login = NOW(), 
+                last_activity = NOW(),
+                session_token = ?,
+                login_ip = ?,
+                login_device = ?
+            WHERE id = ?
+        ");
+        $updateStmt->execute([$newSessionToken, $clientIp, $userAgent, $user['id']]);
         
         unset($user['password']);
+        unset($user['session_token']); // 不返回token给客户端
+        
         session_start();
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['username'] = $user['username'];
+        $_SESSION['session_token'] = $newSessionToken; // 存储在服务器端session中
         
-        echo json_encode(['success' => true, 'user' => $user]);
+        echo json_encode([
+            'success' => true, 
+            'user' => $user,
+            'message' => '登录成功'
+        ]);
     } else {
         http_response_code(401);
         echo json_encode(['error' => '用户名或密码错误']);
@@ -190,10 +213,10 @@ function login() {
 function logout() {
     session_start();
     
-    // 如果有用户登录，更新离线状态
+    // 如果有用户登录，更新离线状态并清除session_token
     if(isset($_SESSION['user_id'])) {
         global $db;
-        $stmt = $db->prepare("UPDATE users SET is_online = 0 WHERE id = ?");
+        $stmt = $db->prepare("UPDATE users SET is_online = 0, session_token = NULL WHERE id = ?");
         $stmt->execute([$_SESSION['user_id']]);
     }
     
@@ -205,26 +228,42 @@ function getProfile() {
     session_start();
     if(!isset($_SESSION['user_id'])) {
         http_response_code(401);
-        echo json_encode(['error' => '未登录']);
+        echo json_encode(['error' => '未登录', 'forceLogout' => true]);
         return;
     }
     
     global $db;
     
+    // 验证会话token是否匹配（单点登录检查）
+    $stmt = $db->prepare("SELECT id, username, nickname, email, avatar, balance, created_at, last_login, user_type, status, session_token FROM users WHERE id = ?");
+    $stmt->execute([$_SESSION['user_id']]);
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    if(!$user) {
+        http_response_code(404);
+        echo json_encode(['error' => '用户不存在', 'forceLogout' => true]);
+        return;
+    }
+    
+    // 检查session_token是否匹配，如果不匹配说明在其他地方登录了
+    if(isset($_SESSION['session_token']) && $user['session_token'] !== $_SESSION['session_token']) {
+        // 清除当前会话
+        session_destroy();
+        http_response_code(401);
+        echo json_encode([
+            'error' => '您的账号已在其他设备登录',
+            'forceLogout' => true,
+            'reason' => 'kicked'
+        ]);
+        return;
+    }
+    
     // 更新用户活动时间
     $updateStmt = $db->prepare("UPDATE users SET last_activity = NOW() WHERE id = ?");
     $updateStmt->execute([$_SESSION['user_id']]);
     
-    $stmt = $db->prepare("SELECT id, username, nickname, email, avatar, balance, created_at, last_login, user_type, status FROM users WHERE id = ?");
-    $stmt->execute([$_SESSION['user_id']]);
-    $user = $stmt->fetch(PDO::FETCH_ASSOC);
-    
-    if($user) {
-        echo json_encode(['success' => true, 'user' => $user]);
-    } else {
-        http_response_code(404);
-        echo json_encode(['error' => '用户不存在']);
-    }
+    unset($user['session_token']); // 不返回token
+    echo json_encode(['success' => true, 'user' => $user]);
 }
 
 function getBalance() {
@@ -339,11 +378,35 @@ function changePassword() {
 
 // 心跳检测处理
 function handleHeartbeat() {
+    session_start();
     global $db;
     
     if(!isset($_SESSION['user_id'])) {
         http_response_code(401);
-        echo json_encode(['error' => '未登录']);
+        echo json_encode(['error' => '未登录', 'forceLogout' => true]);
+        return;
+    }
+    
+    // 验证会话token是否匹配
+    $stmt = $db->prepare("SELECT session_token FROM users WHERE id = ?");
+    $stmt->execute([$_SESSION['user_id']]);
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    if(!$user) {
+        http_response_code(401);
+        echo json_encode(['error' => '用户不存在', 'forceLogout' => true]);
+        return;
+    }
+    
+    // 检查是否被其他设备挤掉
+    if(isset($_SESSION['session_token']) && $user['session_token'] !== $_SESSION['session_token']) {
+        session_destroy();
+        http_response_code(401);
+        echo json_encode([
+            'error' => '您的账号已在其他设备登录',
+            'forceLogout' => true,
+            'reason' => 'kicked'
+        ]);
         return;
     }
     

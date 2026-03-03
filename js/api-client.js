@@ -33,17 +33,29 @@ class APIClient {
             const response = await fetch(url, finalOptions);
             const data = await response.json();
             
+            // 检查是否需要强制退出
+            if (data.forceLogout || data.reason === 'kicked') {
+                this.handleForceLogout(data.error || '您的账号已在其他设备登录');
+                throw { status: 401, forceLogout: true, message: data.error };
+            }
+            
             if (!response.ok) {
                 // 对于HTTP错误状态码，返回包含错误信息的数据而不是抛出异常
                 return { 
                     success: false, 
                     error: data.error || `HTTP error! status: ${response.status}`,
-                    message: data.error || `HTTP error! status: ${response.status}`
+                    message: data.error || `HTTP error! status: ${response.status}`,
+                    status: response.status
                 };
             }
             
             return data;
         } catch (error) {
+            // 如果是强制退出错误，直接抛出
+            if (error.forceLogout) {
+                throw error;
+            }
+            
             console.error('API请求失败:', error);
             // 只有在网络错误或JSON解析失败时才抛出异常
             return { 
@@ -52,6 +64,29 @@ class APIClient {
                 message: '网络连接失败，请检查网络连接'
             };
         }
+    }
+
+    // 处理强制退出
+    handleForceLogout(message) {
+        // 清除用户数据
+        this.clearUserData();
+        
+        // 停止心跳检测
+        if (this.heartbeatInterval) {
+            clearInterval(this.heartbeatInterval);
+        }
+        
+        // 显示提示信息
+        if (window.authSystem && typeof window.authSystem.showMessage === 'function') {
+            window.authSystem.showMessage(message, 'error');
+        } else {
+            alert(message);
+        }
+        
+        // 2秒后跳转到登录页
+        setTimeout(() => {
+            window.location.href = '/pages/auth/login.html';
+        }, 2000);
     }
 
     // 用户注册
@@ -99,6 +134,11 @@ class APIClient {
             localStorage.setItem('currentUser', JSON.stringify(result.user));
         }
         return result;
+    }
+
+    // getProfile别名，方便调用
+    async getProfile() {
+        return await this.getUserProfile();
     }
 
     // 更新用户资料

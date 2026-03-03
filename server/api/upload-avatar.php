@@ -99,6 +99,30 @@ if ($file['size'] > $maxSize) {
     exit;
 }
 
+// 验证是否为真实图片文件（防止伪造）
+$imageInfo = @getimagesize($file['tmp_name']);
+if ($imageInfo === false) {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'error' => '文件不是有效的图片']);
+    exit;
+}
+
+// 验证图片尺寸
+list($width, $height) = $imageInfo;
+if ($width > 2000 || $height > 2000) {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'error' => '图片尺寸过大（最大2000x2000像素）']);
+    exit;
+}
+
+// 验证图片类型（通过getimagesize返回的类型）
+$allowedImageTypes = [IMAGETYPE_JPEG, IMAGETYPE_PNG, IMAGETYPE_GIF, IMAGETYPE_WEBP];
+if (!in_array($imageInfo[2], $allowedImageTypes)) {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'error' => '不支持的图片格式']);
+    exit;
+}
+
 // 生成唯一文件名
 $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
 $fileName = 'avatar_' . $_SESSION['user_id'] . '_' . time() . '.' . $extension;
