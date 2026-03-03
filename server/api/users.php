@@ -1,4 +1,10 @@
 <?php
+// 引入安全配置
+require_once '../config/security.php';
+
+// 配置安全Session（在任何session_start()之前）
+configureSecureSession();
+
 // 设置CORS头
 $origin = isset($_SERVER['HTTP_ORIGIN']) ? $_SERVER['HTTP_ORIGIN'] : '*';
 header('Access-Control-Allow-Origin: ' . $origin);
@@ -93,9 +99,22 @@ switch($method) {
 function register() {
     global $db, $input;
     
+    // 频率限制：5分钟内最多3次注册尝试
+    checkRateLimit('register', 3, 300);
+    
     if(!isset($input['username']) || !isset($input['password']) || !isset($input['nickname'])) {
         http_response_code(400);
         echo json_encode(['error' => '缺少必要参数']);
+        logSecurityEvent($db, 'register_attempt', 'failed', null, '缺少必要参数');
+        return;
+    }
+    
+    // 验证密码强度
+    $passwordError = validatePasswordStrength($input['password']);
+    if ($passwordError) {
+        http_response_code(400);
+        echo json_encode(['error' => $passwordError]);
+        logSecurityEvent($db, 'register_attempt', 'failed', null, $passwordError);
         return;
     }
     
@@ -105,6 +124,7 @@ function register() {
     if($stmt->fetch()) {
         http_response_code(400);
         echo json_encode(['error' => '用户名已存在']);
+        logSecurityEvent($db, 'register_attempt', 'failed', $input['username'], '用户名已存在');
         return;
     }
     
@@ -149,19 +169,27 @@ function register() {
             error_log('自动分配客服失败: ' . $e->getMessage());
         }
         
+        // 记录成功注册日志
+        logSecurityEvent($db, 'register', 'success', $input['username']);
+        
         echo json_encode(['success' => true, 'message' => '注册成功']);
     } else {
         http_response_code(500);
         echo json_encode(['error' => '注册失败']);
+        logSecurityEvent($db, 'register', 'failed', $input['username'], '数据库执行失败');
     }
 }
 
 function login() {
     global $db, $input;
     
+    // 频率限制：5分钟内最多5次登录尝试
+    checkRateLimit('login', 5, 300);
+    
     if(!isset($input['username']) || !isset($input['password'])) {
         http_response_code(400);
         echo json_encode(['error' => '缺少用户名或密码']);
+        logSecurityEvent($db, 'login_attempt', 'failed', null, '缺少用户名或密码');
         return;
     }
     
@@ -194,30 +222,43 @@ function login() {
         unset($user['password']);
         unset($user['session_token']); // 不返回token给客户端
         
-        session_start();
+        // Session已在文件开头启动，直接使用
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['username'] = $user['username'];
         $_SESSION['session_token'] = $newSessionToken; // 存储在服务器端session中
         
+        // 生成CSRF Token
+        $csrfToken = generateCsrfToken();
+        
+        // 记录成功登录日志
+        logSecurityEvent($db, 'login', 'success', $input['username']);
+        
         echo json_encode([
             'success' => true, 
             'user' => $user,
+            'csrf_token' => $csrfToken,
             'message' => '登录成功'
         ]);
     } else {
         http_response_code(401);
         echo json_encode(['error' => '用户名或密码错误']);
+        logSecurityEvent($db, 'login_attempt', 'failed', $input['username'], '用户名或密码错误');
     }
 }
 
 function logout() {
-    session_start();
+    // Session已在文件开头启动
     
     // 如果有用户登录，更新离线状态并清除session_token
     if(isset($_SESSION['user_id'])) {
         global $db;
+        $username = $_SESSION['username'] ?? 'unknown';
+        
         $stmt = $db->prepare("UPDATE users SET is_online = 0, session_token = NULL WHERE id = ?");
         $stmt->execute([$_SESSION['user_id']]);
+        
+        // 记录登出日志
+        logSecurityEvent($db, 'logout', 'success', $username);
     }
     
     session_destroy();
@@ -225,7 +266,7 @@ function logout() {
 }
 
 function getProfile() {
-    session_start();
+    // Session已在文件开头启动
     if(!isset($_SESSION['user_id'])) {
         http_response_code(401);
         echo json_encode(['error' => '未登录', 'forceLogout' => true]);
@@ -267,7 +308,7 @@ function getProfile() {
 }
 
 function getBalance() {
-    session_start();
+    // Session已在文件开头启动
     if(!isset($_SESSION['user_id'])) {
         http_response_code(401);
         echo json_encode(['error' => '未登录']);
@@ -288,12 +329,15 @@ function getBalance() {
 }
 
 function updateProfile() {
-    session_start();
+    // Session已在文件开头启动
     if(!isset($_SESSION['user_id'])) {
         http_response_code(401);
         echo json_encode(['error' => '未登录']);
         return;
     }
+    
+    // CSRF验证
+    verifyCsrfToken();
     
     global $db, $input;
     $updateFields = [];
@@ -330,26 +374,42 @@ function updateProfile() {
     $stmt = $db->prepare($sql);
     
     if($stmt->execute($params)) {
+        logSecurityEvent($db, 'profile_update', 'success', $_SESSION['username']);
         echo json_encode(['success' => true, 'message' => '更新成功']);
     } else {
         http_response_code(500);
         echo json_encode(['error' => '更新失败']);
+        logSecurityEvent($db, 'profile_update', 'failed', $_SESSION['username'], '数据库执行失败');
     }
 }
 
 function changePassword() {
-    session_start();
+    // Session已在文件开头启动
     if(!isset($_SESSION['user_id'])) {
         http_response_code(401);
         echo json_encode(['error' => '未登录']);
         return;
     }
     
+    // CSRF验证
+    verifyCsrfToken();
+    
+    // 频率限制：5分钟内最多3次修改密码尝试
+    checkRateLimit('change_password', 3, 300);
+    
     global $db, $input;
     
     if(!isset($input['current_password']) || !isset($input['new_password'])) {
         http_response_code(400);
         echo json_encode(['error' => '缺少必要参数']);
+        return;
+    }
+    
+    // 验证新密码强度
+    $passwordError = validatePasswordStrength($input['new_password']);
+    if ($passwordError) {
+        http_response_code(400);
+        echo json_encode(['error' => $passwordError]);
         return;
     }
     
@@ -369,16 +429,18 @@ function changePassword() {
     $stmt = $db->prepare("UPDATE users SET password = ? WHERE id = ?");
     
     if($stmt->execute([$hashedPassword, $_SESSION['user_id']])) {
+        logSecurityEvent($db, 'password_change', 'success', $_SESSION['username']);
         echo json_encode(['success' => true, 'message' => '密码修改成功']);
     } else {
         http_response_code(500);
         echo json_encode(['error' => '密码修改失败']);
+        logSecurityEvent($db, 'password_change', 'failed', $_SESSION['username'], '数据库执行失败');
     }
 }
 
 // 心跳检测处理
 function handleHeartbeat() {
-    session_start();
+    // Session已在文件开头启动
     global $db;
     
     if(!isset($_SESSION['user_id'])) {
@@ -460,7 +522,7 @@ function handleOffline() {
 
 // 获取交易记录
 function getTransactions() {
-    session_start();
+    // Session已在文件开头启动
     if(!isset($_SESSION['user_id'])) {
         http_response_code(401);
         echo json_encode(['error' => '未登录']);

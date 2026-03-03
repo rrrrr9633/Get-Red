@@ -1,10 +1,9 @@
 <?php
-// 开启错误显示（调试用）
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-ini_set('log_errors', 1);
+// 引入安全配置
+require_once '../config/security.php';
 
-// 先启动 session，再设置 header
+// 配置安全Session
+configureSecureSession();
 session_start();
 
 // 设置CORS头
@@ -34,6 +33,11 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     echo json_encode(['success' => false, 'error' => '方法不被允许']);
     exit;
 }
+
+// 频率限制：5分钟内最多10次上传尝试
+$database = new Database();
+$db = $database->getConnection();
+checkRateLimit('upload_avatar', 10, 300);
 
 // 检查是否有文件上传
 if (!isset($_FILES['avatar'])) {
@@ -148,13 +152,13 @@ if (!move_uploaded_file($file['tmp_name'], $targetPath)) {
 
 // 更新数据库中的头像路径
 try {
-    $database = new Database();
-    $db = $database->getConnection();
-    
     $avatarUrl = 'uploads/avatars/' . $fileName;
     
     $stmt = $db->prepare("UPDATE users SET avatar = ? WHERE id = ?");
     $stmt->execute([$avatarUrl, $_SESSION['user_id']]);
+    
+    // 记录成功上传日志
+    logSecurityEvent($db, 'avatar_upload', 'success', $_SESSION['username'], $fileName);
     
     echo json_encode([
         'success' => true,
@@ -166,6 +170,9 @@ try {
     if (file_exists($targetPath)) {
         unlink($targetPath);
     }
+    
+    logSecurityEvent($db, 'avatar_upload', 'failed', $_SESSION['username'], '数据库更新失败: ' . $e->getMessage());
+    
     http_response_code(500);
     echo json_encode(['success' => false, 'error' => '数据库更新失败: ' . $e->getMessage()]);
 }

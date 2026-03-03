@@ -1,4 +1,10 @@
 <?php
+// 引入安全配置
+require_once '../config/security.php';
+
+// 配置安全Session
+configureSecureSession();
+
 // 客服系统API
 $origin = isset($_SERVER['HTTP_ORIGIN']) ? $_SERVER['HTTP_ORIGIN'] : '*';
 header('Access-Control-Allow-Origin: ' . $origin);

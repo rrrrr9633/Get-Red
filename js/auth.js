@@ -189,6 +189,11 @@ class AuthSystem {
                 localStorage.setItem('savedUsername', phone);
                 localStorage.setItem('savedPassword', password);
                 
+                // 保存CSRF Token
+                if (result.csrf_token) {
+                    sessionStorage.setItem('csrf_token', result.csrf_token);
+                }
+                
                 this.currentUser = result.user;
                 this.isLoggedIn = true;
                 
@@ -243,6 +248,7 @@ class AuthSystem {
         localStorage.removeItem('isLoggedIn');
         localStorage.removeItem('userInfo');
         localStorage.removeItem('currentUser');
+        sessionStorage.removeItem('csrf_token'); // 清除CSRF Token
         
         // 显示提示信息
         this.showMessage(message, 'error');
@@ -351,6 +357,7 @@ class AuthSystem {
         localStorage.removeItem('isLoggedIn');
         localStorage.removeItem('userInfo');
         localStorage.removeItem('currentUser');
+        sessionStorage.removeItem('csrf_token'); // 清除CSRF Token
         
         // 跳转到登录页面
         window.location.href = 'login.html';

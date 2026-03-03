@@ -4,33 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>客服聊天 - 大红行动</title>
-    <script>
-        // 客服权限验证
-        async function checkServiceAccess() {
-            try {
-                const serviceResponse = await fetch('../../server/api/super-admin.php?action=check_service');
-                const serviceData = await serviceResponse.json();
-                
-                if (serviceData.success && serviceData.authenticated) {
-                    window.userRole = 'service';
-                    window.currentServiceId = serviceData.user.id;
-                    return true;
-                }
-                
-                alert('需要客服权限！请先登录。');
-                window.location.href = '../../super-admin.html';
-                return false;
-                
-            } catch (error) {
-                console.error('权限验证失败:', error);
-                alert('系统错误，请重新登录！');
-                window.location.href = '../../super-admin.html';
-                return false;
-            }
-        }
-        
-        checkServiceAccess();
-    </script>
     <style>
         * {
             margin: 0;

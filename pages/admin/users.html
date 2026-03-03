@@ -4,44 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>用户管理 - 大红行动</title>
-    <script>
-        // 简化权限验证 - 支持超级管理员和客服人员
-        async function checkPageAccess() {
-            try {
-                // 首先检查超级管理员身份
-                const adminResponse = await fetch('../../server/api/super-admin.php?action=check');
-                const adminData = await adminResponse.json();
-                
-                if (adminData.authenticated) {
-                    window.userRole = 'admin';
-                    return true;
-                }
-                
-                // 检查客服人员身份
-                const serviceResponse = await fetch('../../server/api/super-admin.php?action=check_service');
-                const serviceData = await serviceResponse.json();
-                
-                if (serviceData.success && serviceData.authenticated) {
-                    window.userRole = 'service';
-                    return true;
-                }
-                
-                // 都不是，拒绝访问
-                alert('需要管理员权限！请先登录。');
-                window.location.href = '../../super-admin.html';
-                return false;
-                
-            } catch (error) {
-                console.error('权限验证失败:', error);
-                alert('系统错误，请重新登录！');
-                window.location.href = '../../super-admin.html';
-                return false;
-            }
-        }
-        
-        // 页面加载时立即验证
-        checkPageAccess();
-    </script>
     <style>
         * {
             margin: 0;

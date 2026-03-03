@@ -25,6 +25,14 @@ class APIClient {
 
         const finalOptions = { ...defaultOptions, ...options };
         
+        // 对于POST/PUT/DELETE请求，添加CSRF Token
+        if (['POST', 'PUT', 'DELETE'].includes(finalOptions.method)) {
+            const csrfToken = sessionStorage.getItem('csrf_token');
+            if (csrfToken) {
+                finalOptions.headers['X-CSRF-Token'] = csrfToken;
+            }
+        }
+        
         if (finalOptions.body && typeof finalOptions.body === 'object') {
             finalOptions.body = JSON.stringify(finalOptions.body);
         }
@@ -70,6 +78,9 @@ class APIClient {
     handleForceLogout(message) {
         // 清除用户数据
         this.clearUserData();
+        
+        // 清除CSRF Token
+        sessionStorage.removeItem('csrf_token');
         
         // 停止心跳检测
         if (this.heartbeatInterval) {

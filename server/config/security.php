@@ -5,19 +5,23 @@
  */
 
 // 检测是否为生产环境
-$isProduction = ($_SERVER['SERVER_NAME'] !== 'localhost' && $_SERVER['SERVER_NAME'] !== '127.0.0.1');
+$isProduction = ($_SERVER['SERVER_NAME'] !== 'localhost' && 
+                 $_SERVER['SERVER_NAME'] !== '127.0.0.1' &&
+                 !in_array($_SERVER['REMOTE_ADDR'], ['127.0.0.1', '::1']));
 
 // 错误显示配置
 if ($isProduction) {
     // 生产环境：关闭错误显示，记录到日志
-    error_reporting(0);
+    error_reporting(E_ALL);
     ini_set('display_errors', 0);
+    ini_set('display_startup_errors', 0);
     ini_set('log_errors', 1);
     ini_set('error_log', __DIR__ . '/../../logs/php_errors.log');
 } else {
     // 开发环境：显示所有错误
     error_reporting(E_ALL);
     ini_set('display_errors', 1);
+    ini_set('display_startup_errors', 1);
 }
 
 // Session安全配置（必须在session_start()之前调用）
@@ -54,8 +58,21 @@ function configureSecureSession() {
 
 // 验证CSRF Token
 function verifyCsrfToken() {
-    // 从请求头或POST数据中获取token
-    $token = $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+    // 从请求头获取token
+    $token = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+    
+    // 如果请求头没有，尝试从POST数据获取
+    if (empty($token) && isset($_POST['csrf_token'])) {
+        $token = $_POST['csrf_token'];
+    }
+    
+    // 如果还是没有，尝试从JSON body获取
+    if (empty($token)) {
+        $input = json_decode(file_get_contents('php://input'), true);
+        if (isset($input['csrf_token'])) {
+            $token = $input['csrf_token'];
+        }
+    }
     
     if (!isset($_SESSION['csrf_token']) || empty($token)) {
         http_response_code(403);

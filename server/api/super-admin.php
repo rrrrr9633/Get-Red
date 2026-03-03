@@ -1,5 +1,11 @@
 <?php
+// 引入安全配置
+require_once '../config/security.php';
+
+// 配置安全Session
+configureSecureSession();
 session_start();
+
 require_once '../config/database.php';
 
 // 设置响应头

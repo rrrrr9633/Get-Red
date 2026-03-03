@@ -1,5 +1,11 @@
 <?php
+// 引入安全配置
+require_once '../config/security.php';
+
+// 配置安全Session
+configureSecureSession();
 session_start(); // 启动会话支持
+
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
@@ -1624,7 +1630,7 @@ function updateLegendaryProbabilities($tableName) {
 
 // 检查用户权限
 function checkAuth() {
-    session_start();
+    // Session已在文件开头启动，不需要再次启动
     
     // 检查超级管理员权限
     if (isset($_SESSION['super_admin_verified']) && $_SESSION['super_admin_verified'] === true) {
@@ -1654,7 +1660,7 @@ function checkAuth() {
 }
 
 function generateAccessToken() {
-    session_start();
+    // Session已在文件开头启动，不需要再次启动
     
     // 验证超级管理员身份
     if (!isset($_SESSION['super_admin_verified']) || $_SESSION['super_admin_verified'] !== true) {
@@ -1678,7 +1684,7 @@ function generateAccessToken() {
 function getThemeSettings() {
     global $db;
     
-    session_start();
+    // Session已在文件开头启动，不需要再次启动
     
     // 验证超级管理员身份
     if (!isset($_SESSION['super_admin_verified']) || $_SESSION['super_admin_verified'] !== true) {
@@ -1710,7 +1716,7 @@ function getThemeSettings() {
 function updateThemeSettings() {
     global $input, $db;
     
-    session_start();
+    // Session已在文件开头启动，不需要再次启动
     
     // 验证超级管理员身份
     if (!isset($_SESSION['super_admin_verified']) || $_SESSION['super_admin_verified'] !== true) {

@@ -1,4 +1,10 @@
 <?php
+// 引入安全配置
+require_once '../config/security.php';
+
+// 配置安全Session
+configureSecureSession();
+
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, OPTIONS');

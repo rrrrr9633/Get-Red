@@ -1,8 +1,14 @@
 <?php
+// 引入安全配置
+require_once __DIR__ . '/security.php';
+
 // 超级管理员权限验证中间件
 // 用于所有需要超级管理员权限的页面
 
 function checkSuperAdminPermission() {
+    // 配置安全Session
+    configureSecureSession();
+    
     // 检查是否通过POST请求或带有验证token
     $isDirectAccess = !isset($_SERVER['HTTP_REFERER']) || 
                      strpos($_SERVER['HTTP_REFERER'], 'admin.html') === false;
@@ -59,6 +65,8 @@ function checkSuperAdminPermission() {
 
 // 客服人员权限验证
 function checkServicePermission() {
+    // 配置安全Session
+    configureSecureSession();
     session_start();
     
     try {

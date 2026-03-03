@@ -1,4 +1,10 @@
 <?php
+// 引入安全配置
+require_once '../config/security.php';
+
+// 配置安全Session
+configureSecureSession();
+
 // 设置CORS头
 $origin = isset($_SERVER['HTTP_ORIGIN']) ? $_SERVER['HTTP_ORIGIN'] : '*';
 header('Access-Control-Allow-Origin: ' . $origin);
@@ -130,6 +136,12 @@ function submitWithdrawalRequest($db) {
         return;
     }
     
+    // CSRF验证
+    verifyCsrfToken();
+    
+    // 频率限制：5分钟内最多3次提现申请
+    checkRateLimit('withdrawal_submit', 3, 300);
+    
     $input = json_decode(file_get_contents('php://input'), true);
     
     if (!isset($input['amount'])) {
@@ -243,6 +255,9 @@ function submitWithdrawalRequest($db) {
         
         $db->commit();
         
+        // 记录成功提现申请日志
+        logSecurityEvent($db, 'withdrawal_submit', 'success', $_SESSION['username'], "金额: {$amount}");
+        
         echo json_encode([
             'success' => true,
             'message' => '提现申请已提交',
@@ -251,6 +266,10 @@ function submitWithdrawalRequest($db) {
         
     } catch (Exception $e) {
         $db->rollBack();
+        
+        // 记录失败日志
+        logSecurityEvent($db, 'withdrawal_submit', 'failed', $_SESSION['username'] ?? 'unknown', $e->getMessage());
+        
         http_response_code(400);
         echo json_encode(['success' => false, 'error' => $e->getMessage()]);
     }
@@ -420,12 +439,18 @@ function processWithdrawalRequest($db) {
         return;
     }
     
+    // CSRF验证
+    verifyCsrfToken();
+    
     // 获取管理员ID（用于记录处理人）
     $adminId = null;
+    $adminUsername = 'unknown';
     if (isset($_SESSION['super_admin_id'])) {
         $adminId = $_SESSION['super_admin_id'];
+        $adminUsername = $_SESSION['super_admin_username'] ?? 'super_admin';
     } elseif (isset($_SESSION['service_user_id'])) {
         $adminId = $_SESSION['service_user_id'];
+        $adminUsername = $_SESSION['service_username'] ?? 'service';
     }
     
     $input = json_decode(file_get_contents('php://input'), true);
@@ -519,6 +544,13 @@ function processWithdrawalRequest($db) {
         
         $db->commit();
         
+        // 记录处理日志
+        $logDetails = "申请ID: {$requestId}, 用户ID: {$request['user_id']}, 金额: {$request['amount']}, 操作: {$action}";
+        if ($action === 'reject' && $rejectReason) {
+            $logDetails .= ", 原因: {$rejectReason}";
+        }
+        logSecurityEvent($db, 'withdrawal_process', 'success', $adminUsername, $logDetails);
+        
         echo json_encode([
             'success' => true,
             'message' => $action === 'approve' ? '提现已批准' : '提现已拒绝'
@@ -526,6 +558,10 @@ function processWithdrawalRequest($db) {
         
     } catch (Exception $e) {
         $db->rollBack();
+        
+        // 记录失败日志
+        logSecurityEvent($db, 'withdrawal_process', 'failed', $adminUsername ?? 'unknown', $e->getMessage());
+        
         http_response_code(400);
         echo json_encode(['success' => false, 'error' => $e->getMessage()]);
     }
@@ -538,6 +574,9 @@ function updateWithdrawalConfig($db) {
         echo json_encode(['success' => false, 'error' => '未登录']);
         return;
     }
+    
+    // CSRF验证
+    verifyCsrfToken();
     
     $input = json_decode(file_get_contents('php://input'), true);
     
