@@ -10,6 +10,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 require_once '../config/database.php';
 
+// 初始化数据库连接
+$database = new Database();
+$pdo = $database->getConnection();
+
 function performLuckyDraw($userId, $count = 1, $page = 'lucky1.html') {
     global $pdo;
     
@@ -66,8 +70,8 @@ function performLuckyDraw($userId, $count = 1, $page = 'lucky1.html') {
         }
         
         // 获取指定页面的奖品列表
-        $stmt = $pdo->prepare("SELECT * FROM prizes WHERE game_type = 'lucky_drop' AND active = 1 AND (page = ? OR page IS NULL OR page = '')");
-        $stmt->execute([$page]);
+        $stmt = $pdo->prepare("SELECT * FROM prizes WHERE game_type = 'lucky_drop' AND active = 1");
+        $stmt->execute();
         $prizes = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         if (empty($prizes)) {
@@ -116,10 +120,11 @@ function performLuckyDraw($userId, $count = 1, $page = 'lucky1.html') {
         $stmt->execute([$userId, $totalValue, $description]);
         
         // 记录抽奖历史
-        $stmt = $pdo->prepare("INSERT INTO lottery_records (user_id, game_type, cost, reward, result, page) VALUES (?, 'lucky_drop', ?, ?, ?, ?)");
-        $stmt->execute([$userId, $cost, $totalValue, json_encode($results, JSON_UNESCAPED_UNICODE), $page]);
+        $stmt = $pdo->prepare("INSERT INTO lottery_records (user_id, game_type, cost, reward, result) VALUES (?, 'lucky_drop', ?, ?, ?)");
+        $stmt->execute([$userId, $cost, $totalValue, json_encode($results, JSON_UNESCAPED_UNICODE)]);
         
         // 检查是否抽中传说物品，如果是则记录到限时掉落中奖列表
+        define('INCLUDED_FROM_PRIZES', true);
         require_once 'limited-drop.php';
         $stmt = $pdo->prepare("SELECT username FROM users WHERE id = ?");
         $stmt->execute([$userId]);
@@ -203,11 +208,17 @@ function getLotteryHistory($userId, $limit = 10) {
 $method = $_SERVER['REQUEST_METHOD'];
 $input = json_decode(file_get_contents('php://input'), true);
 
+// 调试日志
+error_log("draws.php - Method: $method, Input: " . json_encode($input));
+
 switch ($method) {
     case 'POST':
+        error_log("draws.php - POST request, action: " . ($input['action'] ?? 'NOT SET'));
         if (isset($input['action'])) {
+            error_log("draws.php - Action is set: " . $input['action']);
             switch ($input['action']) {
                 case 'draw':
+                    error_log("draws.php - Entering draw case");
                     $userId = $input['user_id'] ?? null;
                     $count = $input['count'] ?? 1;
                     $page = $input['page'] ?? 'lucky1.html';
@@ -222,6 +233,7 @@ switch ($method) {
                         break;
                     }
                     
+                    error_log("draws.php - Calling performLuckyDraw");
                     echo json_encode(performLuckyDraw($userId, $count, $page));
                     break;
                     
