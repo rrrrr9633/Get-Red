@@ -17,8 +17,8 @@ function performLuckyDraw($userId, $count = 1, $page = 'lucky1.html') {
         // 开始事务
         $pdo->beginTransaction();
         
-        // 检查用户余额
-        $stmt = $pdo->prepare("SELECT balance FROM users WHERE id = ?");
+        // 🔒 使用 FOR UPDATE 锁定用户记录，防止并发问题
+        $stmt = $pdo->prepare("SELECT balance FROM users WHERE id = ? FOR UPDATE");
         $stmt->execute([$userId]);
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
         
@@ -60,6 +60,7 @@ function performLuckyDraw($userId, $count = 1, $page = 'lucky1.html') {
             $cost = $priceValue;
         }
         
+        // ✅ 检查余额（在锁定状态下）
         if ($user['balance'] < $cost) {
             throw new Exception('余额不足，请先充值！');
         }
@@ -83,9 +84,14 @@ function performLuckyDraw($userId, $count = 1, $page = 'lucky1.html') {
             $totalValue += floatval($prize['value']);
         }
         
-        // 扣除抽奖费用
-        $stmt = $pdo->prepare("UPDATE users SET balance = balance - ? WHERE id = ?");
-        $stmt->execute([$cost, $userId]);
+        // ✅ 扣除抽奖费用（使用 WHERE 条件二次确认，防止余额负数）
+        $stmt = $pdo->prepare("UPDATE users SET balance = balance - ? WHERE id = ? AND balance >= ?");
+        $stmt->execute([$cost, $userId, $cost]);
+        
+        // 检查是否真的扣除成功
+        if ($stmt->rowCount() === 0) {
+            throw new Exception('余额扣除失败，请重试');
+        }
         
         // 记录抽奖消费
         $stmt = $pdo->prepare("INSERT INTO transactions (user_id, amount, description, type) VALUES (?, ?, ?, 'expense')");

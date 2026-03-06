@@ -1,0 +1,46 @@
+# 文档目录（如果不想提交）
+md
+
+# 日志文件
+logs/*.log
+*.log
+
+# 上传文件
+uploads/avatars/*
+!uploads/avatars/.htaccess
+!uploads/avatars/README.md
+
+# 图片文件
+images/*.png
+images/*.jpg
+images/*.jpeg
+images/*.gif
+!images/README.md
+
+images/shop/*
+!images/shop/.htaccess
+!images/shop/README.md
+
+images/thumbs/*
+!images/thumbs/.htaccess
+!images/thumbs/README.md
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# IDE 配置
+.vscode/
+.idea/
+
+# 临时文件
+*.tmp
+*.bak
+*.swp
+*~
+
+# 测试文件
+test-*.php
+
+# 配置文件（如果包含敏感信息）
+# server/config/database.php
