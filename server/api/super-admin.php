@@ -114,6 +114,9 @@ function verifySuperAdmin() {
         $_SESSION['super_admin_username'] = $admin['username'];
         $_SESSION['super_admin_verified'] = true;
         
+        // 强制刷新Session Cookie
+        refreshSessionCookie();
+        
         // 记录成功登录
         logSuccessfulLogin($admin['id'], $clientIP);
         
@@ -494,6 +497,9 @@ function verifySuperAdminNew() {
         $_SESSION['super_admin_username'] = $admin['username'];
         $_SESSION['super_admin_verified'] = true;
         $_SESSION['user_type'] = 'super_admin';
+        
+        // 强制刷新Session Cookie
+        refreshSessionCookie();
         
         // 更新最后登录时间
         $stmt = $db->prepare("UPDATE users SET last_login = NOW() WHERE id = ?");

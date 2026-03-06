@@ -1,0 +1,425 @@
+<!-- 聊天弹窗模块 -->
+<style>
+    .chat-modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.8);
+        z-index: 10000;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .chat-modal.show {
+        display: flex;
+    }
+
+    .chat-modal-content {
+        background: linear-gradient(135deg, #1a1a2e, #16213e);
+        border: 2px solid #ffd700;
+        border-radius: 20px;
+        width: 90%;
+        max-width: 800px;
+        height: 80vh;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 10px 50px rgba(255, 215, 0, 0.3);
+    }
+
+    .chat-modal-header {
+        padding: 20px;
+        border-bottom: 2px solid #ffd700;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: rgba(255, 215, 0, 0.1);
+    }
+
+    .chat-modal-header h2 {
+        color: #ffd700;
+        font-size: 24px;
+        margin: 0;
+    }
+
+    .chat-user-info {
+        font-size: 14px;
+        color: #ccc;
+        margin-top: 5px;
+    }
+
+    .close-chat-btn {
+        background: #ef4444;
+        border: none;
+        color: white;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        font-size: 24px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .close-chat-btn:hover {
+        background: #dc2626;
+        transform: rotate(90deg);
+    }
+
+    .chat-messages-area {
+        flex: 1;
+        overflow-y: auto;
+        padding: 20px;
+        background: rgba(0, 0, 0, 0.3);
+    }
+
+    .chat-message {
+        margin-bottom: 15px;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .chat-message.user {
+        align-items: flex-start;
+    }
+
+    .chat-message.service {
+        align-items: flex-end;
+    }
+
+    .message-sender {
+        font-size: 12px;
+        color: #999;
+        margin-bottom: 5px;
+    }
+
+    .message-bubble {
+        max-width: 70%;
+        padding: 12px 16px;
+        border-radius: 15px;
+        word-wrap: break-word;
+    }
+
+    .chat-message.user .message-bubble {
+        background: rgba(74, 222, 128, 0.2);
+        border: 1px solid #4ade80;
+        color: #fff;
+    }
+
+    .chat-message.service .message-bubble {
+        background: rgba(255, 215, 0, 0.2);
+        border: 1px solid #ffd700;
+        color: #fff;
+    }
+
+    .message-time {
+        font-size: 11px;
+        color: #666;
+        margin-top: 5px;
+    }
+
+    .chat-input-area {
+        padding: 20px;
+        border-top: 2px solid #ffd700;
+        background: rgba(0, 0, 0, 0.5);
+    }
+
+    .chat-input-wrapper {
+        display: flex;
+        gap: 10px;
+    }
+
+    .chat-input {
+        flex: 1;
+        padding: 12px 16px;
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid #444;
+        border-radius: 25px;
+        color: #fff;
+        font-size: 14px;
+        outline: none;
+        transition: all 0.3s ease;
+    }
+
+    .chat-input:focus {
+        border-color: #ffd700;
+        background: rgba(255, 255, 255, 0.15);
+    }
+
+    .chat-send-btn {
+        padding: 12px 30px;
+        background: linear-gradient(45deg, #ffd700, #ffed4e);
+        border: none;
+        border-radius: 25px;
+        color: #000;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .chat-send-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(255, 215, 0, 0.4);
+    }
+
+    .chat-send-btn:active {
+        transform: translateY(0);
+    }
+
+    .empty-chat {
+        text-align: center;
+        padding: 40px;
+        color: #666;
+    }
+
+    .empty-chat-icon {
+        font-size: 48px;
+        margin-bottom: 10px;
+    }
+</style>
+
+<!-- 聊天弹窗 HTML -->
+<div id="chatModal" class="chat-modal">
+    <div class="chat-modal-content">
+        <div class="chat-modal-header">
+            <div>
+                <h2>💬 用户聊天</h2>
+                <div class="chat-user-info" id="chatUserInfo">加载中...</div>
+            </div>
+            <button class="close-chat-btn" onclick="closeChatModal()">&times;</button>
+        </div>
+        
+        <div class="chat-messages-area" id="chatMessagesArea">
+            <div class="empty-chat">
+                <div class="empty-chat-icon">💬</div>
+                <p>暂无聊天记录</p>
+            </div>
+        </div>
+        
+        <div class="chat-input-area">
+            <div class="chat-input-wrapper">
+                <input type="text" class="chat-input" id="chatInput" placeholder="输入消息..." onkeypress="handleChatKeyPress(event)">
+                <button class="chat-send-btn" onclick="sendChatMessage()">发送</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentChatUserId = null;
+    let currentChatSessionId = null;
+    let chatPollingInterval = null;
+
+    // 打开聊天弹窗
+    async function openChatModal(userId) {
+        currentChatUserId = userId;
+        const user = usersData.find(u => u.id == userId);
+        
+        if (!user) {
+            alert('用户不存在');
+            return;
+        }
+        
+        document.getElementById('chatUserInfo').textContent = `与 ${user.nickname || user.username} (@${user.username}) 的对话`;
+        document.getElementById('chatModal').classList.add('show');
+        
+        // 加载或创建聊天会话
+        await loadOrCreateChatSession(userId);
+        
+        // 开始轮询消息
+        if (chatPollingInterval) {
+            clearInterval(chatPollingInterval);
+        }
+        chatPollingInterval = setInterval(() => loadChatMessages(), 3000);
+    }
+
+    // 关闭聊天弹窗
+    function closeChatModal() {
+        document.getElementById('chatModal').classList.remove('show');
+        currentChatUserId = null;
+        currentChatSessionId = null;
+        
+        if (chatPollingInterval) {
+            clearInterval(chatPollingInterval);
+            chatPollingInterval = null;
+        }
+        
+        // 刷新用户列表以更新未读消息数
+        loadUsers();
+    }
+
+    // 加载或创建聊天会话
+    async function loadOrCreateChatSession(userId) {
+        try {
+            // 直接通过用户ID获取会话（包括所有状态的会话）
+            const response = await fetch(`../../server/api/customer-service.php?action=get_user_session&user_id=${userId}`, {
+                credentials: 'include'
+            });
+            const data = await response.json();
+            
+            console.log('获取用户会话响应:', data);
+            
+            if (data.success && data.session) {
+                currentChatSessionId = data.session.session_id;
+                console.log('找到会话:', currentChatSessionId);
+                await loadChatMessages();
+                return;
+            }
+            
+            // 如果没有会话，显示空状态（但允许超级管理员主动发起）
+            console.log('未找到会话，显示空状态');
+            document.getElementById('chatMessagesArea').innerHTML = `
+                <div class="empty-chat">
+                    <div class="empty-chat-icon">💬</div>
+                    <p>该用户还没有发起过聊天</p>
+                    <p style="font-size: 12px; color: #666; margin-top: 10px;">您可以主动发送消息开始对话</p>
+                </div>
+            `;
+        } catch (error) {
+            console.error('加载聊天会话失败:', error);
+            alert('加载聊天失败，请稍后重试');
+        }
+    }
+
+    // 加载聊天消息
+    async function loadChatMessages() {
+        if (!currentChatSessionId) return;
+        
+        try {
+            const response = await fetch(`../../server/api/customer-service.php?action=messages&session_id=${currentChatSessionId}`, {
+                credentials: 'include'
+            });
+            const data = await response.json();
+            
+            if (data.success && data.messages) {
+                renderChatMessages(data.messages);
+            }
+        } catch (error) {
+            console.error('加载消息失败:', error);
+        }
+    }
+
+    // 渲染聊天消息
+    function renderChatMessages(messages) {
+        const container = document.getElementById('chatMessagesArea');
+        
+        if (messages.length === 0) {
+            container.innerHTML = `
+                <div class="empty-chat">
+                    <div class="empty-chat-icon">💬</div>
+                    <p>暂无聊天记录</p>
+                </div>
+            `;
+            return;
+        }
+        
+        const messagesHtml = messages.map(msg => {
+            const time = new Date(msg.created_at).toLocaleString();
+            const senderName = msg.sender_type === 'user' ? '用户' : '客服';
+            
+            return `
+                <div class="chat-message ${msg.sender_type}">
+                    <div class="message-sender">${senderName}</div>
+                    <div class="message-bubble">${escapeHtml(msg.message)}</div>
+                    <div class="message-time">${time}</div>
+                </div>
+            `;
+        }).join('');
+        
+        container.innerHTML = messagesHtml;
+        
+        // 滚动到底部
+        container.scrollTop = container.scrollHeight;
+    }
+
+    // 发送聊天消息
+    async function sendChatMessage() {
+        const input = document.getElementById('chatInput');
+        const message = input.value.trim();
+        
+        if (!message) {
+            alert('请输入消息内容');
+            return;
+        }
+        
+        // 如果没有会话ID，尝试创建新会话（超级管理员主动发起）
+        if (!currentChatSessionId && currentChatUserId) {
+            console.log('没有会话ID，尝试创建新会话');
+            try {
+                const createResponse = await fetch('../../server/api/customer-service.php?action=create_admin_session', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        user_id: currentChatUserId
+                    })
+                });
+                
+                const createData = await createResponse.json();
+                console.log('创建会话响应:', createData);
+                
+                if (createData.success) {
+                    currentChatSessionId = createData.session_id;
+                    console.log('会话创建成功:', currentChatSessionId);
+                } else {
+                    alert('创建会话失败: ' + createData.error);
+                    return;
+                }
+            } catch (error) {
+                console.error('创建会话失败:', error);
+                alert('创建会话失败，请稍后重试');
+                return;
+            }
+        }
+        
+        if (!currentChatSessionId) {
+            alert('聊天会话不存在，无法发送消息');
+            return;
+        }
+        
+        try {
+            const response = await fetch('../../server/api/customer-service.php?action=send_message', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                credentials: 'include',
+                body: JSON.stringify({
+                    session_id: currentChatSessionId,
+                    message: message,
+                    message_type: 'text'
+                })
+            });
+            
+            const data = await response.json();
+            console.log('发送消息响应:', data);
+            
+            if (data.success) {
+                input.value = '';
+                await loadChatMessages();
+            } else {
+                alert('发送失败: ' + data.error);
+            }
+        } catch (error) {
+            console.error('发送消息失败:', error);
+            alert('发送失败，请稍后重试');
+        }
+    }
+
+    // 处理回车键发送
+    function handleChatKeyPress(event) {
+        if (event.key === 'Enter') {
+            sendChatMessage();
+        }
+    }
+
+    // HTML 转义
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+</script>

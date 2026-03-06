@@ -6,10 +6,21 @@ require_once '../config/security.php';
 configureSecureSession();
 
 // 设置CORS头
-$origin = isset($_SERVER['HTTP_ORIGIN']) ? $_SERVER['HTTP_ORIGIN'] : '*';
-header('Access-Control-Allow-Origin: ' . $origin);
+$allowedOrigins = [
+    'http://localhost:8000',
+    'http://127.0.0.1:8000',
+    'http://192.168.1.12:8000'
+];
+
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+if (in_array($origin, $allowedOrigins)) {
+    header('Access-Control-Allow-Origin: ' . $origin);
+} else {
+    header('Access-Control-Allow-Origin: http://192.168.1.12:8000');
+}
+
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-CSRF-Token');
 header('Access-Control-Allow-Credentials: true');
 header('Content-Type: application/json');
 

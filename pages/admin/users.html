@@ -778,6 +778,8 @@
                 
                 // 提现按钮的小红点标记
                 const withdrawalBadge = pendingWithdrawals > 0 ? `<span class="btn-badge">${pendingWithdrawals}</span>` : '';
+                const unreadMessages = user.unread_messages || 0;
+                const messageBadge = unreadMessages > 0 ? `<span class="btn-badge">${unreadMessages}</span>` : '';
                 
                 return `
                     <div class="user-card ${isOnline ? 'online' : ''}">
@@ -819,6 +821,10 @@
                             <button class="btn btn-view" onclick="viewUser(${user.id})">详情</button>
                             <button class="btn btn-edit" onclick="editUser(${user.id})">编辑</button>
                             <button class="btn btn-view" onclick="viewWarehouse(${user.id})" style="background: #8b5cf6;">仓库</button>
+                            <button class="btn btn-view" onclick="openChatModal(${user.id})" style="background: #10b981; position: relative;">
+                                💬 消息
+                                ${messageBadge}
+                            </button>
                             <button class="btn btn-view" onclick="openWithdrawalModal(${user.id})" style="background: #f59e0b; position: relative;">
                                 提现
                                 ${withdrawalBadge}
@@ -1568,6 +1574,42 @@
                 alert('网络错误');
             }
         }
+    </script>
+    
+    <!-- 引入聊天弹窗模块 -->
+    <script>
+        // 动态加载聊天弹窗
+        fetch('chat-modal.html')
+            .then(response => response.text())
+            .then(html => {
+                const div = document.createElement('div');
+                div.innerHTML = html;
+                
+                // 提取并执行 script 标签
+                const scripts = div.querySelectorAll('script');
+                const styles = div.querySelectorAll('style');
+                
+                // 添加样式
+                styles.forEach(style => {
+                    document.head.appendChild(style.cloneNode(true));
+                });
+                
+                // 添加 HTML 内容（不包括 script 和 style）
+                const htmlContent = div.querySelector('.chat-modal') || div.querySelector('#chatModal');
+                if (htmlContent) {
+                    document.body.appendChild(htmlContent);
+                }
+                
+                // 执行脚本
+                scripts.forEach(script => {
+                    const newScript = document.createElement('script');
+                    newScript.textContent = script.textContent;
+                    document.body.appendChild(newScript);
+                });
+            })
+            .catch(error => {
+                console.error('加载聊天弹窗失败:', error);
+            });
     </script>
 </body>
 </html>

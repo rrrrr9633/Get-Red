@@ -136,7 +136,7 @@ function getUsers() {
         // 首先清理超时的在线状态（超过5分钟无活动的用户标记为离线）
         $db->query("UPDATE users SET is_online = 0 WHERE last_activity < DATE_SUB(NOW(), INTERVAL 5 MINUTE)");
         
-        // 获取用户列表，包含在线状态信息和待处理提现数量
+        // 获取用户列表，包含在线状态信息、待处理提现数量和未读消息数量
         $stmt = $db->query("
             SELECT 
                 u.id, 
@@ -151,7 +151,15 @@ function getUsers() {
                 u.user_type,
                 u.status,
                 COUNT(DISTINCT wr.id) as pending_withdrawals,
-                COUNT(DISTINCT sph.id) as pending_orders
+                COUNT(DISTINCT sph.id) as pending_orders,
+                COALESCE((
+                    SELECT COUNT(*) 
+                    FROM chat_messages cm
+                    JOIN chat_sessions cs ON cm.session_id = cs.session_id
+                    WHERE cs.user_id = u.id 
+                    AND cm.sender_type = 'user' 
+                    AND cm.is_read = 0
+                ), 0) as unread_messages
             FROM users u
             LEFT JOIN withdrawal_requests wr ON u.id = wr.user_id AND wr.status IN ('pending', 'processing')
             LEFT JOIN shop_purchase_history sph ON u.id = sph.user_id AND sph.status IN ('pending', 'processing')
@@ -169,6 +177,7 @@ function getUsers() {
             $user['online_status'] = $user['is_online'] ? '在线' : '离线';
             $user['pending_withdrawals'] = intval($user['pending_withdrawals']); // 确保是整数
             $user['pending_orders'] = intval($user['pending_orders']); // 确保是整数
+            $user['unread_messages'] = intval($user['unread_messages']); // 确保是整数
         }
         
         // 获取用户统计

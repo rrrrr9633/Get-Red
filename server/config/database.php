@@ -251,7 +251,7 @@
 define('DB_HOST', 'localhost');
 define('DB_NAME', 'lucky_draw');
 define('DB_USER', 'root');
-define('DB_PASS', '');
+define('DB_PASS', '123123');
 define('DB_CHARSET', 'utf8mb4');
 
 // 创建数据库连接

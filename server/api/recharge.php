@@ -5,6 +5,9 @@ require_once '../config/security.php';
 // 配置安全Session
 configureSecureSession();
 
+// 启动Session
+session_start();
+
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
@@ -314,8 +317,6 @@ function getRechargeHistory($db) {
 
 // 获取用户充值记录
 function getUserRechargeHistory($db, $input) {
-    session_start();
-    
     try {
         $userId = $_SESSION['user_id'] ?? null;
         if (!$userId) {
@@ -363,8 +364,6 @@ function getUserRechargeHistory($db, $input) {
 
 // 创建充值订单
 function createRechargeOrder($db, $input) {
-    session_start();
-    
     try {
         $userId = $_SESSION['user_id'] ?? null;
         if (!$userId) {

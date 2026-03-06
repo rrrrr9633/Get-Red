@@ -6,6 +6,9 @@ class CustomerServiceWidget {
         this.chatSession = null;
         this.configs = {};
         this.messageInterval = null;
+        this.lastMessageCount = 0; // 记录上次消息数量
+        this.pollingTimeout = null; // 轮询超时定时器
+        this.isWaitingForReply = false; // 是否正在等待回复
         
         this.init();
     }
@@ -58,9 +61,17 @@ class CustomerServiceWidget {
                                     <textarea class="chat-input" id="messageInput" 
                                               placeholder="请输入您的问题..." 
                                               maxlength="500"></textarea>
-                                    <button class="chat-send" onclick="customerService.sendMessage()">
-                                        发送
-                                    </button>
+                                    <div style="display: flex; gap: 10px;">
+                                        <button class="chat-send" onclick="customerService.sendMessage()" style="flex: 1;">
+                                            发送
+                                        </button>
+                                        <button class="chat-refresh" onclick="customerService.manualRefresh()" 
+                                                style="background: rgba(255, 255, 255, 0.1); color: #ffd700; padding: 10px 15px; border: 1px solid #ffd700; border-radius: 8px; cursor: pointer; transition: all 0.3s ease;"
+                                                onmouseover="this.style.background='rgba(255, 215, 0, 0.2)'"
+                                                onmouseout="this.style.background='rgba(255, 255, 255, 0.1)'">
+                                            🔄
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -223,10 +234,11 @@ class CustomerServiceWidget {
         this.isOpen = false;
         
         // 停止消息轮询
-        if (this.messageInterval) {
-            clearInterval(this.messageInterval);
-            this.messageInterval = null;
-        }
+        this.stopMessagePolling();
+        
+        // 重置消息计数
+        this.lastMessageCount = 0;
+        this.isWaitingForReply = false;
     }
     
     // 切换标签
@@ -278,8 +290,8 @@ class CustomerServiceWidget {
                     this.showChatStatus('客服正在为您接入，请稍候...');
                 }
                 
-                this.loadChatHistory();
-                this.startMessagePolling();
+                // 加载历史消息（不启动轮询）
+                await this.loadChatHistory();
             } else {
                 this.showChatStatus('连接客服失败: ' + data.error);
             }
@@ -308,7 +320,24 @@ class CustomerServiceWidget {
             const data = await response.json();
             
             if (data.success) {
-                this.renderMessages(data.messages);
+                const previousCount = this.lastMessageCount;
+                this.lastMessageCount = data.messages.length;
+                
+                // 检查是否有新消息
+                const hasNewMessages = data.messages.length > previousCount;
+                
+                // 如果收到新消息且正在等待回复，停止轮询
+                if (hasNewMessages && this.isWaitingForReply && data.messages.length > 0) {
+                    const lastMessage = data.messages[data.messages.length - 1];
+                    // 如果最后一条消息是客服发的，说明收到回复了
+                    if (lastMessage.sender_type === 'service') {
+                        console.log('收到客服回复，停止轮询');
+                        this.stopMessagePolling();
+                        this.isWaitingForReply = false;
+                    }
+                }
+                
+                this.renderMessages(data.messages, hasNewMessages);
             } else {
                 console.error('加载聊天历史失败:', data.error);
             }
@@ -318,8 +347,12 @@ class CustomerServiceWidget {
     }
     
     // 渲染消息
-    renderMessages(messages) {
+    renderMessages(messages, scrollToBottom = true) {
         const chatMessages = document.getElementById('chatMessages');
+        
+        // 保存当前滚动位置
+        const wasAtBottom = chatMessages.scrollHeight - chatMessages.scrollTop <= chatMessages.clientHeight + 50;
+        
         chatMessages.innerHTML = '';
         
         if (messages.length === 0) {
@@ -341,10 +374,12 @@ class CustomerServiceWidget {
             chatMessages.appendChild(messageDiv);
         });
         
-        // 自动滚动到底部
-        setTimeout(() => {
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-        }, 0);
+        // 只在有新消息或用户在底部时才自动滚动
+        if (scrollToBottom || wasAtBottom) {
+            setTimeout(() => {
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }, 0);
+        }
     }
     
     // HTML转义
@@ -385,6 +420,10 @@ class CustomerServiceWidget {
                 
                 // 立即刷新消息列表
                 await this.loadChatHistory();
+                
+                // 发送消息后，启动智能轮询（等待客服回复）
+                console.log('消息已发送，启动智能轮询等待回复');
+                this.startSmartPolling();
             } else {
                 this.showMessage('发送失败: ' + data.error, 'error');
             }
@@ -401,17 +440,57 @@ class CustomerServiceWidget {
         this.loadChatHistory();
     }
     
-    // 开始消息轮询
+    // 开始消息轮询（旧方法，已废弃）
     startMessagePolling() {
-        if (this.messageInterval) {
-            clearInterval(this.messageInterval);
-        }
+        // 此方法已被 startSmartPolling 替代
+        console.warn('startMessagePolling is deprecated, use startSmartPolling instead');
+    }
+    
+    // 智能轮询：发送消息后启动，收到回复或超时后停止
+    startSmartPolling() {
+        // 先停止之前的轮询
+        this.stopMessagePolling();
         
+        console.log('启动智能轮询，15秒超时');
+        this.isWaitingForReply = true;
+        
+        // 立即检查一次
+        this.loadChatHistory();
+        
+        // 每2秒轮询一次
         this.messageInterval = setInterval(() => {
-            if (this.chatSession) {
+            if (this.chatSession && this.isOpen && this.isWaitingForReply) {
                 this.loadChatHistory();
             }
-        }, 3000);
+        }, 2000);
+        
+        // 15秒超时自动停止
+        this.pollingTimeout = setTimeout(() => {
+            console.log('轮询超时（15秒），自动停止');
+            this.stopMessagePolling();
+            this.isWaitingForReply = false;
+        }, 15000);
+    }
+    
+    // 停止消息轮询
+    stopMessagePolling() {
+        if (this.messageInterval) {
+            clearInterval(this.messageInterval);
+            this.messageInterval = null;
+            console.log('轮询已停止');
+        }
+        
+        if (this.pollingTimeout) {
+            clearTimeout(this.pollingTimeout);
+            this.pollingTimeout = null;
+        }
+    }
+    
+    // 手动刷新消息
+    async manualRefresh() {
+        console.log('手动刷新消息');
+        await this.loadChatHistory();
+        this.showMessage('消息已刷新', 'success');
     }
     
     // 复制联系方式

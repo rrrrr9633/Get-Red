@@ -34,16 +34,36 @@ function configureSecureSession() {
     // Secure: 仅通过HTTPS传输Cookie（生产环境启用）
     if ($isProduction) {
         ini_set('session.cookie_secure', 1);
+    } else {
+        // 开发环境：关闭Secure，允许HTTP访问
+        ini_set('session.cookie_secure', 0);
     }
     
-    // SameSite: 防止CSRF攻击
-    ini_set('session.cookie_samesite', 'Strict');
+    // SameSite: 开发环境设置为None以支持跨域（IP访问）
+    // 注意：PHP 7.3+ 才支持 session.cookie_samesite
+    if (version_compare(PHP_VERSION, '7.3.0', '>=')) {
+        if ($isProduction) {
+            ini_set('session.cookie_samesite', 'Lax');
+        } else {
+            // 开发环境：设置为None以支持IP访问
+            // 但由于Secure=0，某些浏览器可能会忽略SameSite=None
+            // 所以我们设置为空字符串，让浏览器使用默认行为
+            ini_set('session.cookie_samesite', '');
+        }
+    }
     
-    // Session有效期：1小时
-    ini_set('session.gc_maxlifetime', 3600);
+    // Cookie域名：不设置domain，让其自动使用当前域名/IP
+    // 这样无论是localhost还是IP访问都能正常工作
+    ini_set('session.cookie_domain', '');
     
-    // Session Cookie有效期：1小时
-    ini_set('session.cookie_lifetime', 3600);
+    // Cookie路径：设置为根路径
+    ini_set('session.cookie_path', '/');
+    
+    // Session有效期：8小时
+    ini_set('session.gc_maxlifetime', 28800);
+    
+    // Session Cookie有效期：8小时
+    ini_set('session.cookie_lifetime', 28800);
     
     // 使用严格的Session ID生成
     ini_set('session.use_strict_mode', 1);
@@ -54,6 +74,45 @@ function configureSecureSession() {
     
     // 禁止通过URL传递Session ID
     ini_set('session.use_trans_sid', 0);
+    
+    // 调试日志（仅开发环境）
+    if (!$isProduction) {
+        error_log("Session配置: cookie_httponly=" . ini_get('session.cookie_httponly') . 
+                  ", cookie_secure=" . ini_get('session.cookie_secure') . 
+                  ", cookie_samesite=" . ini_get('session.cookie_samesite') . 
+                  ", cookie_domain=" . ini_get('session.cookie_domain') . 
+                  ", cookie_path=" . ini_get('session.cookie_path'));
+    }
+}
+
+// 强制刷新Session Cookie（在登录后调用）
+function refreshSessionCookie() {
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        // 保存当前 Session 数据
+        $sessionData = $_SESSION;
+        
+        // 重新生成Session ID（安全措施）
+        session_regenerate_id(true);
+        
+        // 恢复 Session 数据
+        $_SESSION = $sessionData;
+        
+        // 显式设置Cookie参数
+        setcookie(
+            session_name(),
+            session_id(),
+            [
+                'expires' => time() + 28800, // 8小时
+                'path' => '/',
+                'domain' => '',
+                'secure' => false, // 开发环境使用HTTP
+                'httponly' => true,
+                'samesite' => 'Lax'
+            ]
+        );
+        
+        error_log("Session Cookie 已刷新: " . session_name() . "=" . session_id());
+    }
 }
 
 // 验证CSRF Token

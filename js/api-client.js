@@ -120,6 +120,11 @@ class APIClient {
             this.currentUser = result.user;
             localStorage.setItem('currentUser', JSON.stringify(result.user));
             localStorage.setItem('isLoggedIn', 'true');
+            
+            // 保存 CSRF Token
+            if (result.csrf_token) {
+                sessionStorage.setItem('csrf_token', result.csrf_token);
+            }
         }
         
         return result;
@@ -133,6 +138,9 @@ class APIClient {
         
         // 清除所有用户数据
         this.clearUserData();
+        
+        // 清除 CSRF Token
+        sessionStorage.removeItem('csrf_token');
         
         return result;
     }

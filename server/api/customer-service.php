@@ -5,11 +5,25 @@ require_once '../config/security.php';
 // 配置安全Session
 configureSecureSession();
 
+// 启动Session
+session_start();
+
 // 客服系统API
-$origin = isset($_SERVER['HTTP_ORIGIN']) ? $_SERVER['HTTP_ORIGIN'] : '*';
-header('Access-Control-Allow-Origin: ' . $origin);
+$allowedOrigins = [
+    'http://localhost:8000',
+    'http://127.0.0.1:8000',
+    'http://192.168.1.12:8000'
+];
+
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+if (in_array($origin, $allowedOrigins)) {
+    header('Access-Control-Allow-Origin: ' . $origin);
+} else {
+    header('Access-Control-Allow-Origin: http://192.168.1.12:8000');
+}
+
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-CSRF-Token');
 header('Access-Control-Allow-Credentials: true');
 header('Content-Type: application/json');
 
@@ -25,39 +39,45 @@ $db = $database->getConnection();
 $method = $_SERVER['REQUEST_METHOD'];
 $input = json_decode(file_get_contents('php://input'), true);
 
-// 记录安全日志
-function logSecurityEvent($db, $action, $status, $details = null, $reason = null) {
-    session_start();
-    $user_id = $_SESSION['user_id'] ?? null;
-    $username = $_SESSION['username'] ?? null;
-    $ip_address = $_SERVER['REMOTE_ADDR'];
-    $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? null;
-    
-    // 获取用户类型
-    $user_type = null;
-    if ($user_id) {
-        $stmt = $db->prepare("SELECT user_type FROM users WHERE id = ?");
-        $stmt->execute([$user_id]);
-        $user = $stmt->fetch();
-        $user_type = $user['user_type'] ?? 'user';
-    }
-    
-    $stmt = $db->prepare("INSERT INTO security_logs (user_id, username, user_type, ip_address, action, details, status, reason, user_agent) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-    $stmt->execute([$user_id, $username, $user_type, $ip_address, $action, $details, $status, $reason, $user_agent]);
-}
-
 // 检查用户权限
 function checkPermission($db, $required_types = ['service', 'admin', 'super_admin']) {
-    session_start();
-    if (!isset($_SESSION['user_id'])) {
+    // 优先检查超级管理员session
+    if (isset($_SESSION['super_admin_id']) && isset($_SESSION['super_admin_verified']) && $_SESSION['super_admin_verified'] === true) {
+        $userId = $_SESSION['super_admin_id'];
+    } 
+    // 其次检查普通用户session
+    elseif (isset($_SESSION['user_id'])) {
+        $userId = $_SESSION['user_id'];
+    }
+    // 最后检查客服专用session
+    elseif (isset($_SESSION['service_user_id'])) {
+        $userId = $_SESSION['service_user_id'];
+    } else {
         return false;
     }
     
     $stmt = $db->prepare("SELECT user_type FROM users WHERE id = ?");
-    $stmt->execute([$_SESSION['user_id']]);
+    $stmt->execute([$userId]);
     $user = $stmt->fetch();
     
     return $user && in_array($user['user_type'], $required_types);
+}
+
+// 获取当前用户ID
+function getCurrentUserId() {
+    // 优先检查超级管理员session
+    if (isset($_SESSION['super_admin_id']) && isset($_SESSION['super_admin_verified']) && $_SESSION['super_admin_verified'] === true) {
+        return $_SESSION['super_admin_id'];
+    } 
+    // 其次检查普通用户session
+    elseif (isset($_SESSION['user_id'])) {
+        return $_SESSION['user_id'];
+    }
+    // 最后检查客服专用session
+    elseif (isset($_SESSION['service_user_id'])) {
+        return $_SESSION['service_user_id'];
+    }
+    return null;
 }
 
 switch($method) {
@@ -72,6 +92,9 @@ switch($method) {
                     break;
                 case 'messages':
                     getChatMessages();
+                    break;
+                case 'get_user_session':
+                    getUserSession();
                     break;
                 default:
                     http_response_code(400);
@@ -92,6 +115,9 @@ switch($method) {
                     break;
                 case 'send_message':
                     sendChatMessage();
+                    break;
+                case 'create_admin_session':
+                    createAdminSession();
                     break;
                 default:
                     http_response_code(400);
@@ -195,16 +221,14 @@ function saveServiceConfig() {
 function getChatSessions() {
     global $db;
     
-    session_start();
-    if (!isset($_SESSION['user_id'])) {
+    $user_id = getCurrentUserId();
+    if (!$user_id) {
         http_response_code(401);
         echo json_encode(['error' => '未登录']);
         return;
     }
     
     try {
-        $user_id = $_SESSION['user_id'];
-        
         // 获取用户类型
         $stmt = $db->prepare("SELECT user_type FROM users WHERE id = ?");
         $stmt->execute([$user_id]);
@@ -281,8 +305,8 @@ function getChatSessions() {
 function getChatMessages() {
     global $db;
     
-    session_start();
-    if (!isset($_SESSION['user_id'])) {
+    $user_id = getCurrentUserId();
+    if (!$user_id) {
         http_response_code(401);
         echo json_encode(['error' => '未登录']);
         return;
@@ -296,7 +320,6 @@ function getChatMessages() {
     
     try {
         $session_id = $_GET['session_id'];
-        $user_id = $_SESSION['user_id'];
         
         // 获取用户类型
         $stmt = $db->prepare("SELECT user_type FROM users WHERE id = ?");
@@ -347,6 +370,16 @@ function getChatMessages() {
         $stmt->execute([$session_id]);
         $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
+        // 如果是客服或管理员查看，标记用户发送的消息为已读
+        if (in_array($user['user_type'], ['service', 'admin', 'super_admin'])) {
+            $stmt = $db->prepare("
+                UPDATE chat_messages 
+                SET is_read = 1 
+                WHERE session_id = ? AND sender_type = 'user' AND is_read = 0
+            ");
+            $stmt->execute([$session_id]);
+        }
+        
         echo json_encode(['success' => true, 'messages' => $messages]);
     } catch (Exception $e) {
         logSecurityEvent($db, 'get_chat_messages', 'failed', "session_id: " . ($session_id ?? 'unknown'), $e->getMessage());
@@ -359,15 +392,14 @@ function getChatMessages() {
 function startChatSession() {
     global $db, $input;
     
-    session_start();
-    if (!isset($_SESSION['user_id'])) {
+    $user_id = getCurrentUserId();
+    if (!$user_id) {
         http_response_code(401);
         echo json_encode(['error' => '未登录']);
         return;
     }
     
     try {
-        $user_id = $_SESSION['user_id'];
         
         // 检查是否已有活跃会话
         $stmt = $db->prepare("
@@ -445,8 +477,8 @@ function startChatSession() {
 function sendChatMessage() {
     global $db, $input;
     
-    session_start();
-    if (!isset($_SESSION['user_id'])) {
+    $user_id = getCurrentUserId();
+    if (!$user_id) {
         http_response_code(401);
         echo json_encode(['error' => '未登录']);
         return;
@@ -459,8 +491,6 @@ function sendChatMessage() {
     }
     
     try {
-        $user_id = $_SESSION['user_id'];
-        
         // 获取用户类型
         $stmt = $db->prepare("SELECT user_type FROM users WHERE id = ?");
         $stmt->execute([$user_id]);
@@ -518,9 +548,17 @@ function sendChatMessage() {
         $stmt->execute([$input['session_id']]);
         
         // 如果是客服发送消息，更新会话状态为active
+        // 但如果是超级管理员，不更新 service_user_id（保持原客服分配）
         if ($sender_type === 'service') {
-            $stmt = $db->prepare("UPDATE chat_sessions SET status = 'active', service_user_id = ? WHERE session_id = ?");
-            $stmt->execute([$user_id, $input['session_id']]);
+            if ($user['user_type'] === 'service') {
+                // 普通客服：更新 service_user_id
+                $stmt = $db->prepare("UPDATE chat_sessions SET status = 'active', service_user_id = ? WHERE session_id = ?");
+                $stmt->execute([$user_id, $input['session_id']]);
+            } else {
+                // 超级管理员：只更新状态，不改变客服分配
+                $stmt = $db->prepare("UPDATE chat_sessions SET status = 'active' WHERE session_id = ?");
+                $stmt->execute([$input['session_id']]);
+            }
         }
         
         echo json_encode(['success' => true, 'message' => '消息发送成功']);
@@ -557,6 +595,198 @@ function closeChatSession() {
         logSecurityEvent($db, 'close_chat_session', 'failed', $input['session_id'], $e->getMessage());
         http_response_code(500);
         echo json_encode(['error' => '关闭会话失败']);
+    }
+}
+
+// 获取指定用户的会话（超级管理员专用）
+function getUserSession() {
+    global $db;
+    
+    $current_user_id = getCurrentUserId();
+    
+    // 调试信息
+    error_log("getUserSession called");
+    error_log("Session ID: " . session_id());
+    error_log("Current user_id: " . ($current_user_id ?? 'NOT SET'));
+    error_log("Request user_id: " . ($_GET['user_id'] ?? 'NOT SET'));
+    
+    if (!$current_user_id) {
+        error_log("Current user_id not set, returning 401");
+        http_response_code(401);
+        echo json_encode(['error' => '未登录', 'debug' => 'user_id_not_set']);
+        return;
+    }
+    
+    if (!isset($_GET['user_id'])) {
+        http_response_code(400);
+        echo json_encode(['error' => '缺少用户ID']);
+        return;
+    }
+    
+    try {
+        $user_id = $_GET['user_id'];
+        
+        error_log("Current user ID: $current_user_id, Target user ID: $user_id");
+        
+        // 获取当前用户类型
+        $stmt = $db->prepare("SELECT user_type FROM users WHERE id = ?");
+        $stmt->execute([$current_user_id]);
+        $current_user = $stmt->fetch();
+        
+        if (!$current_user) {
+            error_log("Current user not found in database");
+            http_response_code(403);
+            echo json_encode(['error' => '用户不存在']);
+            return;
+        }
+        
+        error_log("Current user type: " . $current_user['user_type']);
+        
+        // 查询该用户的最新会话（不限制状态，包括已关闭的）
+        if (in_array($current_user['user_type'], ['admin', 'super_admin'])) {
+            // 超级管理员可以查看所有会话
+            $stmt = $db->prepare("
+                SELECT cs.*, 
+                       u.nickname as user_nickname, 
+                       u.username as user_username,
+                       u.is_online as user_is_online
+                FROM chat_sessions cs
+                JOIN users u ON cs.user_id = u.id
+                WHERE cs.user_id = ?
+                ORDER BY cs.updated_at DESC, cs.created_at DESC
+                LIMIT 1
+            ");
+            $stmt->execute([$user_id]);
+        } elseif ($current_user['user_type'] === 'service') {
+            // 客服只能查看分配给自己的会话
+            $stmt = $db->prepare("
+                SELECT cs.*, 
+                       u.nickname as user_nickname, 
+                       u.username as user_username,
+                       u.is_online as user_is_online
+                FROM chat_sessions cs
+                JOIN users u ON cs.user_id = u.id
+                WHERE cs.user_id = ? AND cs.service_user_id = ?
+                ORDER BY cs.updated_at DESC, cs.created_at DESC
+                LIMIT 1
+            ");
+            $stmt->execute([$user_id, $current_user_id]);
+        } else {
+            http_response_code(403);
+            echo json_encode(['error' => '权限不足']);
+            return;
+        }
+        
+        $session = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        error_log("Session found: " . ($session ? 'YES' : 'NO'));
+        if ($session) {
+            error_log("Session ID: " . $session['session_id']);
+        }
+        
+        if ($session) {
+            echo json_encode(['success' => true, 'session' => $session]);
+        } else {
+            echo json_encode(['success' => false, 'message' => '未找到会话']);
+        }
+    } catch (Exception $e) {
+        error_log("getUserSession error: " . $e->getMessage());
+        logSecurityEvent($db, 'get_user_session', 'failed', "user_id: " . ($user_id ?? 'unknown'), $e->getMessage());
+        http_response_code(500);
+        echo json_encode(['error' => '获取会话失败: ' . $e->getMessage()]);
+    }
+}
+
+// 创建管理员会话（超级管理员主动发起）
+function createAdminSession() {
+    global $db, $input;
+    
+    $current_user_id = getCurrentUserId();
+    if (!$current_user_id) {
+        http_response_code(401);
+        echo json_encode(['error' => '未登录']);
+        return;
+    }
+    
+    if (!isset($input['user_id'])) {
+        http_response_code(400);
+        echo json_encode(['error' => '缺少用户ID']);
+        return;
+    }
+    
+    try {
+        $target_user_id = $input['user_id'];
+        
+        // 获取当前用户类型
+        $stmt = $db->prepare("SELECT user_type FROM users WHERE id = ?");
+        $stmt->execute([$current_user_id]);
+        $current_user = $stmt->fetch();
+        
+        if (!$current_user || !in_array($current_user['user_type'], ['admin', 'super_admin'])) {
+            http_response_code(403);
+            echo json_encode(['error' => '只有管理员可以创建会话']);
+            return;
+        }
+        
+        // 检查是否已有会话
+        $stmt = $db->prepare("
+            SELECT session_id FROM chat_sessions 
+            WHERE user_id = ?
+            ORDER BY created_at DESC
+            LIMIT 1
+        ");
+        $stmt->execute([$target_user_id]);
+        $existingSession = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($existingSession) {
+            // 如果已有会话，重新激活它
+            $stmt = $db->prepare("UPDATE chat_sessions SET status = 'active', updated_at = NOW() WHERE session_id = ?");
+            $stmt->execute([$existingSession['session_id']]);
+            
+            echo json_encode([
+                'success' => true, 
+                'session_id' => $existingSession['session_id'],
+                'is_new' => false
+            ]);
+            return;
+        }
+        
+        // 创建新会话
+        $session_id = 'chat_' . $target_user_id . '_' . time() . '_' . rand(1000, 9999);
+        
+        // 查找分配的客服（如果有）
+        $stmt = $db->prepare("
+            SELECT service_user_id 
+            FROM service_user_assignments 
+            WHERE regular_user_id = ? AND status = 'active'
+            LIMIT 1
+        ");
+        $stmt->execute([$target_user_id]);
+        $assignment = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        $service_user_id = $assignment ? $assignment['service_user_id'] : null;
+        
+        $stmt = $db->prepare("
+            INSERT INTO chat_sessions (user_id, service_user_id, session_id, status) 
+            VALUES (?, ?, ?, 'active')
+        ");
+        $stmt->execute([
+            $target_user_id, 
+            $service_user_id, 
+            $session_id
+        ]);
+        
+        logSecurityEvent($db, 'create_admin_session', 'success', "session_id: $session_id, user_id: $target_user_id");
+        
+        echo json_encode([
+            'success' => true, 
+            'session_id' => $session_id,
+            'is_new' => true
+        ]);
+    } catch (Exception $e) {
+        logSecurityEvent($db, 'create_admin_session', 'failed', json_encode($input), $e->getMessage());
+        http_response_code(500);
+        echo json_encode(['error' => '创建会话失败: ' . $e->getMessage()]);
     }
 }
 

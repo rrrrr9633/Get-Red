@@ -5,11 +5,26 @@ require_once '../config/security.php';
 // 配置安全Session（在任何session_start()之前）
 configureSecureSession();
 
-// 设置CORS头
-$origin = isset($_SERVER['HTTP_ORIGIN']) ? $_SERVER['HTTP_ORIGIN'] : '*';
-header('Access-Control-Allow-Origin: ' . $origin);
+// 启动Session
+session_start();
+
+// 设置CORS头 - 限制允许的源
+$allowedOrigins = [
+    'http://localhost:8000',
+    'http://127.0.0.1:8000',
+    'http://192.168.1.12:8000'
+];
+
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+if (in_array($origin, $allowedOrigins)) {
+    header('Access-Control-Allow-Origin: ' . $origin);
+} else {
+    // 如果没有 Origin 头或不在白名单中，允许同源访问
+    header('Access-Control-Allow-Origin: http://192.168.1.12:8000');
+}
+
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-CSRF-Token');
 header('Access-Control-Allow-Credentials: true');
 header('Content-Type: application/json');
 
@@ -226,6 +241,9 @@ function login() {
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['username'] = $user['username'];
         $_SESSION['session_token'] = $newSessionToken; // 存储在服务器端session中
+        
+        // 强制刷新Session Cookie
+        refreshSessionCookie();
         
         // 生成CSRF Token
         $csrfToken = generateCsrfToken();
