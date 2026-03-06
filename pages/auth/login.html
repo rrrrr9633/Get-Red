@@ -331,10 +331,11 @@
                 return;
             }
             
+            // 显示加载状态
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.textContent;
+            
             try {
-                // 显示加载状态
-                const submitBtn = this.querySelector('button[type="submit"]');
-                const originalText = submitBtn.textContent;
                 submitBtn.textContent = '登录中...';
                 submitBtn.disabled = true;
                 

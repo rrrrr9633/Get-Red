@@ -323,10 +323,31 @@
             transform: translateY(-2px);
             box-shadow: 0 5px 15px rgba(255, 215, 0, 0.4);
         }
+        
+        .back-admin-btn {
+            position: fixed;
+            top: 20px;
+            left: 200px;
+            padding: 10px 20px;
+            background: linear-gradient(45deg, #6366f1, #8b5cf6);
+            color: #fff;
+            text-decoration: none;
+            border-radius: 20px;
+            font-weight: bold;
+            z-index: 1000;
+            transition: all 0.3s ease;
+            display: none;
+        }
+
+        .back-admin-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(99, 102, 241, 0.4);
+        }
     </style>
 </head>
 <body>
     <a href="users.html" class="back-btn">← 返回用户管理</a>
+    <a href="admin.html" class="back-admin-btn" id="backToAdminBtn">← 返回管理后台</a>
 
     <div class="chat-container">
         <!-- 左侧会话列表 -->
@@ -367,7 +388,19 @@
         let messagePolling = null;
 
         // 页面加载完成后初始化
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', async function() {
+            // 检查用户类型并显示/隐藏返回管理后台按钮
+            try {
+                const response = await fetch('../../server/api/admin.php?action=check_auth');
+                const data = await response.json();
+                
+                if (data.success && data.user_type === 'super_admin') {
+                    document.getElementById('backToAdminBtn').style.display = 'inline-block';
+                }
+            } catch (error) {
+                console.error('权限检查失败:', error);
+            }
+            
             loadSessions();
             // 每5秒刷新会话列表
             setInterval(loadSessions, 5000);

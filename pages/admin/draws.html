@@ -431,6 +431,14 @@
                     return false;
                 }
                 
+                // 根据用户类型显示/隐藏返回按钮
+                const backToAdminBtn = document.getElementById('backToAdminBtn');
+                if (currentUserType === 'super_admin') {
+                    backToAdminBtn.style.display = 'inline-block';
+                } else {
+                    backToAdminBtn.style.display = 'none';
+                }
+                
                 return true;
                 
             } catch (error) {
@@ -457,6 +465,10 @@
 
     <div class="admin-container">
         <div class="admin-nav">
+            <!-- 返回按钮（仅超级管理员可见） -->
+            <a href="admin.html" class="nav-btn" id="backToAdminBtn" style="background: linear-gradient(45deg, #6366f1, #8b5cf6); display: none;">
+                ← 返回管理后台
+            </a>
             <a href="users.html" class="nav-btn">用户管理</a>
             <a href="draws.html" class="nav-btn active">抽奖记录</a>
         </div>

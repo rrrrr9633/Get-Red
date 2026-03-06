@@ -1,0 +1,1365 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>商城奖品管理 - 大红行动</title>
+    <script>
+        // 超级管理员权限验证
+        async function checkAdminAccess() {
+            try {
+                const response = await fetch('../../server/api/super-admin.php?action=check');
+                const data = await response.json();
+                
+                if (!data.authenticated) {
+                    alert('需要超级管理员权限！请先登录。');
+                    window.location.href = '../../super-admin.html';
+                    return false;
+                }
+                
+                // 权限验证成功后，立即加载数据
+                loadItems('skin');
+                
+                return true;
+            } catch (error) {
+                console.error('权限验证失败:', error);
+                alert('系统错误，请重新登录！');
+                window.location.href = '../../super-admin.html';
+                return false;
+            }
+        }
+        
+        // 页面加载时立即验证并加载数据
+        checkAdminAccess();
+    </script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #0c0c0c, #1a1a1a);
+            color: #fff;
+            min-height: 100vh;
+        }
+
+        .admin-header {
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px 0;
+            border-bottom: 2px solid #10b981;
+            text-align: center;
+        }
+
+        .admin-header h1 {
+            color: #10b981;
+            text-shadow: 0 0 20px rgba(16, 185, 129, 0.5);
+            font-size: 32px;
+            cursor: pointer;
+        }
+
+        .back-button {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            padding: 10px 20px;
+            background: linear-gradient(45deg, #10b981, #059669);
+            color: #fff;
+            text-decoration: none;
+            border-radius: 20px;
+            font-weight: bold;
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+
+        .back-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(16, 185, 129, 0.4);
+        }
+
+        .admin-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .tab-nav {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #10b981;
+            padding-bottom: 10px;
+        }
+
+        .tab-btn {
+            padding: 12px 24px;
+            background: transparent;
+            color: #fff;
+            border: none;
+            border-bottom: 3px solid transparent;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .tab-btn.active {
+            background: rgba(16, 185, 129, 0.1);
+            color: #10b981;
+            border-bottom: 3px solid #10b981;
+        }
+
+        .tab-btn:hover:not(.active) {
+            background: rgba(16, 185, 129, 0.05);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .action-bar {
+            text-align: right;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border-radius: 15px;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .btn-add {
+            background: #4ade80;
+            color: #000;
+        }
+
+        .btn-add:hover {
+            background: #22c55e;
+            transform: translateY(-2px);
+        }
+
+        .items-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .item-card {
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #444;
+            border-radius: 15px;
+            padding: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .item-card:hover {
+            border-color: #10b981;
+            box-shadow: 0 5px 20px rgba(16, 185, 129, 0.2);
+        }
+
+        .item-image {
+            width: 100%;
+            height: 200px;
+            object-fit: contain;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+
+        .item-name {
+            font-size: 18px;
+            font-weight: bold;
+            color: #10b981;
+            margin-bottom: 10px;
+        }
+
+        .item-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+
+        .item-detail {
+            color: #ccc;
+        }
+
+        .item-detail span {
+            color: #10b981;
+            font-weight: bold;
+        }
+
+        .item-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-edit {
+            flex: 1;
+            background: #3b82f6;
+            color: #fff;
+        }
+
+        .btn-delete {
+            flex: 1;
+            background: #ef4444;
+            color: #fff;
+        }
+
+        .orders-list {
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .order-card {
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #444;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 15px;
+        }
+
+        .order-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .order-id {
+            font-weight: bold;
+            color: #10b981;
+        }
+
+        .order-status {
+            padding: 5px 15px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .status-pending {
+            background: #f59e0b;
+            color: #000;
+        }
+
+        .status-completed {
+            background: #4ade80;
+            color: #000;
+        }
+
+        .status-cancelled {
+            background: #ef4444;
+            color: #fff;
+        }
+
+        .icons-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .icon-card {
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #444;
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .icon-preview {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .icon-preview img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        .icon-name {
+            font-size: 16px;
+            font-weight: bold;
+            color: #10b981;
+            margin-bottom: 15px;
+        }
+
+        .filter-bar {
+            margin-bottom: 20px;
+        }
+
+        .filter-select {
+            padding: 10px;
+            border-radius: 5px;
+            background: #333;
+            color: #fff;
+            border: 1px solid #10b981;
+            font-size: 14px;
+        }
+
+        .info-box {
+            background: rgba(16, 185, 129, 0.05);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border-left: 4px solid #10b981;
+        }
+
+        .info-box p {
+            color: #ccc;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #888;
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: #222;
+            padding: 30px;
+            border-radius: 20px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 0 30px #10b981;
+        }
+
+        .modal-header {
+            color: #10b981;
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-label {
+            color: #fff;
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #10b981;
+            background: #333;
+            color: #fff;
+            font-size: 14px;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #4ade80;
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .btn-submit {
+            background: #10b981;
+            color: #fff;
+        }
+
+        .btn-cancel {
+            background: #6b7280;
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+    <a href="admin.html" class="back-button">← 返回管理中心</a>
+    
+    <div class="admin-header">
+        <h1 onclick="window.location.href='admin.html'">商城奖品管理</h1>
+    </div>
+
+    <div class="admin-container">
+        <!-- 选项卡导航 -->
+        <div class="tab-nav">
+            <button class="tab-btn active" onclick="switchTab('skin')">🎨 皮肤奖品</button>
+            <button class="tab-btn" onclick="switchTab('escort')">🛡️ 护航奖品</button>
+            <button class="tab-btn" onclick="switchTab('orders')">📦 购买订单</button>
+            <button class="tab-btn" onclick="switchTab('icons')">🖼️ 图标更改</button>
+        </div>
+
+        <!-- 皮肤奖品 -->
+        <div id="skinTab" class="tab-content active">
+            <div class="action-bar">
+                <button class="btn btn-add" onclick="showAddItemModal('skin')">+ 添加皮肤</button>
+            </div>
+            <div id="skinItemsList" class="items-grid">
+                <!-- 数据将在这里动态加载 -->
+            </div>
+        </div>
+
+        <!-- 护航奖品 -->
+        <div id="escortTab" class="tab-content">
+            <div class="action-bar">
+                <button class="btn btn-add" onclick="showAddItemModal('escort')">+ 添加护航</button>
+            </div>
+            <div id="escortItemsList" class="items-grid">
+                <!-- 数据将在这里动态加载 -->
+            </div>
+        </div>
+
+        <!-- 购买订单 -->
+        <div id="ordersTab" class="tab-content">
+            <div class="filter-bar">
+                <select id="orderStatusFilter" class="filter-select" onchange="loadOrders()">
+                    <option value="">全部订单</option>
+                    <option value="pending">待处理</option>
+                    <option value="processing">处理中</option>
+                    <option value="completed">已完成</option>
+                    <option value="cancelled">已取消</option>
+                </select>
+            </div>
+            <div id="ordersList" class="orders-list">
+                <!-- 数据将在这里动态加载 -->
+            </div>
+        </div>
+
+        <!-- 图标更改 -->
+        <div id="iconsTab" class="tab-content">
+            <div class="info-box">
+                <p><strong>💡 说明：</strong></p>
+                <p>在这里可以更改主页商店区域四个卡片的图标图片。修改后会立即在主页显示。</p>
+            </div>
+            <div id="iconsList" class="icons-grid">
+                <!-- 数据将在这里动态加载 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 商品编辑模态框 -->
+    <div id="itemModal" class="modal">
+        <div class="modal-content">
+            <h2 class="modal-header" id="itemModalTitle">添加商品</h2>
+            
+            <!-- 标签页导航 -->
+            <div style="display:flex;gap:10px;justify-content:center;margin-bottom:20px;border-bottom:2px solid #10b981;">
+                <button type="button" onclick="switchItemTab('basic')" id="basicTabBtn" class="item-tab-btn" style="padding:10px 20px;background:rgba(16,185,129,0.1);color:#10b981;border:none;border-bottom:3px solid #10b981;cursor:pointer;font-size:14px;font-weight:bold;">基本信息</button>
+                <button type="button" onclick="switchItemTab('legendary')" id="legendaryTabBtn" class="item-tab-btn" style="padding:10px 20px;background:transparent;color:#fff;border:none;border-bottom:3px solid transparent;cursor:pointer;font-size:14px;">传说级兑换</button>
+            </div>
+            
+            <!-- 基本信息标签页 -->
+            <div id="basicTabContent" class="item-tab-content">
+                <form id="itemForm">
+                    <input type="hidden" id="itemId">
+                    <input type="hidden" id="itemType">
+                    
+                    <div class="form-group">
+                        <label class="form-label">物品名称:</label>
+                        <input type="text" id="itemName" class="form-input" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">物品图标 (Emoji):</label>
+                        <input type="text" id="itemIcon" class="form-input" placeholder="🎁">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">物品图片URL:</label>
+                        <input type="url" id="itemImageUrl" class="form-input" placeholder="https://example.com/image.jpg">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">物品描述:</label>
+                        <textarea id="itemDescription" class="form-input" rows="3"></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">价格（金币）:</label>
+                        <input type="number" id="itemPrice" class="form-input" min="0" step="0.01" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">稀有度:</label>
+                        <select id="itemRarity" class="form-input" required>
+                            <option value="common">普通</option>
+                            <option value="rare">稀有</option>
+                            <option value="epic">史诗</option>
+                            <option value="legendary">传说</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">库存数量:</label>
+                        <input type="number" id="itemStock" class="form-input" value="-1" min="-1">
+                        <small style="color:#888;font-size:12px;">-1 表示无限库存</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">排序顺序:</label>
+                        <input type="number" id="itemSortOrder" class="form-input" value="0" min="0">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">状态:</label>
+                        <select id="itemActive" class="form-input" required>
+                            <option value="1">上架</option>
+                            <option value="0">下架</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-submit">保存</button>
+                        <button type="button" class="btn btn-cancel" onclick="closeItemModal()">取消</button>
+                    </div>
+                </form>
+            </div>
+            
+            <!-- 传说级兑换标签页 -->
+            <div id="legendaryTabContent" class="item-tab-content" style="display:none;">
+                <div style="background:rgba(16,185,129,0.05);padding:15px;border-radius:10px;margin-bottom:20px;border-left:4px solid #10b981;">
+                    <p style="color:#10b981;margin-bottom:10px;font-weight:bold;">💡 配置说明：</p>
+                    <p style="color:#ccc;font-size:14px;line-height:1.6;">设置用户可以使用哪些传说级物品来兑换此商品。用户需要拥有所有指定的传说级物品才能完成兑换。</p>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">选择所需传说级物品：</label>
+                    <div id="legendaryItemsSelection" style="max-height:400px;overflow-y:auto;background:#333;border:1px solid #10b981;border-radius:10px;padding:15px;">
+                        <div style="color:#888;text-align:center;padding:20px;">加载中...</div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">启用传说级兑换:</label>
+                    <select id="legendaryExchangeActive" class="form-input">
+                        <option value="1">启用</option>
+                        <option value="0">禁用</option>
+                    </select>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" class="btn btn-submit" onclick="saveLegendaryExchangeConfig()">保存配置</button>
+                    <button type="button" class="btn btn-cancel" onclick="closeItemModal()">取消</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentTab = 'skin';
+        let editingItemId = null;
+
+        // 切换选项卡
+        function switchTab(tab) {
+            currentTab = tab;
+            
+            // 更新按钮状态
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // 更新内容显示
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(tab + 'Tab').classList.add('active');
+            
+            // 加载对应数据
+            if (tab === 'skin' || tab === 'escort') {
+                loadItems(tab);
+            } else if (tab === 'orders') {
+                loadOrders();
+            } else if (tab === 'icons') {
+                loadIcons();
+            }
+        }
+
+        // 加载商城物品
+        async function loadItems(type) {
+            const listId = type + 'ItemsList';
+            const listElement = document.getElementById(listId);
+            
+            try {
+                const response = await fetch('../../server/api/shop.php?action=admin_items');
+                const data = await response.json();
+                
+                if (data.success) {
+                    const items = data.items.filter(item => item.item_type === type);
+                    
+                    if (items.length === 0) {
+                        listElement.innerHTML = `
+                            <div class="empty-state">
+                                <div class="empty-state-icon">📦</div>
+                                <p>暂无${type === 'skin' ? '皮肤' : '护航'}奖品</p>
+                            </div>
+                        `;
+                        return;
+                    }
+                    
+                    listElement.innerHTML = items.map(item => `
+                        <div class="item-card">
+                            ${item.image_url ? 
+                                `<img src="${item.image_url}" class="item-image" alt="${item.name}" onerror="this.src='../../images/placeholder.png'">` :
+                                `<div class="item-image" style="display:flex;align-items:center;justify-content:center;font-size:60px;">${item.icon || '🎁'}</div>`
+                            }
+                            <div class="item-name">${item.icon || '🎁'} ${item.name}</div>
+                            <div style="color:#ccc;font-size:14px;margin-bottom:10px;">${item.description || ''}</div>
+                            <div class="item-details">
+                                <div class="item-detail">价格: <span>${parseFloat(item.price).toFixed(0)} 金币</span></div>
+                                <div class="item-detail">稀有度: <span>${getRarityText(item.rarity)}</span></div>
+                                <div class="item-detail">库存: <span>${item.stock === -1 ? '无限' : item.stock}</span></div>
+                                <div class="item-detail">状态: <span>${item.is_active ? '✅ 上架' : '❌ 下架'}</span></div>
+                            </div>
+                            <div class="item-actions">
+                                <button class="btn btn-edit" onclick="editItem(${item.id})">编辑</button>
+                                <button class="btn btn-delete" onclick="deleteItem(${item.id}, '${type}')">删除</button>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    listElement.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state-icon">❌</div>
+                            <p>加载失败: ${data.error}</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('加载商城物品失败:', error);
+                listElement.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">❌</div>
+                        <p>网络错误，请稍后重试</p>
+                    </div>
+                `;
+            }
+        }
+
+        function getRarityText(rarity) {
+            const map = {
+                'common': '普通',
+                'rare': '稀有',
+                'epic': '史诗',
+                'legendary': '传说'
+            };
+            return map[rarity] || '普通';
+        }
+
+        // 加载订单
+        async function loadOrders() {
+            const listElement = document.getElementById('ordersList');
+            const status = document.getElementById('orderStatusFilter').value;
+            
+            try {
+                const url = status ? 
+                    `../../server/api/shop.php?action=admin_purchases&status=${status}` :
+                    '../../server/api/shop.php?action=admin_purchases';
+                    
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.success) {
+                    if (data.purchases.length === 0) {
+                        listElement.innerHTML = `
+                            <div class="empty-state">
+                                <div class="empty-state-icon">📦</div>
+                                <p>暂无订单</p>
+                            </div>
+                        `;
+                        return;
+                    }
+                    
+                    listElement.innerHTML = data.purchases.map(order => {
+                        const statusColors = {
+                            'pending': '#f59e0b',
+                            'processing': '#3b82f6',
+                            'completed': '#10b981',
+                            'cancelled': '#ef4444'
+                        };
+                        const statusTexts = {
+                            'pending': '待处理',
+                            'processing': '处理中',
+                            'completed': '已完成',
+                            'cancelled': '已取消'
+                        };
+                        
+                        return `
+                            <div class="order-card" style="border-color: ${statusColors[order.status]};">
+                                <div class="order-header">
+                                    <div class="order-id">订单 #${order.id}</div>
+                                    <div class="order-status status-${order.status}">${statusTexts[order.status]}</div>
+                                </div>
+                                <div class="item-details">
+                                    <div class="item-detail">用户: <span>${order.username} (${order.nickname || ''})</span></div>
+                                    <div class="item-detail">商品: <span>${order.item_name}</span></div>
+                                    <div class="item-detail">类型: <span>${order.item_type === 'skin' ? '皮肤' : '护航'}</span></div>
+                                    <div class="item-detail">价格: <span>${parseFloat(order.price).toFixed(0)} 金币</span></div>
+                                    <div class="item-detail">购买方式: <span>${order.purchase_type === 'legendary' ? '传说级兑换' : '金币购买'}</span></div>
+                                    ${order.player_id ? `<div class="item-detail">玩家ID: <span>${order.player_id}</span></div>` : ''}
+                                    <div class="item-detail">时间: <span>${order.created_at}</span></div>
+                                    ${order.processed_at ? `<div class="item-detail">处理时间: <span>${order.processed_at}</span></div>` : ''}
+                                </div>
+                                ${order.notes ? `<div style="color:#ccc;font-size:12px;margin-top:10px;padding:8px;background:rgba(0,0,0,0.3);border-radius:5px;">备注: ${order.notes}</div>` : ''}
+                                ${order.status === 'pending' || order.status === 'processing' ? `
+                                    <div class="item-actions" style="margin-top:15px;">
+                                        <button class="btn btn-edit" onclick="processOrder(${order.id}, 'completed')">完成订单</button>
+                                        <button class="btn btn-delete" onclick="processOrder(${order.id}, 'cancelled')">取消订单</button>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        `;
+                    }).join('');
+                } else {
+                    listElement.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state-icon">❌</div>
+                            <p>加载失败: ${data.error}</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('加载订单失败:', error);
+                listElement.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">❌</div>
+                        <p>网络错误，请稍后重试</p>
+                    </div>
+                `;
+            }
+        }
+
+        // 加载图标
+        async function loadIcons() {
+            const listElement = document.getElementById('iconsList');
+            
+            try {
+                const response = await fetch('../../server/api/admin.php?action=get_shop_icons');
+                const data = await response.json();
+                
+                if (data.success) {
+                    if (data.icons.length === 0) {
+                        listElement.innerHTML = `
+                            <div class="empty-state">
+                                <div class="empty-state-icon">📦</div>
+                                <p>暂无图标配置</p>
+                            </div>
+                        `;
+                        return;
+                    }
+                    
+                    listElement.innerHTML = data.icons.map(icon => `
+                        <div class="icon-card">
+                            <div class="icon-preview">
+                                ${icon.icon_url ? 
+                                    `<img src="${icon.icon_url}" alt="${icon.icon_name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                                     <div style="font-size:80px;display:none;">${icon.fallback_icon || '🎁'}</div>` :
+                                    `<div style="font-size:80px;">${icon.fallback_icon || '🎁'}</div>`
+                                }
+                            </div>
+                            <div class="icon-name">${icon.icon_name}</div>
+                            <button class="btn btn-edit" onclick="changeIcon('${icon.id}', '${icon.icon_name}')">更改图标</button>
+                        </div>
+                    `).join('');
+                } else {
+                    listElement.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state-icon">❌</div>
+                            <p>加载失败: ${data.error}</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('加载图标失败:', error);
+                listElement.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">❌</div>
+                        <p>网络错误，请稍后重试</p>
+                    </div>
+                `;
+            }
+        }
+
+        // 辅助函数
+        function getStatusText(status) {
+            const statusMap = {
+                'pending': '待处理',
+                'processing': '处理中',
+                'completed': '已完成',
+                'cancelled': '已取消'
+            };
+            return statusMap[status] || status;
+        }
+
+        function showAddItemModal(type) {
+            editingItemId = null;
+            selectedLegendaryItems = [];
+            document.getElementById('itemModalTitle').textContent = `添加${type === 'skin' ? '皮肤' : '护航'}`;
+            document.getElementById('itemForm').reset();
+            document.getElementById('itemId').value = '';
+            document.getElementById('itemType').value = type;
+            document.getElementById('legendaryExchangeActive').value = '0';
+            document.getElementById('legendaryItemsSelection').dataset.loaded = '';
+            
+            // 切换到基本信息标签页
+            switchItemTab('basic');
+            
+            document.getElementById('itemModal').style.display = 'flex';
+        }
+
+        async function editItem(id) {
+            try {
+                const response = await fetch('../../server/api/shop.php?action=admin_items');
+                const data = await response.json();
+                
+                if (data.success) {
+                    const item = data.items.find(i => i.id == id);
+                    if (!item) {
+                        alert('商品不存在');
+                        return;
+                    }
+                    
+                    editingItemId = id;
+                    document.getElementById('itemModalTitle').textContent = '编辑商品';
+                    document.getElementById('itemId').value = item.id;
+                    document.getElementById('itemType').value = item.item_type;
+                    document.getElementById('itemName').value = item.name;
+                    document.getElementById('itemIcon').value = item.icon || '';
+                    document.getElementById('itemImageUrl').value = item.image_url || '';
+                    document.getElementById('itemDescription').value = item.description || '';
+                    document.getElementById('itemPrice').value = item.price;
+                    document.getElementById('itemRarity').value = item.rarity;
+                    document.getElementById('itemStock').value = item.stock;
+                    document.getElementById('itemSortOrder').value = item.sort_order;
+                    document.getElementById('itemActive').value = item.is_active;
+                    
+                    // 切换到基本信息标签页
+                    switchItemTab('basic');
+                    
+                    // 加载传说级兑换配置
+                    loadLegendaryExchangeConfig(id);
+                    
+                    document.getElementById('itemModal').style.display = 'flex';
+                }
+            } catch (error) {
+                console.error('加载商品信息失败:', error);
+                alert('加载失败');
+            }
+        }
+
+        // 切换商品编辑标签页
+        function switchItemTab(tab) {
+            document.querySelectorAll('.item-tab-btn').forEach(btn => {
+                btn.style.background = 'transparent';
+                btn.style.color = '#fff';
+                btn.style.borderBottom = '3px solid transparent';
+            });
+            
+            document.querySelectorAll('.item-tab-content').forEach(content => {
+                content.style.display = 'none';
+            });
+            
+            if (tab === 'basic') {
+                document.getElementById('basicTabBtn').style.background = 'rgba(16,185,129,0.1)';
+                document.getElementById('basicTabBtn').style.color = '#10b981';
+                document.getElementById('basicTabBtn').style.borderBottom = '3px solid #10b981';
+                document.getElementById('basicTabContent').style.display = 'block';
+            } else if (tab === 'legendary') {
+                document.getElementById('legendaryTabBtn').style.background = 'rgba(16,185,129,0.1)';
+                document.getElementById('legendaryTabBtn').style.color = '#10b981';
+                document.getElementById('legendaryTabBtn').style.borderBottom = '3px solid #10b981';
+                document.getElementById('legendaryTabContent').style.display = 'block';
+                
+                // 如果还没有加载传说级物品，现在加载
+                if (!document.getElementById('legendaryItemsSelection').dataset.loaded) {
+                    loadLegendaryItemsForSelection();
+                }
+            }
+        }
+
+        // 加载传说级物品供选择
+        let allLegendaryPrizes = [];
+        let selectedLegendaryItems = [];
+
+        async function loadLegendaryItemsForSelection() {
+            try {
+                const response = await fetch('../../server/api/admin.php?action=prizes');
+                const data = await response.json();
+                
+                if (data.success) {
+                    allLegendaryPrizes = data.prizes.filter(p => p.rarity === 'legendary');
+                    renderLegendaryItemsSelection();
+                    document.getElementById('legendaryItemsSelection').dataset.loaded = 'true';
+                } else {
+                    document.getElementById('legendaryItemsSelection').innerHTML = '<div style="color:#ef4444;text-align:center;padding:20px;">加载失败</div>';
+                }
+            } catch (error) {
+                console.error('加载传说级物品失败:', error);
+                document.getElementById('legendaryItemsSelection').innerHTML = '<div style="color:#ef4444;text-align:center;padding:20px;">网络错误</div>';
+            }
+        }
+
+        function renderLegendaryItemsSelection() {
+            const container = document.getElementById('legendaryItemsSelection');
+            
+            if (allLegendaryPrizes.length === 0) {
+                container.innerHTML = '<div style="color:#888;text-align:center;padding:20px;">暂无传说级物品</div>';
+                return;
+            }
+
+            container.innerHTML = allLegendaryPrizes.map(prize => {
+                const selected = selectedLegendaryItems.find(item => item.prize_id == prize.id);
+                const quantity = selected ? selected.quantity : 1;
+                
+                return `
+                    <div style="background:${selected ? 'rgba(16,185,129,0.1)' : '#444'};border:2px solid ${selected ? '#10b981' : '#666'};border-radius:10px;padding:12px;margin-bottom:10px;display:flex;align-items:center;gap:15px;">
+                        <input type="checkbox" 
+                               id="legendary_${prize.id}" 
+                               ${selected ? 'checked' : ''} 
+                               onchange="toggleLegendaryItem(${prize.id})"
+                               style="width:20px;height:20px;cursor:pointer;">
+                        <div style="flex:1;">
+                            <div style="color:#10b981;font-weight:bold;margin-bottom:5px;">
+                                ${prize.icon || '👑'} ${prize.name}
+                            </div>
+                            <div style="color:#ccc;font-size:12px;">价值: ${parseFloat(prize.value).toFixed(0)} | 剩余: ${prize.quantity || '∞'}</div>
+                        </div>
+                        <div style="display:${selected ? 'flex' : 'none'};align-items:center;gap:5px;" id="quantity_control_${prize.id}">
+                            <label style="color:#fff;font-size:12px;">数量:</label>
+                            <input type="number" 
+                                   id="quantity_${prize.id}" 
+                                   value="${quantity}" 
+                                   min="1" 
+                                   max="10"
+                                   onchange="updateLegendaryItemQuantity(${prize.id}, this.value)"
+                                   style="width:60px;padding:5px;border-radius:5px;border:1px solid #10b981;background:#333;color:#fff;text-align:center;">
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function toggleLegendaryItem(prizeId) {
+            const checkbox = document.getElementById(`legendary_${prizeId}`);
+            const quantityControl = document.getElementById(`quantity_control_${prizeId}`);
+            
+            if (checkbox.checked) {
+                const prize = allLegendaryPrizes.find(p => p.id == prizeId);
+                selectedLegendaryItems.push({
+                    prize_id: prizeId,
+                    name: prize.name,
+                    quantity: 1
+                });
+                quantityControl.style.display = 'flex';
+            } else {
+                selectedLegendaryItems = selectedLegendaryItems.filter(item => item.prize_id != prizeId);
+                quantityControl.style.display = 'none';
+            }
+            
+            renderLegendaryItemsSelection();
+        }
+
+        function updateLegendaryItemQuantity(prizeId, quantity) {
+            const item = selectedLegendaryItems.find(item => item.prize_id == prizeId);
+            if (item) {
+                item.quantity = parseInt(quantity) || 1;
+            }
+        }
+
+        // 加载传说级兑换配置
+        async function loadLegendaryExchangeConfig(shopItemId) {
+            try {
+                const response = await fetch(`../../server/api/shop.php?action=legendary_exchange_config&shop_item_id=${shopItemId}`);
+                const data = await response.json();
+                
+                if (data.success && data.config) {
+                    const config = data.config;
+                    selectedLegendaryItems = config.required_items || [];
+                    document.getElementById('legendaryExchangeActive').value = config.is_active;
+                    
+                    // 如果传说级物品已加载，重新渲染
+                    if (document.getElementById('legendaryItemsSelection').dataset.loaded) {
+                        renderLegendaryItemsSelection();
+                    }
+                } else {
+                    // 没有配置，重置为空
+                    selectedLegendaryItems = [];
+                    document.getElementById('legendaryExchangeActive').value = '0';
+                }
+            } catch (error) {
+                console.error('加载传说级兑换配置失败:', error);
+            }
+        }
+
+        // 保存传说级兑换配置
+        async function saveLegendaryExchangeConfig() {
+            const shopItemId = document.getElementById('itemId').value;
+            
+            if (!shopItemId) {
+                alert('请先保存商品基本信息');
+                return;
+            }
+            
+            if (selectedLegendaryItems.length === 0) {
+                if (!confirm('未选择任何传说级物品，这将禁用此商品的传说级兑换功能。是否继续？')) {
+                    return;
+                }
+            }
+            
+            try {
+                const response = await fetch('../../server/api/shop.php?action=save_legendary_exchange_config', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        shop_item_id: shopItemId,
+                        required_items: selectedLegendaryItems,
+                        is_active: parseInt(document.getElementById('legendaryExchangeActive').value),
+                        sort_order: 0
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('传说级兑换配置保存成功！');
+                } else {
+                    alert('保存失败: ' + data.error);
+                }
+            } catch (error) {
+                console.error('保存传说级兑换配置失败:', error);
+                alert('网络错误');
+            }
+        }
+
+        function closeItemModal() {
+            document.getElementById('itemModal').style.display = 'none';
+        }
+
+        // 保存商品
+        document.getElementById('itemForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = {
+                id: document.getElementById('itemId').value,
+                name: document.getElementById('itemName').value,
+                icon: document.getElementById('itemIcon').value,
+                image_url: document.getElementById('itemImageUrl').value,
+                description: document.getElementById('itemDescription').value,
+                price: parseFloat(document.getElementById('itemPrice').value),
+                item_type: document.getElementById('itemType').value,
+                rarity: document.getElementById('itemRarity').value,
+                stock: parseInt(document.getElementById('itemStock').value),
+                sort_order: parseInt(document.getElementById('itemSortOrder').value),
+                is_active: parseInt(document.getElementById('itemActive').value)
+            };
+            
+            try {
+                const action = editingItemId ? 'update_item' : 'add_item';
+                const response = await fetch(`../../server/api/shop.php?action=${action}`, {
+                    method: editingItemId ? 'PUT' : 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify(formData)
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert(editingItemId ? '商品更新成功' : '商品添加成功');
+                    closeItemModal();
+                    loadItems(formData.item_type);
+                } else {
+                    alert('保存失败: ' + data.error);
+                }
+            } catch (error) {
+                console.error('保存商品失败:', error);
+                alert('网络错误');
+            }
+        });
+
+        function deleteItem(id, type) {
+            if (confirm('确定要删除这个商品吗？')) {
+                fetch(`../../server/api/shop.php?action=delete_item&id=${id}`, {
+                    method: 'DELETE',
+                    credentials: 'include'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('商品已删除');
+                        loadItems(type);
+                    } else {
+                        alert('删除失败: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('删除商品失败:', error);
+                    alert('网络错误');
+                });
+            }
+        }
+
+        async function processOrder(id, status) {
+            const action = status === 'completed' ? '完成' : '取消';
+            const notes = action === '取消' ? 
+                prompt('请输入取消原因（可选）:') : 
+                prompt('请输入处理备注（可选）:');
+            
+            if (action === '取消' && notes === null) {
+                return;
+            }
+            
+            if (!confirm(`确定要${action}这个订单吗？`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`../../server/api/shop.php?action=process_purchase`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        purchase_id: id,
+                        action: status === 'completed' ? 'complete' : 'cancel',
+                        notes: notes || ''
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert(data.message || `订单已${action}`);
+                    loadOrders();
+                } else {
+                    alert('处理失败: ' + data.error);
+                }
+            } catch (error) {
+                console.error('处理订单失败:', error);
+                alert('网络错误');
+            }
+        }
+
+        async function changeIcon(id, name) {
+            try {
+                const response = await fetch('../../server/api/admin.php?action=get_shop_icons', {
+                    credentials: 'include'
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    const icon = data.icons.find(i => i.id == id);
+                    if (!icon) {
+                        alert('图标不存在');
+                        return;
+                    }
+                    
+                    // 显示图标编辑模态框
+                    showIconEditModal(icon);
+                }
+            } catch (error) {
+                console.error('加载图标信息失败:', error);
+                alert('加载失败');
+            }
+        }
+
+        // 显示图标编辑模态框
+        function showIconEditModal(icon) {
+            document.getElementById('iconEditModalTitle').textContent = '编辑图标 - ' + icon.icon_name;
+            document.getElementById('iconEditId').value = icon.id;
+            document.getElementById('iconEditKey').value = icon.icon_key || '';
+            document.getElementById('iconEditName').value = icon.icon_name;
+            document.getElementById('iconEditUrl').value = icon.icon_url || '';
+            document.getElementById('iconEditFallback').value = icon.fallback_icon || '🎁';
+            document.getElementById('iconEditDescription').value = icon.description || '';
+            
+            // 显示模态框
+            document.getElementById('iconEditModal').style.display = 'flex';
+            
+            // 更新预览
+            updateIconPreview();
+        }
+
+        // 关闭图标编辑模态框
+        function closeIconEditModal() {
+            document.getElementById('iconEditModal').style.display = 'none';
+        }
+
+        // 更新图标预览
+        function updateIconPreview() {
+            const url = document.getElementById('iconEditUrl').value.trim();
+            const fallback = document.getElementById('iconEditFallback').value.trim();
+            const previewImg = document.getElementById('iconPreviewImg');
+            const previewEmoji = document.getElementById('iconPreviewEmoji');
+            
+            if (url) {
+                previewImg.src = url;
+                previewImg.style.display = 'block';
+                previewEmoji.style.display = 'none';
+                
+                // 如果图片加载失败，显示备用图标
+                previewImg.onerror = function() {
+                    previewImg.style.display = 'none';
+                    previewEmoji.style.display = 'block';
+                    previewEmoji.textContent = fallback || '🎁';
+                };
+            } else {
+                previewImg.style.display = 'none';
+                previewEmoji.style.display = 'block';
+                previewEmoji.textContent = fallback || '🎁';
+            }
+        }
+
+        // 保存图标配置
+        document.getElementById('iconEditForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = {
+                id: document.getElementById('iconEditId').value,
+                icon_key: document.getElementById('iconEditKey').value,
+                icon_url: document.getElementById('iconEditUrl').value,
+                fallback_icon: document.getElementById('iconEditFallback').value,
+                description: document.getElementById('iconEditDescription').value
+            };
+            
+            try {
+                const response = await fetch('../../server/api/admin.php?action=update_shop_icon', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify(formData)
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('图标更新成功！');
+                    closeIconEditModal();
+                    loadIcons();
+                } else {
+                    alert('保存失败: ' + data.error);
+                }
+            } catch (error) {
+                console.error('保存图标失败:', error);
+                alert('网络错误');
+            }
+        });
+
+        // 初始化输入监听
+        function initIconEditListeners() {
+            const urlInput = document.getElementById('iconEditUrl');
+            const fallbackInput = document.getElementById('iconEditFallback');
+            
+            if (urlInput) {
+                urlInput.addEventListener('input', updateIconPreview);
+            }
+            if (fallbackInput) {
+                fallbackInput.addEventListener('input', updateIconPreview);
+            }
+        }
+
+        // 页面加载时初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            initIconEditListeners();
+        });
+    </script>
+
+    <!-- 图标编辑模态框 -->
+    <div id="iconEditModal" class="modal">
+        <div class="modal-content">
+            <h2 class="modal-header" id="iconEditModalTitle">编辑图标</h2>
+            <form id="iconEditForm">
+                <input type="hidden" id="iconEditId">
+                <input type="hidden" id="iconEditKey">
+                
+                <div class="form-group">
+                    <label class="form-label">图标名称:</label>
+                    <input type="text" id="iconEditName" class="form-input" readonly style="background:#444;color:#aaa;">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">图标图片URL:</label>
+                    <input type="url" id="iconEditUrl" class="form-input" placeholder="https://example.com/image.png">
+                    <small style="color:#888;font-size:12px;">留空则使用备用图标（Emoji）</small>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">备用图标 (Emoji):</label>
+                    <input type="text" id="iconEditFallback" class="form-input" placeholder="🎁" maxlength="5">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">描述:</label>
+                    <textarea id="iconEditDescription" class="form-input" rows="2"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" style="text-align:center;display:block;margin-bottom:10px;">预览:</label>
+                    <div style="text-align:center;background:#333;border:2px solid #10b981;border-radius:10px;padding:20px;">
+                        <img id="iconPreviewImg" src="" alt="预览" style="max-width:150px;max-height:150px;display:none;">
+                        <div id="iconPreviewEmoji" style="font-size:80px;">🎁</div>
+                    </div>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-submit">保存</button>
+                    <button type="button" class="btn btn-cancel" onclick="closeIconEditModal()">取消</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+</html>
