@@ -5,9 +5,12 @@
 
 [mysqld]
 # 基本配置
-max_connections = 100
+max_connections = 200
 character-set-server = utf8mb4
 collation-server = utf8mb4_unicode_ci
+
+# 锁等待超时（防止长时间锁等待）
+innodb_lock_wait_timeout = 10
 
 # 连接池配置
 thread_cache_size = 50
