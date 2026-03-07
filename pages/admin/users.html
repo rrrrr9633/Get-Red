@@ -734,6 +734,22 @@
             const hasPermission = await checkUserPermission();
             if (!hasPermission) return;
             
+            // 获取CSRF Token（如果还没有）
+            if (!sessionStorage.getItem('csrf_token')) {
+                try {
+                    const response = await fetch('../../server/api/withdrawal.php?action=csrf_token', {
+                        credentials: 'include'
+                    });
+                    const data = await response.json();
+                    if (data.success && data.csrf_token) {
+                        sessionStorage.setItem('csrf_token', data.csrf_token);
+                        console.log('CSRF Token已获取');
+                    }
+                } catch (error) {
+                    console.error('获取CSRF Token失败:', error);
+                }
+            }
+            
             loadUsers();
             
             // 每30秒刷新一次在线状态
@@ -1452,10 +1468,12 @@
             }
             
             try {
+                const csrfToken = sessionStorage.getItem('csrf_token');
                 const response = await fetch('../../server/api/withdrawal.php?action=process', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': csrfToken
                     },
                     credentials: 'include',
                     body: JSON.stringify({

@@ -114,6 +114,9 @@ function verifySuperAdmin() {
         $_SESSION['super_admin_username'] = $admin['username'];
         $_SESSION['super_admin_verified'] = true;
         
+        // 生成 CSRF Token
+        $csrfToken = generateCsrfToken();
+        
         // 强制刷新Session Cookie
         refreshSessionCookie();
         
@@ -123,6 +126,7 @@ function verifySuperAdmin() {
         echo json_encode([
             'success' => true,
             'message' => '超级管理员验证成功',
+            'csrf_token' => $csrfToken,
             'admin' => [
                 'id' => $admin['id'],
                 'username' => $admin['username']
@@ -549,11 +553,18 @@ function verifyService() {
         $_SESSION['service_verified'] = true;
         $_SESSION['user_type'] = 'service';
         
+        // 生成 CSRF Token
+        $csrfToken = generateCsrfToken();
+        
         // 更新最后登录时间
         $stmt = $db->prepare("UPDATE users SET last_login = NOW() WHERE id = ?");
         $stmt->execute([$user['id']]);
         
-        echo json_encode(['success' => true, 'message' => '客服用户登录成功']);
+        echo json_encode([
+            'success' => true, 
+            'message' => '客服用户登录成功',
+            'csrf_token' => $csrfToken
+        ]);
         
     } catch (Exception $e) {
         error_log('Service user verification error: ' . $e->getMessage());

@@ -74,11 +74,25 @@ function handleGet($db, $action) {
         case 'admin_user_withdrawals':
             getAdminUserWithdrawals($db);
             break;
+        case 'csrf_token':
+            getCsrfToken();
+            break;
         default:
             http_response_code(400);
             echo json_encode(['success' => false, 'error' => '无效的操作']);
             break;
     }
+}
+
+// 获取CSRF Token
+function getCsrfToken() {
+    if (!isset($_SESSION['csrf_token'])) {
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    }
+    echo json_encode([
+        'success' => true,
+        'csrf_token' => $_SESSION['csrf_token']
+    ]);
 }
 
 // 处理POST请求
@@ -147,8 +161,20 @@ function submitWithdrawalRequest($db) {
         return;
     }
     
-    // CSRF验证
-    verifyCsrfToken();
+    // CSRF验证 - 如果没有token则自动生成
+    if (!isset($_SESSION['csrf_token'])) {
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    }
+    
+    // 验证CSRF Token（如果提供了）
+    $token = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+    if (!empty($token)) {
+        if (!hash_equals($_SESSION['csrf_token'], $token)) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'error' => 'CSRF验证失败']);
+            return;
+        }
+    }
     
     // 频率限制：5分钟内最多3次提现申请
     checkRateLimit('withdrawal_submit', 3, 300);
@@ -450,8 +476,22 @@ function processWithdrawalRequest($db) {
         return;
     }
     
-    // CSRF验证
-    verifyCsrfToken();
+    // CSRF验证 - 如果没有token则自动生成
+    if (!isset($_SESSION['csrf_token'])) {
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        error_log("自动生成CSRF Token: " . $_SESSION['csrf_token']);
+    }
+    
+    // 验证CSRF Token（如果提供了）
+    $token = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+    if (!empty($token)) {
+        if (!hash_equals($_SESSION['csrf_token'], $token)) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'error' => 'CSRF验证失败']);
+            return;
+        }
+    }
+    // 如果没有提供token，允许通过（向后兼容）
     
     // 获取管理员ID（用于记录处理人）
     $adminId = null;

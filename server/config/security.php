@@ -133,15 +133,33 @@ function verifyCsrfToken() {
         }
     }
     
+    // 调试信息
+    error_log("CSRF验证 - Session Token: " . ($_SESSION['csrf_token'] ?? 'null'));
+    error_log("CSRF验证 - Request Token: " . ($token ?: 'empty'));
+    error_log("CSRF验证 - Session ID: " . session_id());
+    
     if (!isset($_SESSION['csrf_token']) || empty($token)) {
         http_response_code(403);
-        echo json_encode(['error' => 'CSRF验证失败：缺少token']);
+        echo json_encode([
+            'error' => 'CSRF验证失败：缺少token',
+            'debug' => [
+                'has_session_token' => isset($_SESSION['csrf_token']),
+                'has_request_token' => !empty($token),
+                'session_id' => session_id()
+            ]
+        ]);
         exit;
     }
     
     if (!hash_equals($_SESSION['csrf_token'], $token)) {
         http_response_code(403);
-        echo json_encode(['error' => 'CSRF验证失败：token无效']);
+        echo json_encode([
+            'error' => 'CSRF验证失败：token无效',
+            'debug' => [
+                'session_token_length' => strlen($_SESSION['csrf_token']),
+                'request_token_length' => strlen($token)
+            ]
+        ]);
         exit;
     }
     

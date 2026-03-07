@@ -556,9 +556,6 @@ php -S localhost:8000 router.php
 - 完整的代码量统计（42,045行）
 - 科学的价值评估方法
 - 市场对比分析
-- 商业价值分析
-- 项目等级评定：A级（优秀）
-- 估值：100-150万元
 
 📝 **更新主README**
 - 添加项目规模统计
@@ -583,10 +580,7 @@ php -S localhost:8000 router.php
 - `DEPLOYMENT_CHECKLIST.md` - 部署检查清单
 - `PROJECT_STRUCTURE.md` - 项目文件结构
 
-**快速部署**：
-```bash
-./deploy-optimization.sh
-```
+
 
 ### v2.0.0 (2026-03-03) - 安全加固版本
 
@@ -626,7 +620,7 @@ php -S localhost:8000 router.php
 
 ---
 
-**注意**：本系统已通过安全审计，安全等级为A（优秀）。在生产环境部署前，请务必：
+**注意**：在生产环境部署前，请务必：
 1. 修改所有默认密码
 2. 启用HTTPS
 3. 配置定期备份

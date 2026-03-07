@@ -412,6 +412,11 @@
                 const result = await response.json();
                 
                 if (result.success) {
+                    // 保存 CSRF Token
+                    if (result.csrf_token) {
+                        sessionStorage.setItem('csrf_token', result.csrf_token);
+                    }
+                    
                     showMessage('登录成功！正在跳转...', 'success');
                     
                     // 根据用户类型跳转到不同页面
