@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>管理后台 - 大红行动</title>
+    <title>牛皮俱乐部</title>
     <script>
         // 超级管理员验证 - 每次访问都需要重新认证
         async function checkSuperAdminAccess() {
@@ -681,18 +681,32 @@
                     })
                 });
 
-                const data = await response.json();
+                // 获取响应文本
+                const responseText = await response.text();
+                console.log('Response text:', responseText);
+                
+                // 尝试解析JSON
+                let data;
+                try {
+                    data = JSON.parse(responseText);
+                } catch (e) {
+                    console.error('JSON解析失败:', e);
+                    console.error('响应内容:', responseText);
+                    throw new Error('服务器返回了无效的JSON: ' + responseText.substring(0, 100));
+                }
+                
                 if (data.success) {
                     alert('Lucky页面删除成功！');
                     closeDeleteLuckyModal();
                     // 刷新页面列表
                     showPrizePageSelector();
                 } else {
-                    alert('删除失败: ' + data.error);
+                    // 显示错误信息（包括二次确认提示）
+                    alert(data.error || '删除失败: 未知错误');
                 }
             } catch (error) {
                 console.error('删除Lucky页面失败:', error);
-                alert('网络错误，请稍后重试');
+                alert('网络错误: ' + error.message);
             }
         }
 

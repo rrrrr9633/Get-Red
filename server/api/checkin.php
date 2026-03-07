@@ -190,7 +190,9 @@ function doCheckin() {
         ]);
         
     } catch (Exception $e) {
-        $db->rollback();
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
         http_response_code(500);
         echo json_encode(['error' => '签到失败: ' . $e->getMessage()]);
     }

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>主界面 - 大红行动</title>
+    <title>牛皮俱乐部</title>
     <link rel="stylesheet" href="../css/colors.css">
     <link rel="stylesheet" href="../css/style.css">
     <link rel="stylesheet" href="../css/neon.css">
@@ -17,7 +17,7 @@
     <!-- 导航栏 -->
     <nav class="navbar">
         <div class="nav-brand">
-            <h1 class="neon-text gold" onclick="goToHome()" style="cursor: pointer;" title="返回主页">大红行动</h1>
+            <h1 class="neon-text gold" onclick="goToHome()" style="cursor: pointer;" title="返回主页">牛皮俱乐部</h1>
             
             <!-- 模块切换 -->
             <div class="module-switcher">
@@ -62,7 +62,7 @@
         <!-- 幸运抽奖模块 -->
         <div id="luckyModule" class="module-content active">
             <div class="welcome-section">
-                <h2 class="neon-text rainbow">欢迎来到大红行动</h2>
+                <h2 class="neon-text rainbow">欢迎来到XX俱乐部</h2>
                 <p class="neon-text">选择您喜欢的游戏模式，开始您的幸运之旅！</p>
             </div>
 
@@ -697,33 +697,36 @@
         
         @media (max-width: 768px) {
             .navbar {
-                padding: 0 12px;
-                height: 60px;
+                padding: 0 8px;
+                height: 56px;
             }
             
             .nav-brand {
-                flex-direction: column;
-                gap: 8px;
-                align-items: flex-start;
+                flex-direction: row;
+                gap: 10px;
+                align-items: center;
             }
             
             .nav-brand h1 {
-                font-size: 16px;
+                font-size: 15px;
+                white-space: nowrap;
             }
             
             .module-switcher {
-                gap: 5px;
+                gap: 4px;
                 padding: 3px;
             }
             
             .module-btn {
-                padding: 5px 10px;
+                padding: 6px 8px;
                 font-size: 11px;
-                gap: 5px;
+                gap: 0;
+                min-width: 32px;
+                justify-content: center;
             }
             
             .module-icon {
-                font-size: 14px;
+                font-size: 16px;
             }
             
             .module-name {
@@ -731,27 +734,33 @@
             }
             
             .nav-user {
-                gap: 12px;
+                gap: 6px;
             }
             
             .nav-item {
-                padding: 6px 10px;
+                padding: 6px 8px;
                 border-radius: 8px;
-                gap: 3px;
+                gap: 2px;
+                min-width: 40px;
             }
             
             .nav-item .icon {
-                font-size: 16px;
+                font-size: 18px;
             }
             
             .nav-item span {
-                font-size: 10px;
+                display: none;
             }
             
             .user-info {
-                gap: 8px;
-                padding: 6px 10px;
+                gap: 6px;
+                padding: 4px 8px;
                 border-radius: 16px;
+            }
+            
+            .user-info #userNickname,
+            .user-info #userBalance {
+                display: none;
             }
             
             .user-avatar {
@@ -759,9 +768,13 @@
                 height: 32px;
             }
             
+            .recharge-btn {
+                font-size: 18px;
+            }
+            
             .main-container {
-                padding: 20px 15px;
-                margin-top: 60px;
+                padding: 20px 12px;
+                margin-top: 56px;
             }
             
             .shop-categories-grid {
@@ -850,34 +863,43 @@
         
         @media (max-width: 480px) {
             .navbar {
-                padding: 0 10px;
-                height: 55px;
+                padding: 0 6px;
+                height: 52px;
             }
             
             .nav-brand h1 {
-                font-size: 16px;
-            }
-            
-            .nav-user {
-                gap: 8px;
-            }
-            
-            .nav-item {
-                padding: 4px 8px;
-                min-width: auto;
-            }
-            
-            .nav-item .icon {
                 font-size: 14px;
             }
             
-            .nav-item span {
-                font-size: 9px;
+            .nav-brand {
+                gap: 6px;
+            }
+            
+            .module-btn {
+                padding: 5px 6px;
+                min-width: 28px;
+            }
+            
+            .module-icon {
+                font-size: 14px;
+            }
+            
+            .nav-user {
+                gap: 4px;
+            }
+            
+            .nav-item {
+                padding: 5px 6px;
+                min-width: 36px;
+            }
+            
+            .nav-item .icon {
+                font-size: 16px;
             }
             
             .user-info {
-                gap: 6px;
-                padding: 4px 8px;
+                gap: 4px;
+                padding: 3px 6px;
             }
             
             .user-avatar {
@@ -885,9 +907,13 @@
                 height: 28px;
             }
             
+            .recharge-btn {
+                font-size: 16px;
+            }
+            
             .main-container {
-                margin-top: 55px;
-                padding: 15px 10px;
+                margin-top: 52px;
+                padding: 15px 8px;
             }
             
             .welcome-section h2 {

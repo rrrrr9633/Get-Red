@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>幸运掉落 - 大红行动</title>
+    <title>牛皮俱乐部</title>
     <link rel="stylesheet" href="../css/style.css">
     <link rel="stylesheet" href="../css/neon.css">
     <link rel="stylesheet" href="../css/lucky-page.css">
@@ -14,7 +14,7 @@
     <!-- 导航栏 -->
     <nav class="navbar">
         <div class="nav-brand">
-            <h1 class="neon-text gold" onclick="goToHome()" style="cursor: pointer;" title="返回主页">大红行动</h1>
+            <h1 class="neon-text gold" onclick="goToHome()" style="cursor: pointer;" title="返回主页">牛皮俱乐部</h1>
         </div>
         
         <div class="nav-user">
@@ -194,6 +194,44 @@
     </div>
 
     <style>
+        /* 防止页面被挤压 */
+        html, body {
+            overflow-x: hidden;
+            width: 100%;
+            position: relative;
+        }
+        
+        /* 弹窗显示时防止body滚动 */
+        body.modal-open {
+            overflow: hidden;
+            position: fixed;
+            width: 100%;
+        }
+        
+        /* 移动端性能优化 - 减少动画 */
+        @media (max-width: 768px) {
+            /* 禁用部分耗性能的动画 */
+            .limited-drop-window::before,
+            .game-container::before,
+            .showcase-glow {
+                animation: none !important;
+            }
+            
+            /* 简化彩虹文字动画 */
+            .limited-drop-header h3 {
+                animation: none !important;
+                background: linear-gradient(90deg, #ff0080, #ff8c00);
+                background-clip: text;
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+            }
+            
+            /* 禁用粒子特效 */
+            .particles {
+                display: none !important;
+            }
+        }
+        
         /* 使用红色主题的自定义样式覆盖 */
         
         /* 限时掉落窗口样式 - 彩虹霓虹特效 */
@@ -666,6 +704,10 @@
             transition: none;
             will-change: transform;
             min-width: 100%;
+            /* 强制使用GPU加速，防止滚动时暂停 */
+            transform: translate3d(0, 0, 0);
+            backface-visibility: hidden;
+            perspective: 1000px;
         }
         
         .slot-item {
@@ -678,7 +720,9 @@
             border-right: 1px solid rgba(239, 68, 68, 0.15);
             background: linear-gradient(180deg, rgba(239, 68, 68, 0.05), rgba(239, 68, 68, 0.02));
             min-width: 100px;
+            max-width: 100px;
             transition: all 0.2s ease;
+            box-sizing: border-box;
         }
         
         .slot-item:hover {
@@ -1257,37 +1301,42 @@
         
         @media (max-width: 768px) {
             .navbar {
-                padding: 0 15px;
-                height: 60px;
+                padding: 0 8px;
+                height: 56px;
                 backdrop-filter: blur(15px);
             }
             
             .nav-brand h1 {
-                font-size: 18px;
+                font-size: 15px;
             }
             
             .nav-user {
-                gap: 10px;
+                gap: 6px;
             }
             
             .nav-item {
-                padding: 6px 12px;
+                padding: 6px 8px;
                 border-radius: 12px;
-                min-width: auto;
+                min-width: 40px;
             }
             
             .nav-item .icon {
-                font-size: 16px;
+                font-size: 18px;
             }
             
             .nav-item span {
-                font-size: 10px;
+                display: none;
             }
             
             .user-info {
-                gap: 8px;
-                padding: 6px 12px;
+                gap: 6px;
+                padding: 4px 8px;
                 border-radius: 20px;
+            }
+            
+            .user-info #userNickname,
+            .user-info #userBalance {
+                display: none;
             }
             
             .user-avatar {
@@ -1295,9 +1344,65 @@
                 height: 32px;
             }
             
+            .recharge-btn {
+                font-size: 18px;
+            }
+            
+            /* 限时掉落窗口移动端优化 */
+            .limited-drop-window {
+                top: 56px;
+            }
+            
+            .limited-drop-header {
+                padding: 10px 12px;
+                flex-direction: column;
+                gap: 8px;
+                align-items: flex-start;
+            }
+            
+            .limited-drop-header h3 {
+                font-size: 16px;
+                letter-spacing: 1px;
+            }
+            
+            .limited-drop-hint {
+                font-size: 10px;
+                padding: 4px 10px;
+                width: 100%;
+                text-align: center;
+                white-space: normal;
+                line-height: 1.3;
+            }
+            
+            .limited-drop-content {
+                padding: 10px 8px;
+            }
+            
+            .limited-drop-prizes {
+                gap: 10px;
+                grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            }
+            
+            .limited-drop-prize {
+                padding: 10px 8px;
+            }
+            
+            .limited-drop-prize .prize-icon {
+                font-size: 32px;
+            }
+            
+            .limited-drop-prize .prize-name {
+                font-size: 12px;
+            }
+            
+            .limited-drop-prize .prize-quantity {
+                font-size: 11px;
+                padding: 3px 8px;
+            }
+            
             .game-container {
-                padding: 20px 15px;
-                margin-top: 60px;
+                padding: 20px 12px;
+                margin-top: 56px;
             }
             
             .game-header h2 {
@@ -1350,6 +1455,7 @@
                 height: 70px;
                 min-width: 50px;
                 max-width: 50px;
+                box-sizing: border-box;
             }
             
             .slot-item .icon {
@@ -1419,31 +1525,89 @@
         
         @media (max-width: 480px) {
             .navbar {
-                padding: 0 10px;
+                padding: 0 6px;
+                height: 52px;
             }
             
             .nav-brand h1 {
-                font-size: 16px;
+                font-size: 14px;
             }
             
             .nav-user {
-                gap: 8px;
+                gap: 4px;
             }
             
             .nav-item {
-                padding: 4px 8px;
+                padding: 5px 6px;
+                min-width: 36px;
             }
             
-            .nav-item span {
-                display: none;
+            .nav-item .icon {
+                font-size: 16px;
             }
             
             .user-info {
-                padding: 4px 8px;
+                padding: 3px 6px;
+                gap: 4px;
+            }
+            
+            .user-avatar {
+                width: 28px;
+                height: 28px;
+            }
+            
+            .recharge-btn {
+                font-size: 16px;
+            }
+            
+            /* 限时掉落窗口小屏优化 */
+            .limited-drop-window {
+                top: 52px;
+            }
+            
+            .limited-drop-header {
+                padding: 8px 10px;
+            }
+            
+            .limited-drop-header h3 {
+                font-size: 14px;
+                letter-spacing: 0.5px;
+            }
+            
+            .limited-drop-hint {
+                font-size: 9px;
+                padding: 3px 8px;
+            }
+            
+            .limited-drop-content {
+                padding: 8px 6px;
+            }
+            
+            .limited-drop-prizes {
+                gap: 8px;
+                grid-template-columns: repeat(auto-fit, minmax(85px, 1fr));
+            }
+            
+            .limited-drop-prize {
+                padding: 8px 6px;
+            }
+            
+            .limited-drop-prize .prize-icon {
+                font-size: 28px;
+            }
+            
+            .limited-drop-prize .prize-name {
+                font-size: 11px;
+            }
+            
+            .limited-drop-prize .prize-quantity {
+                font-size: 10px;
+                padding: 2px 6px;
             }
             
             .game-container {
-                padding: 15px 10px;
+                padding: 15px 8px;
+                margin-top: 52px;
             }
             
             .game-header h2 {
@@ -1484,6 +1648,7 @@
                 height: 40px;
                 min-width: 40px;
                 max-width: 40px;
+                box-sizing: border-box;
             }
             
             .slot-item .icon {
@@ -1533,6 +1698,8 @@
         let prizeData = [];
         let currentMode = 1; // 当前抽奖模式：1单抽，3三连抽，5五连抽
         let drawPrices = { single: 10, triple: 30, quintuple: 50 }; // 动态价格
+        let isDrawing = false; // 是否正在抽奖
+        let showcaseRestoreTimer = null; // 准备窗口恢复定时器
 
         // 检查登录状态并加载数据
         async function initPage() {
@@ -1823,8 +1990,55 @@
             const showcaseArea = document.querySelector('.showcase-area');
             const slotContainer = document.querySelector('.horizontal-slot-container');
             
+            // 清除之前的恢复定时器（如果用户连续抽奖）
+            if (showcaseRestoreTimer) {
+                clearTimeout(showcaseRestoreTimer);
+                showcaseRestoreTimer = null;
+            }
+            
+            // 标记正在抽奖
+            isDrawing = true;
+            
             spinBtn.disabled = true;
             spinBtn.querySelector('.btn-text').textContent = '抽奖中...';
+            
+            // 先滚动到页面顶部（仅移动端，在锁定滚动之前）
+            const isMobile = window.innerWidth <= 768;
+            if (isMobile) {
+                // 移动端：滚动到页面顶部
+                window.scrollTo({
+                    top: 0,
+                    behavior: 'smooth'
+                });
+                
+                // 等待滚动完成
+                await new Promise(resolve => setTimeout(resolve, 400));
+            }
+            
+            // 仅移动端锁定页面滚动
+            let scrollY = 0;
+            let preventScroll = null;
+            
+            if (isMobile) {
+                // 抽奖时强制锁定页面滚动 - 保存当前滚动位置
+                scrollY = window.scrollY;
+                document.body.style.overflow = 'hidden';
+                document.body.style.position = 'fixed';
+                document.body.style.top = `-${scrollY}px`;
+                document.body.style.width = '100%';
+                document.body.style.left = '0';
+                document.body.style.right = '0';
+                
+                // 阻止触摸滚动事件
+                preventScroll = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return false;
+                };
+                
+                document.addEventListener('touchmove', preventScroll, { passive: false });
+                document.addEventListener('wheel', preventScroll, { passive: false });
+            }
             
             // 隐藏展示区，显示抽奖动画
             showcaseArea.classList.add('hidden');
@@ -1863,7 +2077,7 @@
                 if (skipAnimation) {
                     // 直接显示结果，跳过动画
                     showWinResult(drawResult.prizes || drawResult.results, drawResult.total_value);
-                    finishSpin(spinBtn, showcaseArea, slotContainer);
+                    finishSpin(spinBtn, showcaseArea, slotContainer, scrollY, preventScroll);
                 } else {
                     // 播放滚动动画，使用后端返回的结果
                     await performSpinWithResults(drawResult.prizes || drawResult.results);
@@ -1871,7 +2085,7 @@
                     // 显示结果
                     setTimeout(() => {
                         showWinResult(drawResult.prizes || drawResult.results, drawResult.total_value);
-                        finishSpin(spinBtn, showcaseArea, slotContainer);
+                        finishSpin(spinBtn, showcaseArea, slotContainer, scrollY, preventScroll);
                     }, 4000);
                 }
                 
@@ -1879,21 +2093,52 @@
                 console.error('抽奖失败:', error);
                 alert(error.message || '抽奖失败，请稍后再试！');
                 
-                finishSpin(spinBtn, showcaseArea, slotContainer);
+                finishSpin(spinBtn, showcaseArea, slotContainer, scrollY, preventScroll);
             }
         }
         
         // 完成抽奖的清理工作
-        function finishSpin(spinBtn, showcaseArea, slotContainer) {
+        function finishSpin(spinBtn, showcaseArea, slotContainer, scrollY, preventScroll) {
+            const isMobile = window.innerWidth <= 768;
+            
+            // 仅移动端需要恢复滚动
+            if (isMobile) {
+                // 移除滚动阻止事件
+                if (preventScroll) {
+                    document.removeEventListener('touchmove', preventScroll);
+                    document.removeEventListener('wheel', preventScroll);
+                }
+                
+                // 恢复页面滚动
+                document.body.style.overflow = '';
+                document.body.style.position = '';
+                document.body.style.top = '';
+                document.body.style.width = '';
+                document.body.style.left = '';
+                document.body.style.right = '';
+                
+                // 恢复滚动位置
+                if (typeof scrollY !== 'undefined') {
+                    window.scrollTo(0, scrollY);
+                }
+            }
+            
+            // 标记抽奖结束
+            isDrawing = false;
+            
             // 重置按钮
             spinBtn.disabled = false;
             spinBtn.querySelector('.btn-text').textContent = '开始抽奖';
             
-            // 显示展示区，隐藏抽奖动画
-            setTimeout(() => {
-                showcaseArea.classList.remove('hidden');
-                slotContainer.classList.remove('active');
-            }, 2000);
+            // 设置3秒后恢复准备窗口的定时器
+            // 如果用户在3秒内再次抽奖，这个定时器会被清除
+            showcaseRestoreTimer = setTimeout(() => {
+                // 只有在没有进行抽奖时才显示准备窗口
+                if (!isDrawing) {
+                    showcaseArea.classList.remove('hidden');
+                    slotContainer.classList.remove('active');
+                }
+            }, 3000);
             
             // 更新用户信息
             loadUserInfo();
@@ -1903,9 +2148,9 @@
                 const allStrips = document.querySelectorAll('.slot-strip');
                 allStrips.forEach(strip => {
                     strip.style.transition = 'none';
-                    strip.style.transform = 'translateX(0px)';
+                    strip.style.transform = 'translate3d(0, 0, 0)';
                 });
-            }, 3000); // 等待3秒后重置
+            }, 1000);
         }
 
         // 使用后端结果执行抽奖动画
@@ -1921,7 +2166,7 @@
                 
                 // 强制重置到初始位置
                 strip.style.transition = 'none';
-                strip.style.transform = 'translateX(0px)';
+                strip.style.transform = 'translate3d(0, 0, 0)';
                 
                 // 强制重绘
                 strip.offsetHeight;
@@ -1953,25 +2198,52 @@
                     targetIndex = Math.floor(Math.random() * Math.min(10, items.length));
                 }
                 
-                // 计算滚动参数 - 动态获取itemWidth
+                // 计算滚动参数 - 使用CSS定义的固定宽度
                 const isMobile = window.innerWidth <= 768;
                 const isSmallMobile = window.innerWidth <= 480;
-                const itemWidth = isSmallMobile ? 40 : (isMobile ? 50 : 100);
+                
+                // 使用CSS中定义的固定宽度（flex: 0 0 XXpx）
+                let itemWidth;
+                if (isSmallMobile) {
+                    itemWidth = 40; // 对应 @media (max-width: 480px) 中的 flex: 0 0 40px
+                } else if (isMobile) {
+                    itemWidth = 50; // 对应 @media (max-width: 768px) 中的 flex: 0 0 50px
+                } else {
+                    itemWidth = 100; // 桌面版默认 flex: 0 0 100px
+                }
+                
                 const containerWidth = row.offsetWidth;
                 const centerPosition = containerWidth / 2;
                 
+                // 计算目标物品的中心位置
                 const targetItemLeftEdge = targetIndex * itemWidth;
                 const targetItemCenter = targetItemLeftEdge + itemWidth / 2;
-                const translateAmount = centerPosition - targetItemCenter;
                 
-                // 调整额外滚动距离，手机端减少
+                // 计算需要移动的距离，使目标物品中心对齐容器中心
+                // 移动端需要额外补偿，因为指针可能不在正中心
+                let pointerOffset = 0;
+                if (isMobile) {
+                    // 移动端指针偏移补偿：向前移动2个格子的距离
+                    pointerOffset = itemWidth * 2;
+                }
+                
+                const translateAmount = centerPosition - targetItemCenter + pointerOffset;
+                
+                // 添加额外滚动距离制造滚动效果
                 const extraDistance = itemWidth * (isSmallMobile ? 10 : (isMobile ? 15 : 20));
                 const finalTranslate = translateAmount - extraDistance;
                 
-                // 启动滚动动画
+                console.log(`Row ${i}: targetIndex=${targetIndex}, itemWidth=${itemWidth}, containerWidth=${containerWidth}, centerPosition=${centerPosition}, targetItemCenter=${targetItemCenter}, pointerOffset=${pointerOffset}, translateAmount=${translateAmount}, finalTranslate=${finalTranslate}`);
+                
+                // 使用requestAnimationFrame确保动画在下一帧执行
                 setTimeout(() => {
-                    strip.style.transition = 'transform 3s ease-out';
-                    strip.style.transform = `translateX(${finalTranslate}px)`;
+                    requestAnimationFrame(() => {
+                        strip.style.transition = 'transform 3s cubic-bezier(0.25, 0.1, 0.25, 1)';
+                        strip.style.transform = `translate3d(${finalTranslate}px, 0, 0)`;
+                        
+                        // 强制触发重绘，确保动画执行
+                        strip.offsetHeight;
+                    });
                 }, 200 + i * 200);
             }
         }
@@ -2019,6 +2291,7 @@
             `;
             
             modal.classList.add('show');
+            document.body.classList.add('modal-open');
         }
 
         // 生成奖品说明网格
@@ -2056,12 +2329,15 @@
         // 关闭中奖弹窗
         function closeWinModal() {
             document.getElementById('winModal').classList.remove('show');
+            document.body.classList.remove('modal-open');
+            
+            // 关闭弹窗时不做任何处理，准备窗口的显示由finishSpin中的定时器控制
             
             // 确保所有strip都重置到初始位置
             const allStrips = document.querySelectorAll('.slot-strip');
             allStrips.forEach(strip => {
                 strip.style.transition = 'none';
-                strip.style.transform = 'translateX(0px)';
+                strip.style.transform = 'translate3d(0, 0, 0)';
             });
         }
 
@@ -2113,11 +2389,13 @@
         function openCheckin() {
             generateCalendar();
             document.getElementById('checkinModal').classList.add('show');
+            document.body.classList.add('modal-open');
         }
 
         // 关闭每日签到弹窗
         function closeCheckinModal() {
             document.getElementById('checkinModal').classList.remove('show');
+            document.body.classList.remove('modal-open');
         }
 
         // 生成签到日历
@@ -2219,11 +2497,13 @@
         function openWarehouse() {
             loadWarehouseItems();
             document.getElementById('warehouseModal').classList.add('show');
+            document.body.classList.add('modal-open');
         }
 
         // 关闭仓库弹窗
         function closeWarehouseModal() {
             document.getElementById('warehouseModal').classList.remove('show');
+            document.body.classList.remove('modal-open');
         }
 
         // 加载仓库物品
@@ -2352,7 +2632,6 @@
             }
 
             const window = document.querySelector('.limited-drop-window');
-            const body = document.body;
             
             if (window) {
                 // 更新窗口标题
@@ -2361,10 +2640,9 @@
                     titleElement.textContent = limitedDropConfig.window_title;
                 }
                 
-                // 显示窗口并添加body类
+                // 显示窗口
                 window.classList.add('show');
                 window.classList.remove('collapsed');
-                body.classList.add('limited-drop-active');
                 updateLimitedDropDisplay();
                 
                 // 3秒后自动收回到顶部
@@ -2379,11 +2657,9 @@
         // 隐藏限时掉落窗口
         function hideLimitedDropWindow() {
             const window = document.querySelector('.limited-drop-window');
-            const body = document.body;
             
             if (window) {
                 window.classList.remove('show');
-                body.classList.remove('limited-drop-active');
                 console.log('限时掉落窗口已隐藏');
             }
         }

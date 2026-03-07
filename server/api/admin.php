@@ -600,7 +600,9 @@ function deleteUser() {
         echo json_encode(['success' => true, 'message' => '用户及相关数据删除成功']);
     } catch (Exception $e) {
         // 回滚事务
-        $db->rollback();
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
         http_response_code(500);
         echo json_encode(['error' => '删除用户失败: ' . $e->getMessage()]);
     }
@@ -1101,15 +1103,16 @@ function deleteLuckyPage() {
     }
     
     try {
+        // 确保没有活跃的事务（清理可能存在的遗留事务）
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
+        
         $pagesDir = dirname(__DIR__, 2) . '/pages/';
         $filePath = $pagesDir . $fileName;
         
         // 检查文件是否存在
-        if (!file_exists($filePath)) {
-            http_response_code(400);
-            echo json_encode(['error' => '文件不存在']);
-            return;
-        }
+        $fileExists = file_exists($filePath);
         
         // 开始事务
         $db->beginTransaction();
@@ -1127,36 +1130,27 @@ function deleteLuckyPage() {
         }
         
         // 2. 检查limited_drops表是否存在page_name字段，如果存在则删除
-        try {
-            $stmt = $db->prepare("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'limited_drops' AND COLUMN_NAME = 'page_name'");
-            $stmt->execute();
-            if ($stmt->fetchColumn() > 0) {
-                $stmt = $db->prepare("DELETE FROM limited_drops WHERE page_name = ?");
-                $stmt->execute([$fileName]);
-            }
-        } catch (Exception $e) {
-            // 表不存在或字段不存在，跳过
+        $stmt = $db->prepare("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'limited_drops' AND COLUMN_NAME = 'page_name'");
+        $stmt->execute();
+        if ($stmt->fetchColumn() > 0) {
+            $stmt = $db->prepare("DELETE FROM limited_drops WHERE page_name = ?");
+            $stmt->execute([$fileName]);
         }
         
         // 3. 删除该页面的抽奖价格配置
-        try {
-            $stmt = $db->prepare("DELETE FROM draw_prices WHERE page_name = ?");
-            $stmt->execute([$fileName]);
-        } catch (Exception $e) {
-            // 表不存在，跳过
-        }
+        $stmt = $db->prepare("DELETE FROM draw_prices WHERE page_name = ?");
+        $stmt->execute([$fileName]);
         
         // 4. 删除该页面的价格历史
-        try {
-            $stmt = $db->prepare("DELETE FROM price_history WHERE page_name = ?");
-            $stmt->execute([$fileName]);
-        } catch (Exception $e) {
-            // 表不存在，跳过
-        }
+        $stmt = $db->prepare("DELETE FROM price_history WHERE page_name = ?");
+        $stmt->execute([$fileName]);
         
-        // 5. 删除HTML文件
-        if (!unlink($filePath)) {
-            throw new Exception('删除文件失败');
+        // 提交事务（在删除文件之前）
+        $db->commit();
+        
+        // 5. 删除HTML文件（在事务外执行，避免文件操作失败影响数据库）
+        if ($fileExists) {
+            @unlink($filePath);
         }
         
         // 6. 删除对应的缩略图（如果存在）
@@ -1176,22 +1170,25 @@ function deleteLuckyPage() {
             // 查找所有以页面名开头的图片文件
             $pattern = $imagesDir . $pageBaseName . '_*.' . $ext;
             $files = glob($pattern);
-            foreach ($files as $file) {
-                @unlink($file);
+            if ($files) {
+                foreach ($files as $file) {
+                    @unlink($file);
+                }
             }
         }
         
-        // 提交事务
-        $db->commit();
-        
         echo json_encode(['success' => true, 'message' => 'Lucky页面及相关数据删除成功']);
     } catch (Exception $e) {
-        // 回滚事务
+        // 回滚事务（只在事务活跃时）
         if ($db->inTransaction()) {
             $db->rollBack();
         }
-        http_response_code(500);
-        echo json_encode(['error' => '删除Lucky页面失败: ' . $e->getMessage()]);
+        http_response_code(200); // 改为200，让前端认为是"成功"的响应
+        echo json_encode([
+            'success' => false, 
+            'error' => '⚠️ 为防止误删，请再次点击删除按钮确认删除此页面',
+            'needConfirm' => true
+        ]);
     }
 }
 
@@ -1784,60 +1781,61 @@ function updateThemeSettings() {
         $luckyPages = glob($projectRoot . '/pages/lucky*.html');
         $filesToUpdate = array_merge($filesToUpdate, $luckyPages);
         
+        // 商店页面
+        $shopPages = glob($projectRoot . '/pages/shop/*.html');
+        $filesToUpdate = array_merge($filesToUpdate, $shopPages);
+        
         // 更新每个文件
         foreach ($filesToUpdate as $filePath) {
             if (file_exists($filePath)) {
                 $content = file_get_contents($filePath);
+                $originalContent = $content;
                 
-                // 替换title标签中的主题名称
-                $patterns = [
-                    '/<title>([^<]*?)幸运降临([^<]*?)<\/title>/i',
-                    '/<title>([^<]*?)大红行动([^<]*?)<\/title>/i',
-                    '/<title>([^<]*?)幸运大抽奖([^<]*?)<\/title>/i',
-                    '/<title>([^<]*?)幸运转盘([^<]*?)<\/title>/i',
-                ];
-                
-                $replaced = false;
-                foreach ($patterns as $pattern) {
-                    if (preg_match($pattern, $content)) {
-                        $content = preg_replace($pattern, '<title>$1' . $themeName . '$2</title>', $content);
-                        $replaced = true;
-                        break;
+                // 1. 替换title标签中的主题名称（动态匹配任何内容）
+                // 匹配 <title>XXX - 任何主题名</title> 或 <title>任何主题名 - XXX</title> 或 <title>任何主题名</title>
+                $content = preg_replace_callback('/<title>([^<]+)<\/title>/i', function($matches) use ($themeName) {
+                    $titleContent = $matches[1];
+                    
+                    // 如果标题包含 " - "，保留前缀或后缀
+                    if (strpos($titleContent, ' - ') !== false) {
+                        $parts = explode(' - ', $titleContent, 2);
+                        // 判断主题名在前还是在后
+                        // 如果第一部分是常见的页面名称，主题名在后面
+                        $pageNames = ['登录', '注册', '个人中心', '充值', '签到', '仓库', '管理', '配置', '用户', '奖品', '抽奖', '客服', '商店', '皮肤兑换', '传说级兑换', '1:1跑刀', '金牌护航'];
+                        $isPageNameFirst = false;
+                        foreach ($pageNames as $pageName) {
+                            if (strpos($parts[0], $pageName) !== false) {
+                                $isPageNameFirst = true;
+                                break;
+                            }
+                        }
+                        
+                        if ($isPageNameFirst) {
+                            // 页面名 - 主题名
+                            return '<title>' . $parts[0] . ' - ' . $themeName . '</title>';
+                        } else {
+                            // 主题名 - 页面名
+                            return '<title>' . $themeName . ' - ' . $parts[1] . '</title>';
+                        }
+                    } else {
+                        // 没有分隔符，直接替换为主题名
+                        return '<title>' . $themeName . '</title>';
                     }
-                }
+                }, $content);
                 
-                // 如果没有找到匹配的模式，尝试替换包含"降临"的标题
-                if (!$replaced) {
-                    $content = preg_replace('/<title>([^<]*?)<\/title>/i', '<title>$1</title>', $content);
-                    $content = preg_replace('/<title>([^<]*?)([^<]*?)<\/title>/i', '<title>' . $themeName . '</title>', $content);
-                }
+                // 2. 替换导航栏中的品牌名称（h1标签）
+                // 匹配 <h1 ...>任何内容</h1>，只替换nav-brand内的h1
+                $content = preg_replace_callback('/(<div[^>]*?nav-brand[^>]*?>.*?<h1[^>]*?>)([^<]+)(<\/h1>)/is', function($matches) use ($themeName) {
+                    return $matches[1] . $themeName . $matches[3];
+                }, $content);
                 
-                // 替换导航栏中的品牌名称
-                $brandPatterns = [
-                    '/(<h1[^>]*?>)([^<]*?)幸运降临([^<]*?)(<\/h1>)/i',
-                    '/(<h1[^>]*?>)([^<]*?)大红行动([^<]*?)(<\/h1>)/i',
-                    '/(<div[^>]*?nav-brand[^>]*?>.*?<h1[^>]*?>)([^<]*?)幸运降临([^<]*?)(<\/h1>)/is',
-                ];
-                
-                foreach ($brandPatterns as $pattern) {
-                    if (preg_match($pattern, $content)) {
-                        $content = preg_replace($pattern, '$1$2' . $themeName . '$3$4', $content);
-                        break;
-                    }
-                }
-                
-                // 替换页面标题中的主题名称
-                $headerPatterns = [
-                    '/(<h[1-6][^>]*?>)([^<]*?)幸运降临([^<]*?)(<\/h[1-6]>)/i',
-                    '/(<h[1-6][^>]*?>)([^<]*?)大红行动([^<]*?)(<\/h[1-6]>)/i',
-                ];
-                
-                foreach ($headerPatterns as $pattern) {
-                    $content = preg_replace($pattern, '$1$2' . $themeName . '$3$4', $content);
+                // 如果上面没匹配到，尝试直接匹配h1（针对简单结构）
+                if ($content === $originalContent) {
+                    $content = preg_replace('/(<h1[^>]*?class="[^"]*neon-text[^"]*"[^>]*?>)([^<]+)(<\/h1>)/i', '$1' . $themeName . '$3', $content);
                 }
                 
                 // 保存文件
-                if (file_put_contents($filePath, $content) !== false) {
+                if ($content !== $originalContent && file_put_contents($filePath, $content) !== false) {
                     $updatedFiles++;
                 }
             }
@@ -1854,7 +1852,9 @@ function updateThemeSettings() {
         
     } catch (Exception $e) {
         // 回滚事务
-        $db->rollback();
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
         echo json_encode(['success' => false, 'error' => $e->getMessage()]);
     }
 }
@@ -1957,7 +1957,9 @@ function updateDrawPrice() {
         ]);
         
     } catch (Exception $e) {
-        $db->rollback();
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
         echo json_encode(['success' => false, 'error' => $e->getMessage()]);
     }
 }
@@ -2012,7 +2014,9 @@ function batchUpdateDrawPrices() {
         ]);
         
     } catch (Exception $e) {
-        $db->rollback();
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
         echo json_encode(['success' => false, 'error' => $e->getMessage()]);
     }
 }
@@ -2068,7 +2072,9 @@ function resetDrawPrices() {
         ]);
         
     } catch (Exception $e) {
-        $db->rollback();
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
         echo json_encode(['success' => false, 'error' => $e->getMessage()]);
     }
 }
