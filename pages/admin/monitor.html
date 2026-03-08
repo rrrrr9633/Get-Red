@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>牛皮俱乐部 - 牛皮俱乐部</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #0c0c0c, #1a1a1a);
+            color: #fff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #ffd700;
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+            font-size: 36px;
+            margin-bottom: 10px;
+        }
+
+        .back-btn {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            padding: 10px 20px;
+            background: linear-gradient(45deg, #ffd700, #ffed4e);
+            color: #000;
+            text-decoration: none;
+            border-radius: 20px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+
+        .back-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 215, 0, 0.4);
+        }
+
+        .dashboard {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .card {
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #ffd700;
+            border-radius: 15px;
+            padding: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            box-shadow: 0 5px 20px rgba(255, 215, 0, 0.3);
+        }
+
+        .card-title {
+            color: #ffd700;
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card-value {
+            font-size: 36px;
+            font-weight: bold;
+            color: #fff;
+            margin: 10px 0;
+        }
+
+        .card-subtitle {
+            color: #ccc;
+            font-size: 14px;
+        }
+
+        .list-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 10px;
+            margin: 8px 0;
+            border-radius: 8px;
+            border-left: 3px solid #ffd700;
+        }
+
+        .list-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+
+        .list-item-name {
+            color: #ffd700;
+            font-weight: bold;
+        }
+
+        .list-item-value {
+            color: #4ade80;
+            font-weight: bold;
+        }
+
+        .list-item-detail {
+            color: #ccc;
+            font-size: 12px;
+        }
+
+        .status-online {
+            color: #4ade80;
+        }
+
+        .status-offline {
+            color: #6b7280;
+        }
+
+        .refresh-info {
+            text-align: center;
+            color: #ccc;
+            font-size: 12px;
+            margin-top: 20px;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: #6b7280;
+            padding: 20px;
+            font-style: italic;
+        }
+
+        .profit-positive {
+            color: #4ade80;
+        }
+
+        .profit-negative {
+            color: #ef4444;
+        }
+
+        .pagination-btn {
+            padding: 8px 15px;
+            background: rgba(255, 215, 0, 0.2);
+            border: 1px solid #ffd700;
+            color: #ffd700;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+
+        .pagination-btn:hover:not(:disabled) {
+            background: rgba(255, 215, 0, 0.3);
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+        }
+
+        .pagination-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .pagination-btn.active {
+            background: #ffd700;
+            color: #000;
+            font-weight: bold;
+        }
+
+        .pagination-info {
+            color: #ccc;
+            font-size: 14px;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 28px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <a href="admin.html" class="back-btn">← 返回管理后台</a>
+
+    <div class="header">
+        <h1>📊 实时监控中心</h1>
+        <p class="card-subtitle">系统运行状态实时监测</p>
+    </div>
+
+    <div class="dashboard">
+        <!-- 在线用户监测 -->
+        <div class="card">
+            <div class="card-title">
+                <span>👥</span>
+                <span>在线用户</span>
+            </div>
+            <div class="card-value" id="onlineUsers">-</div>
+            <div class="card-subtitle">当前在线用户数量</div>
+        </div>
+
+        <!-- 今日订单统计 -->
+        <div class="card">
+            <div class="card-title">
+                <span>📦</span>
+                <span>今日订单</span>
+            </div>
+            <div class="card-value" id="todayOrders">-</div>
+            <div class="card-subtitle">充值、提现、兑换总数</div>
+        </div>
+
+        <!-- 待处理订单 -->
+        <div class="card">
+            <div class="card-title">
+                <span>⏳</span>
+                <span>待处理订单</span>
+            </div>
+            <div class="card-value" id="pendingOrders">-</div>
+            <div class="card-subtitle">需要处理的订单数量</div>
+        </div>
+
+        <!-- 收支分析 -->
+        <div class="card">
+            <div class="card-title">
+                <span>💰</span>
+                <span>今日收支</span>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0;">
+                <div>
+                    <div class="card-subtitle">收入</div>
+                    <div class="card-value" style="font-size: 24px; color: #4ade80;" id="todayIncome">-</div>
+                </div>
+                <div>
+                    <div class="card-subtitle">支出</div>
+                    <div class="card-value" style="font-size: 24px; color: #ef4444;" id="todayExpense">-</div>
+                </div>
+            </div>
+            <div class="card-subtitle">
+                净利润: <span id="todayProfit" class="card-value" style="font-size: 20px;">-</span>
+            </div>
+        </div>
+
+        <!-- 客服监测 -->
+        <div class="card" style="grid-column: span 2;">
+            <div class="card-title">
+                <span>💬</span>
+                <span>客服工作状态</span>
+            </div>
+            <div id="serviceList"></div>
+        </div>
+
+        <!-- 最近订单 -->
+        <div class="card" style="grid-column: span 2;">
+            <div class="card-title">
+                <span>📋</span>
+                <span>待处理订单</span>
+            </div>
+            <div id="recentOrders"></div>
+            <div id="pagination" style="display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 15px; flex-wrap: wrap;"></div>
+        </div>
+    </div>
+
+    <div class="refresh-info">
+        数据每5秒自动刷新 | 最后更新: <span id="lastUpdate">-</span>
+    </div>
+
+    <script>
+        let refreshInterval;
+        let currentPage = 1;
+
+        // 加载监控数据
+        async function loadMonitorData(page = 1) {
+            try {
+                const response = await fetch(`../../server/api/admin.php?action=monitor_data&page=${page}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    currentPage = page;
+                    updateDashboard(data.data);
+                    document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString('zh-CN');
+                } else {
+                    console.error('获取监控数据失败:', data.error);
+                }
+            } catch (error) {
+                console.error('加载监控数据失败:', error);
+            }
+        }
+
+        // 更新仪表板
+        function updateDashboard(data) {
+            // 在线用户
+            document.getElementById('onlineUsers').textContent = data.onlineUsers || 0;
+
+            // 今日订单
+            document.getElementById('todayOrders').textContent = data.todayOrders || 0;
+
+            // 待处理订单
+            document.getElementById('pendingOrders').textContent = data.pendingOrders || 0;
+
+            // 收支分析
+            document.getElementById('todayIncome').textContent = (data.todayIncome || 0).toFixed(2);
+            document.getElementById('todayExpense').textContent = (data.todayExpense || 0).toFixed(2);
+            
+            const profit = (data.todayIncome || 0) - (data.todayExpense || 0);
+            const profitElement = document.getElementById('todayProfit');
+            profitElement.textContent = profit.toFixed(2);
+            profitElement.className = 'card-value ' + (profit >= 0 ? 'profit-positive' : 'profit-negative');
+
+            // 客服状态
+            updateServiceList(data.serviceUsers || []);
+
+            // 待处理订单
+            updateRecentOrders(data.recentOrders || []);
+            
+            // 分页
+            updatePagination(data.pagination);
+        }
+
+        // 更新客服列表
+        function updateServiceList(serviceUsers) {
+            const container = document.getElementById('serviceList');
+            
+            if (serviceUsers.length === 0) {
+                container.innerHTML = '<div class="empty-state">暂无客服人员</div>';
+                return;
+            }
+
+            container.innerHTML = serviceUsers.map(service => `
+                <div class="list-item">
+                    <div class="list-item-header">
+                        <span class="list-item-name">${service.nickname || service.username}</span>
+                        <span class="${service.is_online ? 'status-online' : 'status-offline'}">
+                            ${service.is_online ? '🟢 在线' : '⚫ 离线'}
+                        </span>
+                    </div>
+                    <div class="list-item-detail">
+                        待处理订单: <span class="list-item-value">${service.pending_count || 0}</span> 个
+                        ${service.last_activity ? ` | 最后活动: ${new Date(service.last_activity).toLocaleString('zh-CN')}` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 更新待处理订单
+        function updateRecentOrders(orders) {
+            const container = document.getElementById('recentOrders');
+            
+            if (orders.length === 0) {
+                container.innerHTML = '<div class="empty-state">暂无待处理订单</div>';
+                return;
+            }
+
+            container.innerHTML = orders.map(order => {
+                const typeMap = {
+                    'withdrawal': '💸 提现',
+                    'shop_purchase': '🛒 兑换'
+                };
+                const statusMap = {
+                    'pending': '⏳ 待处理',
+                    'processing': '🔄 处理中'
+                };
+                
+                return `
+                    <div class="list-item">
+                        <div class="list-item-header">
+                            <span class="list-item-name">${order.username}</span>
+                            <span class="list-item-value">${order.amount} 金币</span>
+                        </div>
+                        <div class="list-item-detail">
+                            ${typeMap[order.type] || order.type} | 
+                            ${statusMap[order.status] || order.status} | 
+                            ${new Date(order.created_at).toLocaleString('zh-CN')}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // 更新分页
+        function updatePagination(pagination) {
+            const container = document.getElementById('pagination');
+            
+            if (!pagination || pagination.totalPages <= 1) {
+                container.innerHTML = '';
+                return;
+            }
+
+            const { currentPage, totalPages, totalOrders, perPage } = pagination;
+            
+            let html = '';
+            
+            // 上一页按钮
+            html += `<button class="pagination-btn" ${currentPage <= 1 ? 'disabled' : ''} onclick="loadMonitorData(${currentPage - 1})">
+                ← 上一页
+            </button>`;
+            
+            // 页码信息
+            html += `<span class="pagination-info">第 ${currentPage} / ${totalPages} 页 (共 ${totalOrders} 条)</span>`;
+            
+            // 下一页按钮
+            html += `<button class="pagination-btn" ${currentPage >= totalPages ? 'disabled' : ''} onclick="loadMonitorData(${currentPage + 1})">
+                下一页 →
+            </button>`;
+            
+            container.innerHTML = html;
+        }
+
+        // 页面加载时立即加载数据
+        loadMonitorData(1);
+
+        // 设置自动刷新（每5秒），保持当前页码
+        refreshInterval = setInterval(() => {
+            loadMonitorData(currentPage);
+        }, 5000);
+
+        // 页面卸载时清除定时器
+        window.addEventListener('beforeunload', () => {
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+            }
+        });
+    </script>
+</body>
+</html>

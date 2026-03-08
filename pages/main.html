@@ -14,6 +14,22 @@
 <body>
     <div class="particles"></div>
     
+    <!-- 首次登录欢迎弹窗 -->
+    <div id="welcomeModal" class="welcome-modal" style="display: none;">
+        <div class="welcome-modal-overlay"></div>
+        <div class="welcome-modal-content">
+            <div class="welcome-icon">🎉</div>
+            <h2 class="welcome-title">欢迎加入牛皮俱乐部！</h2>
+            <div class="welcome-reward">
+                <div class="reward-icon">💰</div>
+                <div class="reward-text">获得注册奖励</div>
+                <div class="reward-amount">10 金币</div>
+            </div>
+            <p class="welcome-message">开始您的幸运之旅吧！</p>
+            <button class="welcome-btn" onclick="closeWelcomeModal()">开始游戏</button>
+        </div>
+    </div>
+    
     <!-- 导航栏 -->
     <nav class="navbar">
         <div class="nav-brand">
@@ -62,7 +78,7 @@
         <!-- 幸运抽奖模块 -->
         <div id="luckyModule" class="module-content active">
             <div class="welcome-section">
-                <h2 class="neon-text rainbow">欢迎来到XX俱乐部</h2>
+                <h2 id="welcomeTitle" class="neon-text rainbow">欢迎来到牛皮俱乐部</h2>
                 <p class="neon-text">选择您喜欢的游戏模式，开始您的幸运之旅！</p>
             </div>
 
@@ -921,6 +937,132 @@
             }
         }
 
+        /* 首次登录欢迎弹窗样式 */
+        .welcome-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .welcome-modal-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(10px);
+        }
+
+        .welcome-modal-content {
+            position: relative;
+            background: linear-gradient(135deg, rgba(26, 26, 26, 0.95), rgba(12, 12, 12, 0.95));
+            border: 3px solid #ffd700;
+            border-radius: 25px;
+            padding: 50px 40px;
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 0 50px rgba(255, 215, 0, 0.5), inset 0 0 30px rgba(255, 215, 0, 0.1);
+            animation: modalSlideIn 0.5s ease-out;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-50px) scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .welcome-icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+            animation: bounce 1s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .welcome-title {
+            color: #ffd700;
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 30px;
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+        }
+
+        .welcome-reward {
+            background: rgba(255, 215, 0, 0.1);
+            border: 2px solid #ffd700;
+            border-radius: 15px;
+            padding: 25px;
+            margin: 20px 0;
+            animation: glow 2s ease-in-out infinite;
+        }
+
+        @keyframes glow {
+            0%, 100% { box-shadow: 0 0 20px rgba(255, 215, 0, 0.3); }
+            50% { box-shadow: 0 0 40px rgba(255, 215, 0, 0.6); }
+        }
+
+        .reward-icon {
+            font-size: 60px;
+            margin-bottom: 10px;
+        }
+
+        .reward-text {
+            color: #fff;
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+
+        .reward-amount {
+            color: #ffd700;
+            font-size: 36px;
+            font-weight: bold;
+            text-shadow: 0 0 15px rgba(255, 215, 0, 0.8);
+        }
+
+        .welcome-message {
+            color: #ccc;
+            font-size: 16px;
+            margin: 20px 0;
+        }
+
+        .welcome-btn {
+            background: linear-gradient(45deg, #ffd700, #ffed4e);
+            color: #000;
+            border: none;
+            padding: 15px 50px;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 20px rgba(255, 215, 0, 0.4);
+        }
+
+        .welcome-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 30px rgba(255, 215, 0, 0.6);
+        }
+
+        .welcome-btn:active {
+            transform: translateY(-1px);
+        }
+
         /* 响应式设计 */
     </style>
 
@@ -1002,6 +1144,9 @@
                     document.getElementById('userAvatar').src = avatarSrc;
                     document.getElementById('userNickname').textContent = user.nickname;
                     document.getElementById('userBalance').textContent = `余额: ${parseFloat(user.balance).toFixed(2)}`;
+                    
+                    // 检查是否首次登录（显示欢迎弹窗）
+                    checkFirstLogin(user);
                 } else if (result.forceLogout) {
                     // 如果是强制退出，清除本地数据
                     api.clearUserData();
@@ -1015,6 +1160,42 @@
                 document.getElementById('userAvatar').src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiByeD0iNTAiIGZpbGw9IiNmZmQ3MDAiLz4KPHN2ZyB4PSIyNSIgeT0iMjAiIHdpZHRoPSI1MCIgaGVpZ2h0PSI2MCI+CjxjaXJjbGUgY3g9IjI1IiBjeT0iMjAiIHI9IjE1IiBmaWxsPSIjMTExIi8+CjxlbGxpcHNlIGN4PSIyNSIgY3k9IjUwIiByeD0iMjAiIHJ5PSIxNSIgZmlsbD0iIzExMSIvPgo8L3N2Zz4KPC9zdmc+';
                 document.getElementById('userNickname').textContent = '未登录';
                 document.getElementById('userBalance').textContent = '余额: 0.00';
+            }
+        }
+        
+        // 检查是否首次登录
+        function checkFirstLogin(user) {
+            // 使用localStorage记录用户是否已经看过欢迎弹窗
+            const welcomeShownKey = `welcome_shown_${user.id}`;
+            const hasShownWelcome = localStorage.getItem(welcomeShownKey);
+            
+            // 如果没有显示过欢迎弹窗，且用户是新注册的（创建时间和最后登录时间相近）
+            if (!hasShownWelcome) {
+                const createdAt = new Date(user.created_at);
+                const lastLogin = user.last_login ? new Date(user.last_login) : new Date();
+                const timeDiff = Math.abs(lastLogin - createdAt) / 1000 / 60; // 分钟差
+                
+                // 如果创建时间和最后登录时间相差小于5分钟，认为是首次登录
+                if (timeDiff < 5) {
+                    showWelcomeModal();
+                    localStorage.setItem(welcomeShownKey, 'true');
+                }
+            }
+        }
+        
+        // 显示欢迎弹窗
+        function showWelcomeModal() {
+            const modal = document.getElementById('welcomeModal');
+            if (modal) {
+                modal.style.display = 'flex';
+            }
+        }
+        
+        // 关闭欢迎弹窗
+        function closeWelcomeModal() {
+            const modal = document.getElementById('welcomeModal');
+            if (modal) {
+                modal.style.display = 'none';
             }
         }
         
@@ -1132,8 +1313,38 @@
             loadUserInfo();
             loadLuckyPages();
             loadShopIcons(); // 加载商店图标
+            loadThemeName(); // 加载主题名称
             createParticles();
         });
+        
+        // 加载主题名称
+        async function loadThemeName() {
+            try {
+                const response = await fetch('../server/api/admin.php?action=get_theme_settings');
+                const data = await response.json();
+                
+                if (data.success && data.theme && data.theme.name) {
+                    const themeName = data.theme.name;
+                    
+                    // 更新页面标题
+                    document.title = themeName;
+                    
+                    // 更新导航栏品牌名
+                    const navBrandH1 = document.querySelector('.nav-brand h1');
+                    if (navBrandH1) {
+                        navBrandH1.textContent = themeName;
+                    }
+                    
+                    // 更新欢迎标题
+                    const welcomeTitle = document.getElementById('welcomeTitle');
+                    if (welcomeTitle) {
+                        welcomeTitle.textContent = '欢迎来到' + themeName;
+                    }
+                }
+            } catch (error) {
+                console.error('加载主题名称失败:', error);
+            }
+        }
 
         // 加载Lucky页面列表
         async function loadLuckyPages() {

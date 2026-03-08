@@ -133,9 +133,9 @@ function getWithdrawalConfig($db) {
         $configs = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         $config = [
-            'exchange_rate' => 10000, // 固定汇率
-            'min_amount' => 100,
-            'max_amount' => 10000,
+            'exchange_rate' => 166666.67, // 60金币=10000000哈夫币
+            'min_amount' => 60,
+            'max_amount' => 600,
             'is_enabled' => 1
         ];
         
@@ -199,9 +199,9 @@ function submitWithdrawalRequest($db) {
         $stmt->execute();
         $configs = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
         
-        $exchangeRate = floatval($configs['exchange_rate'] ?? 10000);
-        $minAmount = floatval($configs['min_amount'] ?? 100);
-        $maxAmount = floatval($configs['max_amount'] ?? 10000);
+        $exchangeRate = floatval($configs['exchange_rate'] ?? 166666.67);
+        $minAmount = floatval($configs['min_amount'] ?? 60);
+        $maxAmount = floatval($configs['max_amount'] ?? 600);
         $isEnabled = intval($configs['is_enabled'] ?? 1);
         
         if (!$isEnabled) {
@@ -226,7 +226,7 @@ function submitWithdrawalRequest($db) {
             throw new Exception('余额不足');
         }
         
-        // 计算哈夫币（固定汇率1:10000）
+        // 计算哈夫币（汇率：60金币=10000000哈夫币）
         $buffCoins = $amount * $exchangeRate;
         
         // 扣除用户余额

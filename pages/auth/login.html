@@ -7,13 +7,13 @@
     <link rel="stylesheet" href="../../css/style.css">
     <link rel="stylesheet" href="../../css/neon.css">
     <style>
-        /* 优化的登录样式 */
+        /* 主网站风格的登录样式 - 红色主题 */
         body {
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
-            background: linear-gradient(135deg, #0a0a0a 0%, #1a0a1a 50%, #0a1a0a 100%);
+            background: linear-gradient(135deg, #0f1419 0%, #1a1a2e 50%, #16213e 100%);
             position: relative;
         }
         
@@ -36,48 +36,26 @@
         }
         
         .login-form {
-            background: rgba(20, 20, 40, 0.95);
+            background: linear-gradient(135deg, rgba(15, 15, 25, 0.95), rgba(20, 20, 35, 0.95));
             padding: 50px 40px;
             border-radius: 20px;
             box-shadow: 
-                0 0 50px rgba(255, 0, 255, 0.3),
-                0 0 100px rgba(0, 255, 255, 0.2),
-                inset 0 0 50px rgba(255, 255, 255, 0.05);
+                0 20px 60px rgba(0, 0, 0, 0.5),
+                0 0 40px rgba(239, 68, 68, 0.2);
             backdrop-filter: blur(15px);
-            border: 2px solid transparent;
-            background-clip: padding-box;
+            border: 2px solid rgba(239, 68, 68, 0.3);
             position: relative;
             width: 450px;
             max-width: 90vw;
             text-align: center;
         }
         
-        .login-form::before {
-            content: '';
-            position: absolute;
-            top: -2px;
-            left: -2px;
-            right: -2px;
-            bottom: -2px;
-            background: linear-gradient(45deg, #ff00ff, #00ffff, #ffff00, #ff00ff);
-            border-radius: 22px;
-            z-index: -1;
-            animation: borderGlow 3s linear infinite;
-        }
-        
-        @keyframes borderGlow {
-            0% { filter: hue-rotate(0deg); }
-            100% { filter: hue-rotate(360deg); }
-        }
-        
         .login-form h2 {
             font-size: 32px;
             margin-bottom: 40px;
-            background: linear-gradient(45deg, #ffd700, #ffff00);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            text-shadow: 0 0 30px rgba(255, 215, 0, 0.5);
+            color: #4ade80;
+            text-shadow: 0 0 20px rgba(74, 222, 128, 0.3);
+            font-weight: 700;
         }
         
         .form-group {
@@ -88,35 +66,30 @@
         .form-group input {
             width: 100%;
             padding: 18px 25px;
-            background: rgba(255, 255, 255, 0.9);
-            border: 2px solid rgba(255, 255, 255, 0.3);
+            background: rgba(30, 30, 50, 0.8);
+            border: 2px solid rgba(239, 68, 68, 0.3);
             border-radius: 12px;
-            color: #333;
+            color: #fff;
             font-size: 16px;
             transition: all 0.3s ease;
             outline: none;
         }
         
         .form-group input:focus {
-            border-color: #ff00ff;
-            box-shadow: 0 0 25px rgba(255, 0, 255, 0.4);
-            background: rgba(255, 255, 255, 0.95);
+            border-color: #ef4444;
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.3);
+            background: rgba(30, 30, 50, 0.95);
         }
         
         .form-group input::placeholder {
-            color: #333;
-            font-weight: 500;
-        }
-        
-        .form-group input {
-            color: #333 !important;
+            color: rgba(255, 255, 255, 0.5);
         }
         
         .btn-neon {
             width: 100%;
             padding: 18px 25px;
-            background: linear-gradient(45deg, #ff00ff, #00ffff);
-            border: none;
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            border: 2px solid rgba(239, 68, 68, 0.5);
             border-radius: 12px;
             color: #fff;
             font-size: 18px;
@@ -127,11 +100,22 @@
             letter-spacing: 1px;
             position: relative;
             overflow: hidden;
+            box-shadow: 
+                0 8px 25px rgba(239, 68, 68, 0.4),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
         }
         
         .btn-neon:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 30px rgba(255, 0, 255, 0.4);
+            transform: translateY(-3px);
+            box-shadow: 
+                0 12px 35px rgba(239, 68, 68, 0.6),
+                0 0 40px rgba(239, 68, 68, 0.4),
+                inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            border-color: rgba(239, 68, 68, 0.8);
+        }
+        
+        .btn-neon:active {
+            transform: translateY(-1px);
         }
         
         .btn-neon::before {
@@ -154,15 +138,15 @@
         }
         
         .form-links a {
-            color: #ffd700;
+            color: #4ade80;
             text-decoration: none;
             font-size: 16px;
             transition: all 0.3s ease;
         }
         
         .form-links a:hover {
-            color: #fff;
-            text-shadow: 0 0 15px rgba(255, 215, 0, 0.8);
+            color: #22c55e;
+            text-shadow: 0 0 15px rgba(74, 222, 128, 0.5);
         }
         
         /* 消息提示样式 */
@@ -189,13 +173,13 @@
         }
         
         .message.success {
-            background: linear-gradient(45deg, #00ff88, #00cc66);
-            box-shadow: 0 0 30px rgba(0, 255, 136, 0.4);
+            background: linear-gradient(45deg, #22c55e, #16a34a);
+            box-shadow: 0 0 30px rgba(34, 197, 94, 0.4);
         }
         
         .message.error {
-            background: linear-gradient(45deg, #ff0044, #cc0033);
-            box-shadow: 0 0 30px rgba(255, 0, 68, 0.4);
+            background: linear-gradient(45deg, #ef4444, #dc2626);
+            box-shadow: 0 0 30px rgba(239, 68, 68, 0.4);
         }
         
         /* 手机端响应式样式 */
@@ -296,6 +280,8 @@
     <script src="../../js/api-client.js"></script>
     <script src="../../js/effects.js"></script>
     <script>
+        let countdownInterval = null;
+        
         // 消息提示函数
         function showMessage(text, type = 'success') {
             // 移除已存在的消息
@@ -317,6 +303,46 @@
                 message.classList.remove('show');
                 setTimeout(() => message.remove(), 300);
             }, 3000);
+        }
+        
+        // 显示倒计时消息
+        function showCountdownMessage(seconds) {
+            // 清除之前的倒计时
+            if (countdownInterval) {
+                clearInterval(countdownInterval);
+            }
+            
+            // 移除已存在的消息
+            const existingMessage = document.querySelector('.message');
+            if (existingMessage) {
+                existingMessage.remove();
+            }
+            
+            const message = document.createElement('div');
+            message.className = 'message error';
+            message.id = 'countdownMessage';
+            document.body.appendChild(message);
+            
+            let remainingSeconds = seconds;
+            
+            // 更新倒计时显示
+            function updateCountdown() {
+                if (remainingSeconds > 0) {
+                    message.textContent = `请求过于频繁，请 ${remainingSeconds} 秒后重试`;
+                    remainingSeconds--;
+                } else {
+                    clearInterval(countdownInterval);
+                    message.classList.remove('show');
+                    setTimeout(() => message.remove(), 300);
+                }
+            }
+            
+            // 立即显示第一次
+            updateCountdown();
+            message.classList.add('show');
+            
+            // 每秒更新一次
+            countdownInterval = setInterval(updateCountdown, 1000);
         }
 
         // 登录表单处理
@@ -350,14 +376,24 @@
                         window.location.href = '../main.html';
                     }, 1500);
                 } else {
-                    showMessage(result.message || '登录失败，请检查用户名和密码！', 'error');
+                    // 检查是否有retry_after字段（频率限制）
+                    if (result.retry_after && result.retry_after > 0) {
+                        showCountdownMessage(result.retry_after);
+                    } else {
+                        showMessage(result.message || '登录失败，请检查用户名和密码！', 'error');
+                    }
                 }
             } catch (error) {
                 console.error('登录失败:', error);
-                showMessage('网络错误，请稍后再试！', 'error');
+                
+                // 检查错误响应中是否有retry_after
+                if (error.retry_after && error.retry_after > 0) {
+                    showCountdownMessage(error.retry_after);
+                } else {
+                    showMessage('网络错误，请稍后再试！', 'error');
+                }
             } finally {
                 // 恢复按钮状态
-                const submitBtn = this.querySelector('button[type="submit"]');
                 submitBtn.textContent = originalText;
                 submitBtn.disabled = false;
             }
@@ -377,6 +413,13 @@
         if (typeof createParticles === 'function') {
             createParticles();
         }
+        
+        // 页面卸载时清除倒计时
+        window.addEventListener('beforeunload', () => {
+            if (countdownInterval) {
+                clearInterval(countdownInterval);
+            }
+        });
     </script>
 </body>
 </html>

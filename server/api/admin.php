@@ -124,6 +124,9 @@ switch ($action) {
     case 'update_shop_icon':
         updateShopIcon();
         break;
+    case 'monitor_data':
+        getMonitorData();
+        break;
     default:
         http_response_code(400);
         echo json_encode(['error' => '无效的操作']);
@@ -318,7 +321,7 @@ function addUser() {
         }
         
         $hashedPassword = password_hash($input['password'], PASSWORD_DEFAULT);
-        $balance = $input['balance'] ?? 1000;
+        $balance = $input['balance'] ?? 10;
         
         $stmt = $db->prepare("INSERT INTO users (username, password, nickname, balance) VALUES (?, ?, ?, ?)");
         $stmt->execute([$input['username'], $hashedPassword, $input['nickname'], $balance]);
@@ -1834,6 +1837,12 @@ function updateThemeSettings() {
                     $content = preg_replace('/(<h1[^>]*?class="[^"]*neon-text[^"]*"[^>]*?>)([^<]+)(<\/h1>)/i', '$1' . $themeName . '$3', $content);
                 }
                 
+                // 3. 替换主页中心的欢迎标题（id="welcomeTitle"）
+                // 匹配 <h2 id="welcomeTitle" ...>欢迎来到XXX</h2>
+                $content = preg_replace_callback('/(<h2[^>]*?id="welcomeTitle"[^>]*?>)欢迎来到[^<]+(<\/h2>)/i', function($matches) use ($themeName) {
+                    return $matches[1] . '欢迎来到' . $themeName . $matches[2];
+                }, $content);
+                
                 // 保存文件
                 if ($content !== $originalContent && file_put_contents($filePath, $content) !== false) {
                     $updatedFiles++;
@@ -2170,6 +2179,170 @@ function updateShopIcon() {
         echo json_encode([
             'success' => false,
             'error' => '更新图标失败: ' . $e->getMessage()
+        ]);
+    }
+}
+
+// ========== 实时监控功能 ==========
+
+function getMonitorData() {
+    global $db;
+    
+    try {
+        // 1. 在线用户数量（5分钟内有活动的用户）
+        $db->query("
+            UPDATE users 
+            SET is_online = 0 
+            WHERE last_activity < DATE_SUB(NOW(), INTERVAL 5 MINUTE)
+        ");
+        
+        $stmt = $db->query("
+            SELECT COUNT(*) as count 
+            FROM users 
+            WHERE is_online = 1
+        ");
+        $onlineUsers = $stmt->fetch(PDO::FETCH_ASSOC)['count'];
+        
+        // 2. 今日订单统计（充值、提现、兑换）
+        $stmt = $db->query("
+            SELECT 
+                (SELECT COUNT(*) FROM recharge_history WHERE DATE(created_at) = CURDATE()) as recharge_count,
+                (SELECT COUNT(*) FROM withdrawal_requests WHERE DATE(created_at) = CURDATE()) as withdrawal_count,
+                (SELECT COUNT(*) FROM shop_purchase_history WHERE DATE(created_at) = CURDATE()) as purchase_count
+        ");
+        $orderStats = $stmt->fetch(PDO::FETCH_ASSOC);
+        $todayOrders = ($orderStats['recharge_count'] ?? 0) + 
+                       ($orderStats['withdrawal_count'] ?? 0) + 
+                       ($orderStats['purchase_count'] ?? 0);
+        
+        // 3. 待处理订单数量
+        $stmt = $db->query("
+            SELECT 
+                (SELECT COUNT(*) FROM withdrawal_requests WHERE status IN ('pending', 'processing')) as pending_withdrawal,
+                (SELECT COUNT(*) FROM shop_purchase_history WHERE status IN ('pending', 'processing')) as pending_purchase
+        ");
+        $pendingStats = $stmt->fetch(PDO::FETCH_ASSOC);
+        $pendingOrders = ($pendingStats['pending_withdrawal'] ?? 0) + 
+                        ($pendingStats['pending_purchase'] ?? 0);
+        
+        // 4. 今日收支分析
+        // 收入：充值总额（coins_gained字段）
+        $stmt = $db->query("
+            SELECT COALESCE(SUM(coins_gained), 0) as total_income 
+            FROM recharge_history 
+            WHERE DATE(created_at) = CURDATE() AND status = 'completed'
+        ");
+        $todayIncome = $stmt->fetch(PDO::FETCH_ASSOC)['total_income'];
+        
+        // 支出：提现金币 + 商品兑换价值
+        $stmt = $db->query("
+            SELECT 
+                COALESCE((SELECT SUM(amount) FROM withdrawal_requests 
+                         WHERE DATE(processed_at) = CURDATE() AND status = 'completed'), 0) as withdrawal_expense,
+                COALESCE((SELECT SUM(price) FROM shop_purchase_history 
+                         WHERE DATE(processed_at) = CURDATE() AND status = 'completed'), 0) as purchase_expense
+        ");
+        $expenseStats = $stmt->fetch(PDO::FETCH_ASSOC);
+        $todayExpense = ($expenseStats['withdrawal_expense'] ?? 0) + 
+                       ($expenseStats['purchase_expense'] ?? 0);
+        
+        // 5. 客服用户监测（包含待处理订单数量）
+        $stmt = $db->query("
+            SELECT 
+                u.id,
+                u.username,
+                u.nickname,
+                u.is_online,
+                u.last_activity,
+                (
+                    SELECT COUNT(*) 
+                    FROM withdrawal_requests wr 
+                    WHERE wr.processed_by = u.id AND wr.status IN ('pending', 'processing')
+                ) + (
+                    SELECT COUNT(*) 
+                    FROM shop_purchase_history sph 
+                    WHERE sph.processed_by = u.id AND sph.status IN ('pending', 'processing')
+                ) as pending_count
+            FROM users u
+            WHERE u.user_type = 'service'
+            ORDER BY u.is_online DESC, pending_count DESC
+        ");
+        $serviceUsers = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // 6. 待处理订单（只显示pending和processing状态）
+        $page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
+        $perPage = 10;
+        $offset = ($page - 1) * $perPage;
+        
+        $recentOrders = [];
+        
+        // 获取待处理提现订单
+        $stmt = $db->query("
+            SELECT 
+                'withdrawal' as type,
+                u.username,
+                wr.amount,
+                wr.status,
+                wr.created_at
+            FROM withdrawal_requests wr
+            JOIN users u ON wr.user_id = u.id
+            WHERE wr.status IN ('pending', 'processing')
+            ORDER BY wr.created_at DESC
+        ");
+        $withdrawalOrders = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // 获取待处理商城购买订单
+        $stmt = $db->query("
+            SELECT 
+                'shop_purchase' as type,
+                u.username,
+                sph.price as amount,
+                sph.status,
+                sph.created_at
+            FROM shop_purchase_history sph
+            JOIN users u ON sph.user_id = u.id
+            WHERE sph.status IN ('pending', 'processing')
+            ORDER BY sph.created_at DESC
+        ");
+        $purchaseOrders = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // 合并并排序所有待处理订单
+        $allOrders = array_merge($withdrawalOrders, $purchaseOrders);
+        usort($allOrders, function($a, $b) {
+            return strtotime($b['created_at']) - strtotime($a['created_at']);
+        });
+        
+        // 计算总数和总页数
+        $totalOrders = count($allOrders);
+        $totalPages = ceil($totalOrders / $perPage);
+        
+        // 获取当前页的订单
+        $recentOrders = array_slice($allOrders, $offset, $perPage);
+        
+        echo json_encode([
+            'success' => true,
+            'data' => [
+                'onlineUsers' => intval($onlineUsers),
+                'todayOrders' => intval($todayOrders),
+                'pendingOrders' => intval($pendingOrders),
+                'todayIncome' => floatval($todayIncome),
+                'todayExpense' => floatval($todayExpense),
+                'serviceUsers' => $serviceUsers,
+                'recentOrders' => $recentOrders,
+                'pagination' => [
+                    'currentPage' => $page,
+                    'totalPages' => $totalPages,
+                    'totalOrders' => $totalOrders,
+                    'perPage' => $perPage
+                ]
+            ]
+        ]);
+        
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode([
+            'success' => false,
+            'error' => '获取监控数据失败: ' . $e->getMessage()
         ]);
     }
 }

@@ -426,8 +426,11 @@
             const container = document.getElementById('rechargeOptions');
             
             if (result.success && result.options) {
-                container.innerHTML = result.options.map(option => `
-                    <div class="option-card" onclick="selectRechargeOption(${JSON.stringify(option).replace(/"/g, '&quot;')})">
+                // 将选项存储在全局变量中
+                window.rechargeOptionsData = result.options;
+                
+                container.innerHTML = result.options.map((option, index) => `
+                    <div class="option-card" onclick="selectRechargeOption(${index})">
                         <div class="option-amount">¥${option.amount}</div>
                         <div class="option-coins">获得 ${option.total_coins} 金币</div>
                         ${option.bonus_coins > 0 ? `<div class="option-bonus">含赠送 ${option.bonus_coins} 金币</div>` : ''}
@@ -448,9 +451,14 @@
         }
 
         // 选择充值选项
-        function selectRechargeOption(option) {
-            selectedOption = option;
-            document.getElementById('modalAmount').textContent = `充值金额: ¥${option.amount} = ${option.total_coins} 金币`;
+        function selectRechargeOption(index) {
+            if (!window.rechargeOptionsData || !window.rechargeOptionsData[index]) {
+                console.error('充值选项数据不存在');
+                return;
+            }
+            
+            selectedOption = window.rechargeOptionsData[index];
+            document.getElementById('modalAmount').textContent = `充值金额: ¥${selectedOption.amount} = ${selectedOption.total_coins} 金币`;
             document.getElementById('paymentModal').classList.add('show');
             
             // 重置选择状态

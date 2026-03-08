@@ -315,7 +315,7 @@ function createUser() {
         ");
         
         $userSecretKey = ($userType === 'super_admin') ? 'admin' : null; // 新超级管理员默认身份码为admin
-        $defaultBalance = ($userType === 'super_admin') ? 9999999.00 : 1000.00;
+        $defaultBalance = ($userType === 'super_admin') ? 9999999.00 : 10.00;
         
         $stmt->execute([
             $username,

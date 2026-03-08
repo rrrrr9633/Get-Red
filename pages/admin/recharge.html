@@ -590,9 +590,9 @@
         }
 
         // 清空搜索
-        async function clearSearch() {
+        function clearSearch() {
             document.getElementById('searchInput').value = '';
-            await loadRechargeHistory();
+            loadRechargeHistory();
         }
 
         // 处理搜索框回车事件

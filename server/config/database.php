@@ -4,12 +4,12 @@
  * 
  * 当前数据库配置信息：
  * - 数据库名称: lucky_draw  
- * - 用户名: web_user
- * - 密码: web_password
+ * - 用户名: root
+ * - 密码: 123123
  * - 主机: localhost
  * - 字符集: utf8mb4
  * 
- * 数据库表结构（共24个表）：
+ * 数据库表结构（共31个表）：
  * 
  * 1. users - 统一用户表（包含所有用户类型）
  *    - id (INT, 主键, 自增)
@@ -229,6 +229,7 @@
  *     - page_name (VARCHAR(100), 页面名称, 如'lucky1.html')
  *     - price_type (ENUM('single','triple','quintuple'), 抽奖类型)
  *     - price_value (DECIMAL(10,2), 价格值)
+ *     - button_name (VARCHAR(50), 默认NULL, 按钮显示名称)
  *     - created_at (TIMESTAMP, 默认CURRENT_TIMESTAMP, 创建时间)
  *     - updated_at (TIMESTAMP, 默认CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, 更新时间)
  *     - UNIQUE: unique_page_price (page_name, price_type)
@@ -244,7 +245,93 @@
  *     - created_at (TIMESTAMP, 默认CURRENT_TIMESTAMP, 创建时间)
  *     - INDEX: idx_page_name (page_name), idx_created_at (created_at)
  * 
- * 总表数：24张表
+ * 25. withdrawal_requests - 跑刀提现申请表
+ *     - id (INT, 主键, 自增)
+ *     - user_id (INT, 外键关联users.id, 索引)
+ *     - amount (DECIMAL(10,2), 提现金币数量)
+ *     - buff_coins (DECIMAL(10,2), 转换后的哈夫币数量，汇率：60金币=10000000哈夫币)
+ *     - status (ENUM('pending','processing','completed','rejected'), 默认'pending', 状态)
+ *     - created_at (TIMESTAMP, 默认CURRENT_TIMESTAMP, 申请时间)
+ *     - processed_at (TIMESTAMP, 处理时间)
+ *     - processed_by (INT, 处理人ID)
+ *     - reject_reason (VARCHAR(255), 拒绝原因)
+ *     - INDEX: idx_user_id (user_id), idx_status (status), idx_created_at (created_at)
+ * 
+ * 26. withdrawal_history - 跑刀提现历史记录表
+ *     - id (INT, 主键, 自增)
+ *     - user_id (INT, 外键关联users.id, 索引)
+ *     - amount (DECIMAL(10,2), 提现金币数量)
+ *     - buff_coins (DECIMAL(10,2), 转换后的哈夫币数量)
+ *     - status (ENUM('completed','rejected'), 最终状态)
+ *     - created_at (TIMESTAMP, 默认CURRENT_TIMESTAMP, 申请时间)
+ *     - processed_at (TIMESTAMP, 默认CURRENT_TIMESTAMP, 处理时间)
+ *     - processed_by (INT, 处理人ID)
+ *     - reject_reason (VARCHAR(255), 拒绝原因)
+ *     - INDEX: idx_user_id (user_id), idx_created_at (created_at)
+ * 
+ * 27. withdrawal_config - 跑刀提现配置表
+ *     - id (INT, 主键, 自增)
+ *     - config_key (VARCHAR(50), 唯一, 配置键)
+ *     - config_value (VARCHAR(255), 配置值)
+ *     - description (VARCHAR(255), 配置说明)
+ *     - updated_at (TIMESTAMP, 默认CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, 更新时间)
+ * 
+ * 28. shop_items - 商城物品表
+ *     - id (INT, 主键, 自增)
+ *     - name (VARCHAR(100), 物品名称)
+ *     - icon (VARCHAR(20), 物品图标)
+ *     - image_url (VARCHAR(500), 物品图片URL)
+ *     - description (TEXT, 物品描述)
+ *     - price (DECIMAL(10,2), 物品价格)
+ *     - item_type (ENUM('skin','escort'), 物品类型)
+ *     - rarity (ENUM('common','rare','epic','legendary'), 默认'common', 稀有度)
+ *     - stock (INT, 默认-1, 库存数量，-1表示无限)
+ *     - is_active (TINYINT(1), 默认1, 是否上架)
+ *     - sort_order (INT, 默认0, 排序顺序)
+ *     - created_at (TIMESTAMP, 默认CURRENT_TIMESTAMP, 创建时间)
+ *     - updated_at (TIMESTAMP, 默认CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, 更新时间)
+ *     - INDEX: idx_item_type (item_type), idx_is_active (is_active), idx_sort_order (sort_order)
+ * 
+ * 29. shop_purchase_history - 用户购买记录表
+ *     - id (INT, 主键, 自增)
+ *     - user_id (INT, 外键关联users.id, 索引)
+ *     - shop_item_id (INT, 外键关联shop_items.id)
+ *     - item_name (VARCHAR(100), 物品名称)
+ *     - item_type (ENUM('skin','escort'), 物品类型)
+ *     - price (DECIMAL(10,2), 价格)
+ *     - purchase_type (ENUM('coin','legendary'), 默认'coin', 购买方式)
+ *     - used_items (TEXT, 使用的传说级物品JSON)
+ *     - player_id (VARCHAR(100), 玩家ID)
+ *     - status (ENUM('pending','processing','completed','cancelled'), 默认'pending', 订单状态)
+ *     - created_at (TIMESTAMP, 默认CURRENT_TIMESTAMP, 创建时间)
+ *     - processed_at (TIMESTAMP, 处理时间)
+ *     - processed_by (INT, 处理人ID)
+ *     - notes (TEXT, 备注信息)
+ *     - INDEX: idx_user_id (user_id), idx_status (status), idx_purchase_type (purchase_type), idx_created_at (created_at)
+ * 
+ * 30. legendary_exchange_config - 传说级兑换配置表
+ *     - id (INT, 主键, 自增)
+ *     - shop_item_id (INT, 外键关联shop_items.id, 索引)
+ *     - required_items (TEXT, 所需传说物品JSON数组)
+ *     - is_active (TINYINT(1), 默认1, 是否启用)
+ *     - sort_order (INT, 默认0, 排序顺序)
+ *     - created_at (TIMESTAMP, 默认CURRENT_TIMESTAMP, 创建时间)
+ *     - updated_at (TIMESTAMP, 默认CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, 更新时间)
+ *     - INDEX: idx_shop_item_id (shop_item_id), idx_is_active (is_active), idx_sort_order (sort_order)
+ * 
+ * 31. shop_icon_config - 商店图标配置表
+ *     - id (INT, 主键, 自增)
+ *     - icon_key (VARCHAR(50), 唯一, 图标键名)
+ *     - icon_name (VARCHAR(100), 图标显示名称)
+ *     - icon_url (VARCHAR(500), 图标图片URL)
+ *     - fallback_icon (VARCHAR(20), 默认'🎁', 备用图标)
+ *     - description (TEXT, 描述)
+ *     - sort_order (INT, 默认0, 排序顺序)
+ *     - is_active (TINYINT(1), 默认1, 是否启用)
+ *     - updated_at (TIMESTAMP, 默认CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, 更新时间)
+ *     - INDEX: idx_icon_key (icon_key), idx_is_active (is_active)
+ * 
+ * 总表数：31张表
  */
 
 // 数据库配置

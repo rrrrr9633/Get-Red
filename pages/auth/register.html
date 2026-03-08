@@ -542,6 +542,7 @@
         ];
         
         let selectedAvatar = builtinAvatars[0]; // 默认选择第一个头像
+        let countdownInterval = null;
         
         // 消息提示函数
         function showMessage(text, type = 'success') {
@@ -564,6 +565,46 @@
                 message.classList.remove('show');
                 setTimeout(() => message.remove(), 300);
             }, 3000);
+        }
+        
+        // 显示倒计时消息
+        function showCountdownMessage(seconds) {
+            // 清除之前的倒计时
+            if (countdownInterval) {
+                clearInterval(countdownInterval);
+            }
+            
+            // 移除已存在的消息
+            const existingMessage = document.querySelector('.message');
+            if (existingMessage) {
+                existingMessage.remove();
+            }
+            
+            const message = document.createElement('div');
+            message.className = 'message error';
+            message.id = 'countdownMessage';
+            document.body.appendChild(message);
+            
+            let remainingSeconds = seconds;
+            
+            // 更新倒计时显示
+            function updateCountdown() {
+                if (remainingSeconds > 0) {
+                    message.textContent = `请求过于频繁，请 ${remainingSeconds} 秒后重试`;
+                    remainingSeconds--;
+                } else {
+                    clearInterval(countdownInterval);
+                    message.classList.remove('show');
+                    setTimeout(() => message.remove(), 300);
+                }
+            }
+            
+            // 立即显示第一次
+            updateCountdown();
+            message.classList.add('show');
+            
+            // 每秒更新一次
+            countdownInterval = setInterval(updateCountdown, 1000);
         }
 
         // 显示头像选择器
@@ -692,7 +733,12 @@
                         window.location.href = 'login.html';
                     }, 2000);
                 } else {
-                    showMessage(result.error || result.message || '注册失败，请稍后再试！', 'error');
+                    // 检查是否有retry_after字段（频率限制）
+                    if (result.retry_after && result.retry_after > 0) {
+                        showCountdownMessage(result.retry_after);
+                    } else {
+                        showMessage(result.error || result.message || '注册失败，请稍后再试！', 'error');
+                    }
                 }
             } catch (error) {
                 console.error('注册失败:', error);
@@ -743,6 +789,13 @@
         if (typeof createParticles === 'function') {
             createParticles();
         }
+        
+        // 页面卸载时清除倒计时
+        window.addEventListener('beforeunload', () => {
+            if (countdownInterval) {
+                clearInterval(countdownInterval);
+            }
+        });
     </script>
 </body>
 </html>

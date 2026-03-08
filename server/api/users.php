@@ -114,8 +114,8 @@ switch($method) {
 function register() {
     global $db, $input;
     
-    // 频率限制：5分钟内最多3次注册尝试
-    checkRateLimit('register', 3, 300);
+    // 频率限制：30秒内最多3次注册尝试
+    checkRateLimit('register', 3, 30);
     
     if(!isset($input['username']) || !isset($input['password']) || !isset($input['nickname'])) {
         http_response_code(400);
@@ -147,14 +147,14 @@ function register() {
     $hashedPassword = password_hash($input['password'], PASSWORD_DEFAULT);
     $avatar = isset($input['avatar']) ? $input['avatar'] : 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiByeD0iNTAiIGZpbGw9IiNmZmQ3MDAiLz4KPHN2ZyB4PSIyNSIgeT0iMjAiIHdpZHRoPSI1MCIgaGVpZ2h0PSI2MCI+CjxjaXJjbGUgY3g9IjI1IiBjeT0iMjAiIHI9IjE1IiBmaWxsPSIjMTExIi8+CjxlbGxpcHNlIGN4PSIyNSIgY3k9IjUwIiByeD0iMjAiIHJ5PSIxNSIgZmlsbD0iIzExMSIvPgo8L3N2Zz4KPC9zdmc+';
     
-    // 插入用户数据（不包含phone字段）
-    $stmt = $db->prepare("INSERT INTO users (username, password, nickname, avatar) VALUES (?, ?, ?, ?)");
+    // 插入用户数据（初始余额10金币）
+    $stmt = $db->prepare("INSERT INTO users (username, password, nickname, avatar, balance) VALUES (?, ?, ?, ?, 10.00)");
     
     if ($stmt->execute([$input['username'], $hashedPassword, $input['nickname'], $avatar])) {
         $userId = $db->lastInsertId();
         
-        // 记录注册奖励
-        $stmt = $db->prepare("INSERT INTO transactions (user_id, amount, description, type) VALUES (?, 1000.00, '注册奖励', 'income')");
+        // 记录注册奖励（10金币）
+        $stmt = $db->prepare("INSERT INTO transactions (user_id, amount, description, type) VALUES (?, 10.00, '注册奖励', 'income')");
         $stmt->execute([$userId]);
         
         // 自动分配客服（分配给用户数最少的客服）
@@ -198,8 +198,8 @@ function register() {
 function login() {
     global $db, $input;
     
-    // 频率限制：5分钟内最多5次登录尝试
-    checkRateLimit('login', 5, 300);
+    // 频率限制：30秒内最多5次登录尝试
+    checkRateLimit('login', 5, 30);
     
     if(!isset($input['username']) || !isset($input['password'])) {
         http_response_code(400);

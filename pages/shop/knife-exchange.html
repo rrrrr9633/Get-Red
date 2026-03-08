@@ -44,23 +44,23 @@
                 <div class="exchange-info">
                     <div class="info-item">
                         <span class="label">兑换汇率：</span>
-                        <span class="value neon-text gold" id="exchangeRate">1:10000</span>
+                        <span class="value neon-text gold" id="exchangeRate">60:10000000</span>
                     </div>
                     <div class="info-item">
                         <span class="label">最小提现：</span>
-                        <span class="value neon-text" id="minAmount">100</span>
+                        <span class="value neon-text" id="minAmount">60</span>
                         <span class="unit">金币</span>
                     </div>
                     <div class="info-item">
                         <span class="label">最大提现：</span>
-                        <span class="value neon-text" id="maxAmount">10000</span>
+                        <span class="value neon-text" id="maxAmount">600</span>
                         <span class="unit">金币</span>
                     </div>
                 </div>
 
                 <div class="form-group">
                     <label class="neon-text">提现金币数量</label>
-                    <input type="number" id="withdrawAmount" placeholder="请输入金币数量" min="100" max="10000" step="1">
+                    <input type="number" id="withdrawAmount" placeholder="请输入金币数量" min="60" max="600" step="1">
                     <div class="input-hint">
                         <span class="neon-text">可用余额: <span id="availableBalance" class="gold">0</span> 金币</span>
                     </div>
@@ -491,46 +491,46 @@
                 
                 if (data.success && data.config) {
                     config = data.config;
-                    // 固定显示为 1:10000
-                    document.getElementById('exchangeRate').textContent = '1:10000';
-                    document.getElementById('minAmount').textContent = config.min_amount || 100;
-                    document.getElementById('maxAmount').textContent = config.max_amount || 10000;
+                    // 显示汇率 60:10000000
+                    document.getElementById('exchangeRate').textContent = '60:10000000';
+                    document.getElementById('minAmount').textContent = config.min_amount || 60;
+                    document.getElementById('maxAmount').textContent = config.max_amount || 600;
                     
                     const input = document.getElementById('withdrawAmount');
-                    input.min = config.min_amount || 100;
-                    input.max = config.max_amount || 10000;
+                    input.min = config.min_amount || 60;
+                    input.max = config.max_amount || 600;
                 } else {
                     console.error('配置加载失败:', data.error);
                     // 使用默认配置
                     config = {
-                        exchange_rate: 10000,
-                        min_amount: 100,
-                        max_amount: 10000,
+                        exchange_rate: 166666.67,
+                        min_amount: 60,
+                        max_amount: 600,
                         is_enabled: 1
                     };
-                    document.getElementById('exchangeRate').textContent = '1:10000';
-                    document.getElementById('minAmount').textContent = '100';
-                    document.getElementById('maxAmount').textContent = '10000';
+                    document.getElementById('exchangeRate').textContent = '60:10000000';
+                    document.getElementById('minAmount').textContent = '60';
+                    document.getElementById('maxAmount').textContent = '600';
                 }
             } catch (error) {
                 console.error('加载配置失败:', error);
                 // 使用默认配置
                 config = {
-                    exchange_rate: 10000,
-                    min_amount: 100,
-                    max_amount: 10000,
+                    exchange_rate: 166666.67,
+                    min_amount: 60,
+                    max_amount: 600,
                     is_enabled: 1
                 };
-                document.getElementById('exchangeRate').textContent = '1:10000';
-                document.getElementById('minAmount').textContent = '100';
-                document.getElementById('maxAmount').textContent = '10000';
+                document.getElementById('exchangeRate').textContent = '60:10000000';
+                document.getElementById('minAmount').textContent = '60';
+                document.getElementById('maxAmount').textContent = '600';
             }
         }
 
         // 计算哈夫币
         document.getElementById('withdrawAmount').addEventListener('input', function() {
             const amount = parseFloat(this.value) || 0;
-            const buffCoins = amount * 10000; // 固定汇率 1:10000
+            const buffCoins = amount * 166666.67; // 汇率：60金币=10000000哈夫币
             document.getElementById('buffCoinsDisplay').textContent = buffCoins.toFixed(0);
         });
 
@@ -543,8 +543,8 @@
                 return;
             }
             
-            const minAmount = config ? config.min_amount : 100;
-            const maxAmount = config ? config.max_amount : 10000;
+            const minAmount = config ? config.min_amount : 60;
+            const maxAmount = config ? config.max_amount : 600;
             
             if (amount < minAmount) {
                 alert(`提现金额不能少于 ${minAmount} 金币`);

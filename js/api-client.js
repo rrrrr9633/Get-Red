@@ -47,6 +47,17 @@ class APIClient {
                 throw { status: 401, forceLogout: true, message: data.error };
             }
             
+            // 处理429频率限制错误
+            if (response.status === 429) {
+                return {
+                    success: false,
+                    error: data.error || '请求过于频繁',
+                    message: data.error || '请求过于频繁',
+                    retry_after: data.retry_after || 30,
+                    status: 429
+                };
+            }
+            
             if (!response.ok) {
                 // 对于HTTP错误状态码，返回包含错误信息的数据而不是抛出异常
                 return { 

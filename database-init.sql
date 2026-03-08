@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS users (
     password VARCHAR(255) NOT NULL,
     nickname VARCHAR(50),
     avatar TEXT,
-    balance DECIMAL(10,2) DEFAULT 1000.00,
+    balance DECIMAL(10,2) DEFAULT 10.00,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     last_login TIMESTAMP NULL,
@@ -355,7 +355,7 @@ CREATE TABLE IF NOT EXISTS withdrawal_requests (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
     amount DECIMAL(10,2) NOT NULL COMMENT '提现金币数量',
-    buff_coins DECIMAL(10,2) NOT NULL COMMENT '转换后的哈夫币数量（固定汇率1:10000）',
+    buff_coins DECIMAL(10,2) NOT NULL COMMENT '转换后的哈夫币数量（汇率：60金币=10000000哈夫币）',
     status ENUM('pending', 'processing', 'completed', 'rejected') DEFAULT 'pending' COMMENT '状态：待处理、处理中、已完成、已拒绝',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '申请时间',
     processed_at TIMESTAMP NULL COMMENT '处理时间',
@@ -372,7 +372,7 @@ CREATE TABLE IF NOT EXISTS withdrawal_history (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
     amount DECIMAL(10,2) NOT NULL COMMENT '提现金币数量',
-    buff_coins DECIMAL(10,2) NOT NULL COMMENT '转换后的哈夫币数量（固定汇率1:10000）',
+    buff_coins DECIMAL(10,2) NOT NULL COMMENT '转换后的哈夫币数量（汇率：60金币=10000000哈夫币）',
     status ENUM('completed', 'rejected') NOT NULL COMMENT '最终状态',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '申请时间',
     processed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '处理时间',
@@ -390,13 +390,13 @@ CREATE TABLE IF NOT EXISTS withdrawal_config (
     config_value VARCHAR(255) NOT NULL COMMENT '配置值',
     description VARCHAR(255) COMMENT '配置说明',
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='跑刀提现配置表（固定汇率1:10000）';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='跑刀提现配置表（汇率：60金币=10000000哈夫币）';
 
 -- 插入跑刀提现配置
 INSERT INTO withdrawal_config (config_key, config_value, description) VALUES
-('exchange_rate', '10000', '兑换汇率（1金币=10000哈夫币，固定不变）'),
-('min_amount', '100', '最小提现金币数'),
-('max_amount', '10000', '最大提现金币数'),
+('exchange_rate', '166666.67', '兑换汇率（60金币=10000000哈夫币）'),
+('min_amount', '60', '最小提现金币数'),
+('max_amount', '600', '最大提现金币数'),
 ('is_enabled', '1', '是否启用提现功能（1=启用，0=禁用）')
 ON DUPLICATE KEY UPDATE config_key=config_key;
 
