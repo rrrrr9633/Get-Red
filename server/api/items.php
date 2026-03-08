@@ -162,9 +162,61 @@ function decomposeItems($userId, $itemIds, $totalValue) {
 $method = $_SERVER['REQUEST_METHOD'];
 $input = json_decode(file_get_contents('php://input'), true);
 
+// 启动session以获取用户ID
+session_start();
+
 switch ($method) {
     case 'GET':
-        if (isset($_GET['user_id'])) {
+        if (isset($_GET['action'])) {
+            switch ($_GET['action']) {
+                case 'get_user_items':
+                    // 从session获取用户ID
+                    if (!isset($_SESSION['user_id'])) {
+                        echo json_encode(['success' => false, 'message' => '未登录']);
+                        break;
+                    }
+                    
+                    $limit = isset($_GET['limit']) ? intval($_GET['limit']) : 50;
+                    $offset = isset($_GET['offset']) ? intval($_GET['offset']) : 0;
+                    
+                    try {
+                        // 获取总数
+                        $stmt = $pdo->prepare("SELECT COUNT(*) as total FROM user_items WHERE user_id = ? AND decomposed = 0");
+                        $stmt->execute([$_SESSION['user_id']]);
+                        $total = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+                        
+                        // 获取物品列表（限制数量）
+                        $stmt = $pdo->prepare("
+                            SELECT id, name, icon, image_url, value, rarity, obtained_at 
+                            FROM user_items 
+                            WHERE user_id = ? AND decomposed = 0 
+                            ORDER BY obtained_at DESC 
+                            LIMIT ? OFFSET ?
+                        ");
+                        $stmt->execute([$_SESSION['user_id'], $limit, $offset]);
+                        $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                        
+                        echo json_encode([
+                            'success' => true,
+                            'items' => $items,
+                            'total' => intval($total),
+                            'limit' => $limit,
+                            'offset' => $offset
+                        ]);
+                    } catch (Exception $e) {
+                        echo json_encode(['success' => false, 'message' => '获取物品失败: ' . $e->getMessage()]);
+                    }
+                    break;
+                    
+                default:
+                    // 兼容旧的user_id参数方式
+                    if (isset($_GET['user_id'])) {
+                        echo json_encode(getUserItems($_GET['user_id']));
+                    } else {
+                        echo json_encode(['success' => false, 'message' => '缺少用户ID']);
+                    }
+            }
+        } else if (isset($_GET['user_id'])) {
             echo json_encode(getUserItems($_GET['user_id']));
         } else {
             echo json_encode(['success' => false, 'message' => '缺少用户ID']);

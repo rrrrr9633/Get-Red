@@ -706,9 +706,18 @@ body {
 
 /* 响应式设计 */
 @media (max-width: 768px) {
+    /* 禁用背景图片以提升性能 */
+    body {
+        background: #1a1b2e !important;
+        background-image: none !important;
+    }
+    
+    /* 禁用backdrop-filter以提升性能 */
     .navbar {
         padding: 0 15px;
         height: 60px;
+        backdrop-filter: none;
+        background: rgba(26, 27, 46, 1);
     }
     
     .nav-brand h1 {
@@ -727,5 +736,31 @@ body {
         flex: 0 0 60px;
         height: 60px;
         min-width: 60px;
+    }
+    
+    /* 禁用阴影效果以提升性能 */
+    .navbar,
+    .btn-spin,
+    .prize-item:hover,
+    .warehouse-item:hover,
+    .limited-drop-prize:hover {
+        box-shadow: none !important;
+    }
+    
+    /* 简化过渡动画 */
+    .slot-strip {
+        transition: transform 2s cubic-bezier(0.25, 0.1, 0.25, 1) !important;
+    }
+    
+    /* 禁用hover效果以减少重绘 */
+    .nav-item:hover,
+    .user-info:hover,
+    .mode-btn:hover,
+    .setting-item:hover,
+    .btn-spin:hover,
+    .prize-item:hover,
+    .warehouse-item:hover,
+    .limited-drop-prize:hover {
+        transform: none !important;
     }
 }

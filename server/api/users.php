@@ -83,6 +83,9 @@ switch($method) {
                 case 'transactions':
                     getTransactions();
                     break;
+                case 'get_warehouse_count':
+                    getWarehouseCount();
+                    break;
                 default:
                     http_response_code(400);
                     echo json_encode(['error' => '无效的操作']);
@@ -643,6 +646,34 @@ function getTransactions() {
     } catch (Exception $e) {
         http_response_code(500);
         echo json_encode(['error' => '获取交易记录失败: ' . $e->getMessage()]);
+    }
+}
+
+// 获取用户仓库物品数量
+function getWarehouseCount() {
+    // Session已在文件开头启动
+    if(!isset($_SESSION['user_id'])) {
+        http_response_code(401);
+        echo json_encode(['error' => '未登录']);
+        return;
+    }
+    
+    global $db;
+    
+    try {
+        // 统计用户仓库中的物品总数
+        $stmt = $db->prepare("SELECT COUNT(*) as count FROM user_items WHERE user_id = ?");
+        $stmt->execute([$_SESSION['user_id']]);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        echo json_encode([
+            'success' => true,
+            'count' => intval($result['count'])
+        ]);
+        
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['error' => '获取仓库物品数量失败: ' . $e->getMessage()]);
     }
 }
 ?>

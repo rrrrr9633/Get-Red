@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
@@ -2259,6 +2259,21 @@ body::after {
             const showcaseArea = document.querySelector('.showcase-area');
             const slotContainer = document.querySelector('.horizontal-slot-container');
             
+            // 检查仓库物品数量
+            try {
+                const itemsResult = await api.getUserItems();
+                if (itemsResult.success) {
+                    const activeItems = (itemsResult.items || []).filter(item => !(item.decomposed == 1 || item.decomposed === true));
+                    if (activeItems.length >= 200) {
+                        alert('⚠️ 仓库已满！\n\n您的仓库中已有 ' + activeItems.length + ' 件物品，已达到上限（200件）。\n\n请先前往仓库分解一些物品后再继续抽奖。');
+                        return; // 阻止抽奖
+                    }
+                }
+            } catch (error) {
+                console.error('检查仓库失败:', error);
+                // 如果检查失败，允许继续抽奖（避免因网络问题阻止用户）
+            }
+            
             // 清除之前的恢复定时器（如果用户连续抽奖）
             if (showcaseRestoreTimer) {
                 clearTimeout(showcaseRestoreTimer);
@@ -2484,29 +2499,39 @@ body::after {
                 const containerWidth = row.offsetWidth;
                 const centerPosition = containerWidth / 2;
                 
-                // 计算目标物品的中心位置
-                const targetItemLeftEdge = targetIndex * itemWidth;
+                // 找到目标奖品在中间某一轮重复中的索引
+                // 这样可以确保有足够的空间向左滚动
+                const repeatTimes = Math.max(15, Math.ceil(containerWidth / itemWidth / prizeData.length) * 3);
+                const middleRepeat = Math.floor(repeatTimes / 2); // 使用中间的重复轮次
+                const adjustedTargetIndex = middleRepeat * prizeData.length + targetIndex;
+                
+                // 计算目标物品的中心位置（使用调整后的索引）
+                const targetItemLeftEdge = adjustedTargetIndex * itemWidth;
                 const targetItemCenter = targetItemLeftEdge + itemWidth / 2;
                 
-                // 计算需要移动的距离，使目标物品中心对齐容器中心
-                // 注意：由于视觉效果，需要让目标物品停在指针位置// 计算需要移动的距离，使目标物品中心对齐容器中心
-                                // 指针在容器中心，所以目标物品应该停在中心位置// 计算需要移动的距离，使目标物品中心对齐容器中心
-                                const translateAmount = centerPosition - targetItemCenter;
+                // 计算最终位置：让目标物品中心对齐容器中心
+                const finalTranslate = centerPosition - targetItemCenter;
                 
-                // 添加额外滚动距离制造滚动效果
+                // 计算起始位置：从右边开始（更大的正值），向左滚动
                 const extraDistance = itemWidth * (isSmallMobile ? 10 : (isMobile ? 15 : 20));
-                const finalTranslate = translateAmount - extraDistance;
+                const startTranslate = finalTranslate + extraDistance;
                 
-                console.log(`Row ${i}: targetIndex=${targetIndex}, itemWidth=${itemWidth}, containerWidth=${containerWidth}, centerPosition=${centerPosition}, targetItemCenter=${targetItemCenter}, translateAmount=${translateAmount}, finalTranslate=${finalTranslate}`);
+                console.log(`Row ${i}: targetIndex=${targetIndex}, adjustedTargetIndex=${adjustedTargetIndex}, itemWidth=${itemWidth}, containerWidth=${containerWidth}, centerPosition=${centerPosition}, targetItemCenter=${targetItemCenter}, startTranslate=${startTranslate}, finalTranslate=${finalTranslate}`);
                 
                 // 使用requestAnimationFrame确保动画在下一帧执行
                 setTimeout(() => {
                     requestAnimationFrame(() => {
-                        strip.style.transition = 'transform 3s cubic-bezier(0.25, 0.1, 0.25, 1)';
-                        strip.style.transform = `translate3d(${finalTranslate}px, 0, 0)`;
+                        // 先瞬间移动到起始位置（右边）
+                        strip.style.transition = 'none';
+                        strip.style.transform = `translate3d(${startTranslate}px, 0, 0)`;
+                        strip.offsetHeight; // 强制重绘
                         
-                        // 强制触发重绘，确保动画执行
-                        strip.offsetHeight;
+                        // 然后动画滚动到目标位置（向左滚动）
+                        requestAnimationFrame(() => {
+                            strip.style.transition = 'transform 3s cubic-bezier(0.25, 0.1, 0.25, 1)';
+                            strip.style.transform = `translate3d(${finalTranslate}px, 0, 0)`;
+                            strip.offsetHeight; // 强制触发重绘
+                        });
                     });
                 }, 200 + i * 200);
             }

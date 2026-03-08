@@ -109,6 +109,11 @@
         <div class="items-grid" id="itemsGrid">
             <!-- 物品将通过JavaScript动态生成 -->
         </div>
+        
+        <!-- 分页控件 -->
+        <div id="paginationControls" class="pagination-controls" style="display: none;">
+            <!-- 分页按钮将通过JavaScript动态生成 -->
+        </div>
 
         <!-- 空状态 -->
         <div id="emptyState" class="empty-state" style="display: none;">
@@ -592,6 +597,49 @@
             text-align: center;
         }
         
+        /* 分页控件样式 */
+        .pagination-controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            margin: 30px 0;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid #ffd700;
+            border-radius: 15px;
+        }
+        
+        .pagination-btn {
+            padding: 10px 20px;
+            background: rgba(255, 215, 0, 0.1);
+            border: 1px solid #ffd700;
+            border-radius: 8px;
+            color: #ffd700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        
+        .pagination-btn:hover:not(:disabled) {
+            background: rgba(255, 215, 0, 0.2);
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
+            transform: translateY(-2px);
+        }
+        
+        .pagination-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+        
+        .pagination-info {
+            padding: 10px 20px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #ffd700;
+        }
+        
         @media (max-width: 768px) {
             .navbar {
                 padding: 0 8px;
@@ -665,6 +713,24 @@
             .items-grid {
                 grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
                 gap: 15px;
+            }
+            
+            /* 移动端分页控件 */
+            .pagination-controls {
+                flex-wrap: wrap;
+                gap: 10px;
+                padding: 15px 10px;
+            }
+            
+            .pagination-btn {
+                padding: 8px 15px;
+                font-size: 12px;
+            }
+            
+            .pagination-info {
+                width: 100%;
+                text-align: center;
+                font-size: 12px;
             }
         }
     </style>
@@ -776,6 +842,10 @@
             }
         }
 
+        // 分页相关变量
+        let currentPage = 1;
+        const itemsPerPage = 20;
+        
         // 渲染物品列表
         function renderItems() {
             const grid = document.getElementById('itemsGrid');
@@ -799,6 +869,7 @@
                 console.log('没有物品，显示空状态');
                 grid.style.display = 'none';
                 emptyState.style.display = 'block';
+                document.getElementById('paginationControls').style.display = 'none';
                 return;
             }
             
@@ -806,7 +877,23 @@
             grid.style.display = 'grid';
             emptyState.style.display = 'none';
             
-            grid.innerHTML = filteredItems.map(item => `
+            // 计算分页
+            const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const pageItems = filteredItems.slice(startIndex, endIndex);
+            
+            grid.innerHTML = pageItems.map(item => {
+                // 修复图片路径 - 确保路径正确
+                let imageUrl = item.image_url || '';
+                if (imageUrl && !imageUrl.startsWith('http') && !imageUrl.startsWith('data:')) {
+                    // 如果是相对路径，添加正确的前缀
+                    if (!imageUrl.startsWith('../../')) {
+                        imageUrl = '../../' + imageUrl.replace(/^\.\.\//, '');
+                    }
+                }
+                
+                return `
                 <div class="item-card ${item.rarity} ${selectedItems.includes(String(item.id)) ? 'selected' : ''}" 
                      onclick="toggleItemSelection('${item.id}')">
                     <input type="checkbox" class="item-checkbox" 
@@ -814,8 +901,8 @@
                            onchange="toggleItemSelection('${item.id}')" onclick="event.stopPropagation()">
                     
                     <div class="item-display">
-                        ${item.image_url && item.image_url !== '' ? 
-                            `<img src="${item.image_url}" alt="${item.name}" class="item-image" 
+                        ${imageUrl && imageUrl !== '' ? 
+                            `<img src="${imageUrl}" alt="${item.name}" class="item-image" 
                                  onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
                              <div class="item-icon" style="display:none;">${item.icon}</div>` :
                             `<div class="item-icon">${item.icon}</div>`
@@ -832,9 +919,66 @@
                         </button>
                     </div>
                 </div>
-            `).join('');
+            `}).join('');
+            
+            // 渲染分页控件
+            renderPagination(totalPages, filteredItems.length);
             
             console.log('渲染完成，HTML长度:', grid.innerHTML.length);
+        }
+        
+        // 渲染分页控件
+        function renderPagination(totalPages, totalItems) {
+            const paginationControls = document.getElementById('paginationControls');
+            
+            if (totalPages <= 1) {
+                paginationControls.style.display = 'none';
+                return;
+            }
+            
+            paginationControls.style.display = 'flex';
+            
+            let paginationHTML = `
+                <button class="pagination-btn" onclick="goToPage(1)" ${currentPage === 1 ? 'disabled' : ''}>
+                    首页
+                </button>
+                <button class="pagination-btn" onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>
+                    上一页
+                </button>
+                <span class="pagination-info neon-text">
+                    第 ${currentPage} / ${totalPages} 页 (共 ${totalItems} 件物品)
+                </span>
+                <button class="pagination-btn" onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>
+                    下一页
+                </button>
+                <button class="pagination-btn" onclick="goToPage(${totalPages})" ${currentPage === totalPages ? 'disabled' : ''}>
+                    末页
+                </button>
+            `;
+            
+            paginationControls.innerHTML = paginationHTML;
+        }
+        
+        // 跳转到指定页
+        function goToPage(page) {
+            const rarityFilter = document.getElementById('rarityFilter').value;
+            const filteredItems = userItems.filter(item => {
+                const isDecomposed = item.decomposed == 1 || item.decomposed === true;
+                if (isDecomposed) return false;
+                if (rarityFilter === 'all') return true;
+                return item.rarity === rarityFilter;
+            });
+            
+            const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
+            
+            if (page < 1 || page > totalPages) return;
+            
+            currentPage = page;
+            renderItems();
+            updateStats();
+            
+            // 滚动到顶部
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
         // 获取稀有度文本
@@ -912,6 +1056,7 @@
         // 过滤物品
         function filterItems() {
             selectedItems = []; // 清空选择
+            currentPage = 1; // 重置到第一页
             updateBatchButtons();
             renderItems();
             updateStats();
