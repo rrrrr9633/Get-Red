@@ -18,6 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 session_start();
 
 require_once '../config/database.php';
+require_once '../config/coin-helper.php';
 
 $database = new Database();
 $pdo = $database->getConnection();
@@ -164,6 +165,9 @@ function purchaseItem($pdo) {
         return;
     }
     
+    // 频率限制：5秒内最多3次购买请求（防止恶意攻击）
+    checkRateLimit('shop_purchase', 3, 5);
+    
     $input = json_decode(file_get_contents('php://input'), true);
     
     if (!isset($input['item_id']) || !isset($input['player_id'])) {
@@ -175,6 +179,7 @@ function purchaseItem($pdo) {
     $userId = $_SESSION['user_id'];
     $itemId = $input['item_id'];
     $playerId = $input['player_id'];
+    $useBound = $input['use_bound'] ?? true; // 默认优先使用绑定金币
     
     try {
         $pdo->beginTransaction();
@@ -191,16 +196,72 @@ function purchaseItem($pdo) {
             throw new Exception('商品库存不足');
         }
         
-        $stmt = $pdo->prepare("SELECT balance, username FROM users WHERE id = ?");
+        // 直接在当前事务中混合扣除金币
+        $stmt = $pdo->prepare("SELECT bound_coins, unbound_coins, has_recharged FROM users WHERE id = ? FOR UPDATE");
         $stmt->execute([$userId]);
-        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+        $userCoins = $stmt->fetch(PDO::FETCH_ASSOC);
         
-        if ($user['balance'] < $item['price']) {
+        if (!$userCoins) {
+            throw new Exception('用户不存在');
+        }
+        
+        $boundCoins = $userCoins['bound_coins'];
+        $unboundCoins = $userCoins['unbound_coins'];
+        $hasRecharged = $userCoins['has_recharged'];
+        $totalAvailable = $boundCoins + $unboundCoins;
+        
+        // 如果用户选择使用绑定金币但未充值过，则不允许
+        if ($useBound && $boundCoins > 0 && !$hasRecharged) {
+            throw new Exception('您还未充值过，暂时无法使用绑定金币。请先充值解锁此功能！');
+        }
+        
+        if ($totalAvailable < $item['price']) {
             throw new Exception('余额不足');
         }
         
-        $stmt = $pdo->prepare("UPDATE users SET balance = balance - ? WHERE id = ?");
-        $stmt->execute([$item['price'], $userId]);
+        $boundUsed = 0;
+        $unboundUsed = 0;
+        
+        if ($useBound) {
+            // 优先使用绑定金币
+            $boundUsed = min($boundCoins, $item['price']);
+            $unboundUsed = $item['price'] - $boundUsed;
+        } else {
+            // 只使用非绑定金币
+            if ($unboundCoins < $item['price']) {
+                throw new Exception('非绑定金币不足');
+            }
+            $unboundUsed = $item['price'];
+        }
+        
+        // 扣除金币
+        $stmt = $pdo->prepare("
+            UPDATE users 
+            SET bound_coins = bound_coins - ?, 
+                unbound_coins = unbound_coins - ?,
+                balance = balance - ?
+            WHERE id = ?
+        ");
+        $stmt->execute([$boundUsed, $unboundUsed, $item['price'], $userId]);
+        
+        // 记录日志
+        $stmt = $pdo->prepare("
+            INSERT INTO coin_change_log 
+            (user_id, change_type, coin_type, bound_change, unbound_change, 
+             bound_balance_before, unbound_balance_before, bound_balance_after, unbound_balance_after,
+             related_id, description)
+            VALUES (?, 'shop_purchase', 'mixed', ?, ?, ?, ?, ?, ?, NULL, ?)
+        ");
+        $stmt->execute([
+            $userId, 
+            -$boundUsed,
+            -$unboundUsed,
+            $boundCoins,
+            $unboundCoins,
+            $boundCoins - $boundUsed,
+            $unboundCoins - $unboundUsed,
+            "购买商城物品: {$item['name']}"
+        ]);
         
         if ($item['stock'] != -1) {
             $stmt = $pdo->prepare("UPDATE shop_items SET stock = stock - 1 WHERE id = ?");
@@ -209,8 +270,8 @@ function purchaseItem($pdo) {
         
         $stmt = $pdo->prepare("
             INSERT INTO shop_purchase_history 
-            (user_id, shop_item_id, item_name, item_type, price, player_id, status)
-            VALUES (?, ?, ?, ?, ?, ?, 'pending')
+            (user_id, shop_item_id, item_name, item_type, price, bound_coins_used, unbound_coins_used, player_id, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending')
         ");
         $stmt->execute([
             $userId,
@@ -218,17 +279,9 @@ function purchaseItem($pdo) {
             $item['name'],
             $item['item_type'],
             $item['price'],
+            $boundUsed,
+            $unboundUsed,
             $playerId
-        ]);
-        
-        $stmt = $pdo->prepare("
-            INSERT INTO transactions (user_id, amount, description, type)
-            VALUES (?, ?, ?, 'expense')
-        ");
-        $stmt->execute([
-            $userId,
-            -$item['price'],
-            "购买商城物品: {$item['name']}"
         ]);
         
         // 查找负责该用户的客服
@@ -613,12 +666,13 @@ function deleteShopItem($pdo) {
     }
     
     try {
-        $stmt = $pdo->prepare("UPDATE shop_items SET is_active = 0 WHERE id = ?");
+        // 真正删除商品，而不是下架
+        $stmt = $pdo->prepare("DELETE FROM shop_items WHERE id = ?");
         $stmt->execute([$itemId]);
         
         echo json_encode([
             'success' => true,
-            'message' => '商品已下架'
+            'message' => '商品已删除'
         ]);
     } catch (Exception $e) {
         http_response_code(500);

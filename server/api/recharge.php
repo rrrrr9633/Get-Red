@@ -18,6 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 require_once '../config/database.php';
+require_once '../config/coin-helper.php';
 
 // 获取数据库连接
 try {
@@ -399,10 +400,22 @@ function createRechargeOrder($db, $input) {
         
         // 创建充值记录
         $stmt = $db->prepare("
-            INSERT INTO recharge_history (user_id, amount, coins_gained, payment_method, transaction_id) 
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO recharge_history (user_id, amount, coins_gained, payment_method, transaction_id, coin_type) 
+            VALUES (?, ?, ?, ?, ?, 'unbound')
         ");
         $stmt->execute([$userId, $option['amount'], $coinsGained, $paymentMethod, $orderNo]);
+        $rechargeId = $db->lastInsertId();
+        
+        // 模拟支付成功，直接增加非绑定金币
+        if (addUnboundCoins($db, $userId, $coinsGained, 'recharge', $rechargeId, "充值 ¥{$option['amount']}")) {
+            // 更新充值记录状态
+            $stmt = $db->prepare("UPDATE recharge_history SET status = 'completed' WHERE id = ?");
+            $stmt->execute([$rechargeId]);
+            
+            // 标记用户已充值，解锁绑定金币使用权限
+            $stmt = $db->prepare("UPDATE users SET has_recharged = 1 WHERE id = ?");
+            $stmt->execute([$userId]);
+        }
         
         // 返回支付信息（这里是模拟的，实际应该调用支付接口）
         echo json_encode([
@@ -410,8 +423,9 @@ function createRechargeOrder($db, $input) {
             'transaction_id' => $orderNo,
             'amount' => $option['amount'],
             'coins_gained' => $coinsGained,
+            'coin_type' => 'unbound',
             'qr_code' => "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=pay_{$orderNo}",
-            'message' => "请使用{$paymentMethod}扫码支付 ¥{$option['amount']}"
+            'message' => "充值成功！获得{$coinsGained}非绑定金币"
         ]);
         
     } catch (Exception $e) {

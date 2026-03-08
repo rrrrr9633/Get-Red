@@ -592,8 +592,18 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="editBalance">账户余额</label>
-                        <input type="number" id="editBalance" step="0.01" min="0">
+                        <label for="editBoundCoins">绑定金币</label>
+                        <input type="number" id="editBoundCoins" step="0.01" min="0">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="editUnboundCoins">非绑定金币</label>
+                        <input type="number" id="editUnboundCoins" step="0.01" min="0">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>总余额（自动计算）</label>
+                        <input type="number" id="editTotalBalance" step="0.01" readonly style="background: #f5f5f5; cursor: not-allowed;">
                     </div>
 
                     <div class="modal-actions">
@@ -830,8 +840,16 @@
                                 <div class="detail-value" style="color: ${typeColor}; font-weight: bold;">${userTypeName}</div>
                             </div>
                             <div class="detail-item">
-                                <div class="detail-label">余额</div>
+                                <div class="detail-label">总余额</div>
                                 <div class="detail-value">¥${user.balance}</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">绑定金币</div>
+                                <div class="detail-value" style="color: #fbbf24;">${user.bound_coins || 0}</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">非绑定金币</div>
+                                <div class="detail-value" style="color: #4ade80;">${user.unbound_coins || 0}</div>
                             </div>
                             <div class="detail-item">
                                 <div class="detail-label">用户ID</div>
@@ -903,8 +921,16 @@
                     <span class="value">${user.email || '未设置'}</span>
                 </div>
                 <div class="detail-row">
-                    <span class="label">余额:</span>
+                    <span class="label">总余额:</span>
                     <span class="value">¥${user.balance}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="label">绑定金币:</span>
+                    <span class="value" style="color: #fbbf24;">${user.bound_coins || 0}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="label">非绑定金币:</span>
+                    <span class="value" style="color: #4ade80;">${user.unbound_coins || 0}</span>
                 </div>
                 <div class="detail-row">
                     <span class="label">状态:</span>
@@ -940,7 +966,23 @@
             document.getElementById('editUsername').value = user.username;
             document.getElementById('editNickname').value = user.nickname || '';
             document.getElementById('editEmail').value = user.email || '';
-            document.getElementById('editBalance').value = user.balance;
+            document.getElementById('editBoundCoins').value = user.bound_coins || 0;
+            document.getElementById('editUnboundCoins').value = user.unbound_coins || 0;
+            document.getElementById('editTotalBalance').value = user.balance || 0;
+            
+            // 添加自动计算总余额的事件监听
+            const boundInput = document.getElementById('editBoundCoins');
+            const unboundInput = document.getElementById('editUnboundCoins');
+            const totalInput = document.getElementById('editTotalBalance');
+            
+            const updateTotal = () => {
+                const bound = parseFloat(boundInput.value) || 0;
+                const unbound = parseFloat(unboundInput.value) || 0;
+                totalInput.value = (bound + unbound).toFixed(2);
+            };
+            
+            boundInput.addEventListener('input', updateTotal);
+            unboundInput.addEventListener('input', updateTotal);
 
             // 显示编辑弹窗
             document.getElementById('editUserModal').classList.add('show');
@@ -1080,7 +1122,8 @@
                 formData.append('id', document.getElementById('editUserId').value);
                 formData.append('username', document.getElementById('editNickname').value);
                 formData.append('email', document.getElementById('editEmail').value);
-                formData.append('balance', document.getElementById('editBalance').value);
+                formData.append('bound_coins', document.getElementById('editBoundCoins').value);
+                formData.append('unbound_coins', document.getElementById('editUnboundCoins').value);
 
                 try {
                     const response = await fetch('../../server/api/admin.php?action=update_user', {

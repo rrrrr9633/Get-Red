@@ -888,7 +888,17 @@
                     // 设置基本信息
                     document.getElementById('profileNickname').textContent = user.nickname || '未设置昵称';
                     document.getElementById('profileUsername').textContent = `@${user.username}`;
-                    document.getElementById('profileBalance').textContent = `${user.balance || 0} 金币`;
+                    
+                    const boundCoins = parseFloat(user.bound_coins || 0).toFixed(2);
+                    const unboundCoins = parseFloat(user.unbound_coins || 0).toFixed(2);
+                    const totalBalance = parseFloat(user.balance || 0).toFixed(2);
+                    
+                    document.getElementById('profileBalance').innerHTML = `
+                        <div style="display: flex; flex-direction: column; gap: 5px;">
+                            <span style="font-size: 1.2em; font-weight: bold;">${totalBalance} 金币</span>
+                            <span style="font-size: 0.9em; opacity: 0.8;">绑定: ${boundCoins} | 非绑定: ${unboundCoins}</span>
+                        </div>
+                    `;
                     
                     // 渲染资料信息
                     renderProfileInfo(user);

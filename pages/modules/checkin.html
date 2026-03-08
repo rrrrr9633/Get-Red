@@ -21,7 +21,10 @@
             <div class="user-info" id="userInfo">
                 <img id="userAvatar" src="" alt="头像" class="user-avatar">
                 <span id="userNickname" class="neon-text"></span>
-                <span id="userBalance" class="neon-text gold"></span>
+                <span id="userBalance" class="neon-text gold" style="display: flex; flex-direction: column; align-items: flex-end; font-size: 0.85em; line-height: 1.3;">
+                    <span class="total-balance" style="font-size: 1.1em;">总额: 0.00</span>
+                    <span class="coin-details" style="font-size: 0.9em; opacity: 0.8;">绑定: 0.00 | 非绑定: 0.00</span>
+                </span>
                 <a href="../user/recharge.html" class="recharge-btn" title="充值">💰</a>
                 <div class="user-dropdown">
                     <a href="../user/profile.html" class="neon-text">个人中心</a>
@@ -43,12 +46,12 @@
             <div class="current-date" id="currentDate"></div>
             <div class="checkin-info">
                 <div class="info-item">
-                    <span class="neon-text">连续签到:</span>
-                    <span id="consecutiveDays" class="neon-text gold">0天</span>
+                    <span class="neon-text">本月签到:</span>
+                    <span id="monthlyDays" class="neon-text gold">0/7次</span>
                 </div>
                 <div class="info-item">
-                    <span class="neon-text">本月签到:</span>
-                    <span id="monthlyDays" class="neon-text gold">0天</span>
+                    <span class="neon-text">剩余次数:</span>
+                    <span id="remainingCheckins" class="neon-text gold">7次</span>
                 </div>
                 <div class="info-item">
                     <span class="neon-text">累计签到:</span>
@@ -62,7 +65,7 @@
             <button id="checkinBtn" class="checkin-btn">
                 <div class="btn-icon">📅</div>
                 <div class="btn-text">立即签到</div>
-                <div class="btn-reward">获得奖励: <span id="todayReward">10</span> 金币</div>
+                <div class="btn-reward">随机获得 1-5 绑定金币</div>
             </button>
         </div>
 
@@ -74,41 +77,18 @@
             </div>
         </div>
 
-        <!-- 连续签到奖励说明 -->
+        <!-- 签到奖励说明 -->
         <div class="reward-info">
-            <h3 class="neon-text gold">连续签到奖励</h3>
-            <div class="reward-grid">
-                <div class="reward-item">
-                    <div class="reward-day">第1天</div>
-                    <div class="reward-amount">10金币</div>
-                </div>
-                <div class="reward-item">
-                    <div class="reward-day">第2天</div>
-                    <div class="reward-amount">15金币</div>
-                </div>
-                <div class="reward-item">
-                    <div class="reward-day">第3天</div>
-                    <div class="reward-amount">20金币</div>
-                </div>
-                <div class="reward-item">
-                    <div class="reward-day">第4天</div>
-                    <div class="reward-amount">25金币</div>
-                </div>
-                <div class="reward-item">
-                    <div class="reward-day">第5天</div>
-                    <div class="reward-amount">30金币</div>
-                </div>
-                <div class="reward-item">
-                    <div class="reward-day">第6天</div>
-                    <div class="reward-amount">40金币</div>
-                </div>
-                <div class="reward-item">
-                    <div class="reward-day">第7天</div>
-                    <div class="reward-amount">50金币</div>
-                </div>
-                <div class="reward-item special">
-                    <div class="reward-day">第7天+</div>
-                    <div class="reward-amount">每天50金币</div>
+            <h3 class="neon-text gold">签到规则</h3>
+            <div style="text-align: center; padding: 30px;">
+                <p class="neon-text" style="font-size: 20px; margin-bottom: 20px;">
+                    每月最多签到 <span class="neon-text gold" style="font-size: 24px;">7次</span>
+                </p>
+                <p class="neon-text" style="font-size: 18px; margin-bottom: 20px;">
+                    每次随机获得 <span class="neon-text gold" style="font-size: 22px;">1-5</span> 绑定金币
+                </p>
+                <div class="neon-text" style="margin-top: 30px; font-size: 14px; opacity: 0.7;">
+                    💡 提示：只有充值过的用户才能使用绑定金币
                 </div>
             </div>
         </div>
@@ -471,6 +451,11 @@
                 height: 35px;
             }
             
+            /* 移动端隐藏金币详情，只显示总额 */
+            .coin-details {
+                display: none !important;
+            }
+            
             .game-container {
                 padding: 20px 15px;
             }
@@ -521,7 +506,15 @@
                 if (data.success) {
                     document.getElementById('userAvatar').src = data.user.avatar || '/images/default-avatar.png';
                     document.getElementById('userNickname').textContent = data.user.nickname || data.user.username;
-                    document.getElementById('userBalance').textContent = `余额: ${data.user.balance}`;
+                    
+                    const boundCoins = parseFloat(data.user.bound_coins || 0).toFixed(2);
+                    const unboundCoins = parseFloat(data.user.unbound_coins || 0).toFixed(2);
+                    const totalBalance = parseFloat(data.user.balance || 0).toFixed(2);
+                    
+                    document.getElementById('userBalance').innerHTML = `
+                        <span class="total-balance" style="font-size: 1.1em;">总额: ${totalBalance}</span>
+                        <span class="coin-details" style="font-size: 0.9em; opacity: 0.8;">绑定: ${boundCoins} | 非绑定: ${unboundCoins}</span>
+                    `;
                 }
             } catch (error) {
                 console.error('加载用户信息失败:', error);
@@ -551,15 +544,20 @@
                         checkinBtn.querySelector('.btn-reward').textContent = '已完成签到';
                         checkinBtn.style.background = '#666';
                         checkinBtn.style.cursor = 'not-allowed';
-                    } else {
-                        // 未签到，显示今日奖励
-                        document.getElementById('todayReward').textContent = data.todayReward;
                     }
 
                     // 更新统计显示
-                    document.getElementById('consecutiveDays').textContent = `${data.consecutiveDays}天`;
-                    document.getElementById('monthlyDays').textContent = `${data.monthlyDays}天`;
+                    document.getElementById('monthlyDays').textContent = `${data.monthlyDays}/${data.maxMonthlyDays}次`;
+                    document.getElementById('remainingCheckins').textContent = `${data.remainingCheckins}次`;
                     document.getElementById('totalDays').textContent = `${data.totalDays}天`;
+                    
+                    // 如果本月签到次数已满，禁用按钮
+                    if (data.remainingCheckins <= 0) {
+                        checkinBtn.disabled = true;
+                        checkinBtn.querySelector('.btn-text').textContent = '本月已满';
+                        checkinBtn.querySelector('.btn-reward').textContent = '下月再来';
+                        checkinBtn.style.background = '#666';
+                    }
 
                     // 加载签到日历
                     loadCheckinCalendar();
@@ -655,7 +653,7 @@
                 
                 if (data.success) {
                     // 显示成功弹窗
-                    showCheckinResult(data.reward, data.consecutiveDays, data.newBalance);
+                    showCheckinResult(data.reward, data.monthlyCount, data.bound_coins);
                     
                     // 刷新页面状态
                     loadUserInfo();
@@ -674,16 +672,16 @@
         }
 
         // 显示签到结果
-        function showCheckinResult(reward, consecutiveDays, newBalance) {
+        function showCheckinResult(reward, monthlyCount, bound_coins) {
             const modal = document.getElementById('checkinModal');
             const result = document.getElementById('checkinResult');
             
             result.innerHTML = `
-                <div class="neon-text gold" style="font-size: 24px; margin: 15px 0;">获得奖励: ${reward} 金币</div>
-                <div class="neon-text" style="font-size: 18px;">连续签到: ${consecutiveDays} 天</div>
-                <div class="neon-text" style="font-size: 16px; margin: 10px 0;">当前余额: ${newBalance} 金币</div>
+                <div class="neon-text gold" style="font-size: 24px; margin: 15px 0;">获得奖励: ${reward} 绑定金币</div>
+                <div class="neon-text" style="font-size: 18px;">本月已签到: ${monthlyCount}/7 次</div>
+                <div class="neon-text" style="font-size: 16px; margin: 10px 0;">当前绑定金币: ${bound_coins}</div>
                 <div class="neon-text" style="font-size: 14px; opacity: 0.8; margin-top: 15px;">
-                    ${consecutiveDays >= 7 ? '已达到最高连续奖励！' : `明天签到可获得更多奖励`}
+                    ${monthlyCount >= 7 ? '本月签到次数已满！' : `本月还可签到 ${7 - monthlyCount} 次`}
                 </div>
             `;
             

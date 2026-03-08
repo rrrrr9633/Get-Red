@@ -9,6 +9,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 require_once '../config/database.php';
+require_once '../config/coin-helper.php';
 
 $database = new Database();
 $pdo = $database->getConnection();
@@ -121,13 +122,10 @@ function drawPrizes($gameType, $count, $userId, $page = '') {
     try {
         $pdo->beginTransaction();
         
-        // 检查用户余额
-        $stmt = $pdo->prepare("SELECT balance FROM users WHERE id = ?");
-        $stmt->execute([$userId]);
-        $user = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        if (!$user) {
-            throw new Exception('用户不存在');
+        // 检查用户非绑定金币余额
+        $coins = getUserCoins($pdo, $userId);
+        if (!$coins) {
+            throw new Exception('获取用户余额失败');
         }
         
         // 获取动态价格
@@ -230,14 +228,35 @@ function drawPrizes($gameType, $count, $userId, $page = '') {
             $stmt->execute([$userId, $tableName, $prize['id'], $prize['name'], $prize['rarity']]);
         }
         
-        // 扣除费用
-        $stmt = $pdo->prepare("UPDATE users SET balance = balance - ? WHERE id = ?");
-        $stmt->execute([$cost, $userId]);
+        // 直接在当前事务中扣除非绑定金币
+        $stmt = $pdo->prepare("UPDATE users SET unbound_coins = unbound_coins - ?, balance = balance - ? WHERE id = ? AND unbound_coins >= ?");
+        $stmt->execute([$cost, $cost, $userId, $cost]);
         
-        // 记录交易
-        $pageInfo = $page ? " - {$page}" : '';
-        $stmt = $pdo->prepare("INSERT INTO transactions (user_id, amount, description, type) VALUES (?, ?, ?, 'expense')");
-        $stmt->execute([$userId, $cost, "抽奖消费({$gameType}{$pageInfo})x{$count}"]);
+        if ($stmt->rowCount() === 0) {
+            throw new Exception('扣除金币失败');
+        }
+        
+        // 记录金币变动日志
+        $stmt = $pdo->prepare("SELECT bound_coins, unbound_coins FROM users WHERE id = ?");
+        $stmt->execute([$userId]);
+        $userAfter = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        $stmt = $pdo->prepare("
+            INSERT INTO coin_change_log 
+            (user_id, change_type, coin_type, bound_change, unbound_change, 
+             bound_balance_before, unbound_balance_before, bound_balance_after, unbound_balance_after,
+             related_id, description)
+            VALUES (?, 'draw', 'unbound', 0, ?, ?, ?, ?, ?, NULL, ?)
+        ");
+        $stmt->execute([
+            $userId, 
+            -$cost, 
+            $user['bound_coins'] ?? 0,
+            $user['unbound_coins'], 
+            $userAfter['bound_coins'],
+            $userAfter['unbound_coins'],
+            "抽奖消费({$gameType}{$pageInfo})x{$count}"
+        ]);
         
         // 记录抽奖结果
         $stmt = $pdo->prepare("INSERT INTO lottery_records (user_id, game_type, cost, reward, result) VALUES (?, ?, ?, ?, ?)");

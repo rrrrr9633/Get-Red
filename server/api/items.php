@@ -9,6 +9,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 require_once '../config/database.php';
+require_once '../config/coin-helper.php';
 
 $database = new Database();
 $pdo = $database->getConnection();
@@ -44,7 +45,7 @@ function decomposeItems($userId, $itemIds, $totalValue) {
         
         // 验证物品是否属于该用户且未分解
         $placeholders = str_repeat('?,', count($itemIds) - 1) . '?';
-        $stmt = $pdo->prepare("SELECT id, name, value FROM user_items WHERE id IN ($placeholders) AND user_id = ? AND decomposed = 0");
+        $stmt = $pdo->prepare("SELECT id, name, value, rarity FROM user_items WHERE id IN ($placeholders) AND user_id = ? AND decomposed = 0");
         $stmt->execute(array_merge($itemIds, [$userId]));
         $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
@@ -58,27 +59,80 @@ function decomposeItems($userId, $itemIds, $totalValue) {
             throw new Exception('物品价值计算错误');
         }
         
+        // 按稀有度分类物品
+        $legendaryValue = 0;  // 传说级 → 非绑定金币
+        $normalValue = 0;     // 普通级 → 绑定金币
+        
+        foreach ($items as $item) {
+            if ($item['rarity'] === 'legendary') {
+                $legendaryValue += floatval($item['value']);
+            } else {
+                $normalValue += floatval($item['value']);
+            }
+        }
+        
         // 标记物品为已分解
         $stmt = $pdo->prepare("UPDATE user_items SET decomposed = 1, decomposed_at = NOW() WHERE id IN ($placeholders) AND user_id = ?");
         $stmt->execute(array_merge($itemIds, [$userId]));
         
-        // 增加用户余额
-        $stmt = $pdo->prepare("UPDATE users SET balance = balance + ? WHERE id = ?");
-        $stmt->execute([$totalValue, $userId]);
-        
-        // 记录交易
+        // 根据稀有度增加对应类型的金币
         $itemNames = implode('、', array_column($items, 'name'));
-        $description = "物品分解: {$itemNames}";
         
-        // 限制描述长度，避免超过数据库字段限制(varchar(255))
-        // 使用字节长度检查，确保兼容性
-        if (strlen($description) > 250) {
-            // 安全截断，避免截断多字节字符
-            $description = substr($description, 0, 230) . '...(共' . count($items) . '件)';
+        if ($legendaryValue > 0) {
+            // 直接在当前事务中增加非绑定金币
+            $stmt = $pdo->prepare("UPDATE users SET unbound_coins = unbound_coins + ?, balance = balance + ? WHERE id = ?");
+            $stmt->execute([$legendaryValue, $legendaryValue, $userId]);
+            
+            // 记录日志
+            $stmt = $pdo->prepare("SELECT bound_coins, unbound_coins FROM users WHERE id = ?");
+            $stmt->execute([$userId]);
+            $userCoins = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            $stmt = $pdo->prepare("
+                INSERT INTO coin_change_log 
+                (user_id, change_type, coin_type, bound_change, unbound_change, 
+                 bound_balance_before, unbound_balance_before, bound_balance_after, unbound_balance_after,
+                 related_id, description)
+                VALUES (?, 'decompose', 'unbound', 0, ?, ?, ?, ?, ?, NULL, ?)
+            ");
+            $stmt->execute([
+                $userId, 
+                $legendaryValue,
+                $userCoins['bound_coins'],
+                $userCoins['unbound_coins'] - $legendaryValue,
+                $userCoins['bound_coins'],
+                $userCoins['unbound_coins'],
+                "分解传说级物品: {$itemNames}"
+            ]);
         }
         
-        $stmt = $pdo->prepare("INSERT INTO transactions (user_id, amount, description, type) VALUES (?, ?, ?, 'income')");
-        $stmt->execute([$userId, $totalValue, $description]);
+        if ($normalValue > 0) {
+            // 直接在当前事务中增加绑定金币
+            $stmt = $pdo->prepare("UPDATE users SET bound_coins = bound_coins + ?, balance = balance + ? WHERE id = ?");
+            $stmt->execute([$normalValue, $normalValue, $userId]);
+            
+            // 记录日志
+            $stmt = $pdo->prepare("SELECT bound_coins, unbound_coins FROM users WHERE id = ?");
+            $stmt->execute([$userId]);
+            $userCoins = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            $stmt = $pdo->prepare("
+                INSERT INTO coin_change_log 
+                (user_id, change_type, coin_type, bound_change, unbound_change, 
+                 bound_balance_before, unbound_balance_before, bound_balance_after, unbound_balance_after,
+                 related_id, description)
+                VALUES (?, 'decompose', 'bound', ?, 0, ?, ?, ?, ?, NULL, ?)
+            ");
+            $stmt->execute([
+                $userId, 
+                $normalValue,
+                $userCoins['bound_coins'] - $normalValue,
+                $userCoins['unbound_coins'],
+                $userCoins['bound_coins'],
+                $userCoins['unbound_coins'],
+                "分解普通物品: {$itemNames}"
+            ]);
+        }
         
         // 提交事务
         $pdo->commit();
@@ -86,7 +140,13 @@ function decomposeItems($userId, $itemIds, $totalValue) {
         return [
             'success' => true,
             'message' => '分解成功',
-            'decomposed_value' => $totalValue
+            'decomposed_value' => $totalValue,
+            'legendary_coins' => $legendaryValue,
+            'normal_coins' => $normalValue,
+            'coin_breakdown' => [
+                'unbound' => $legendaryValue,
+                'bound' => $normalValue
+            ]
         ];
         
     } catch (Exception $e) {

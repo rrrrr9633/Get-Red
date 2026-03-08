@@ -213,44 +213,7 @@ class APIClient {
         }
     }
 
-    // 幸运掉落抽奖
-    async luckyDrop() {
-        return await this.request('/games.php?action=lucky_drop', {
-            method: 'POST'
-        });
-    }
 
-    // 奖品抽取
-    async prizeDraw(drawType) {
-        return await this.request('/games.php?action=prize_draw', {
-            method: 'POST',
-            body: { draw_type: drawType }
-        });
-    }
-
-    // 幸运转盘
-    async wheelSpin() {
-        return await this.request('/games.php?action=wheel', {
-            method: 'POST'
-        });
-    }
-
-    // 每日签到
-    async dailyCheckin() {
-        return await this.request('/games.php?action=checkin', {
-            method: 'POST'
-        });
-    }
-
-    // 获取签到状态
-    async getCheckinStatus() {
-        return await this.request('/games.php?action=checkin_status');
-    }
-
-    // 获取交易记录
-    async getTransactions(limit = 20, offset = 0) {
-        return await this.request(`/games.php?action=transactions&limit=${limit}&offset=${offset}`);
-    }
 
     // 检查登录状态 - 修改为更严格的检查
     isLoggedIn() {
@@ -405,7 +368,6 @@ class APIClient {
         
         const requestBody = {
             action: 'draw',
-            game_type: gameType,
             count: count,
             user_id: user.id
         };
@@ -415,7 +377,7 @@ class APIClient {
             requestBody.page = page;
         }
         
-        return await this.request('/prizes.php', {
+        return await this.request('/draws.php', {
             method: 'POST',
             body: requestBody
         });

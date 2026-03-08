@@ -7,6 +7,7 @@ configureSecureSession();
 session_start();
 
 require_once '../config/database.php';
+require_once '../config/coin-helper.php';
 
 // 设置响应头
 header('Content-Type: application/json');
@@ -106,9 +107,6 @@ function getCheckinStatus() {
         $stmt->execute([$userId, $today]);
         $todayCheckin = $stmt->fetch();
         
-        // 获取连续签到天数
-        $consecutiveDays = getConsecutiveDays($userId);
-        
         // 获取本月签到天数
         $stmt = $db->prepare("SELECT COUNT(*) as count FROM user_checkin WHERE user_id = ? AND DATE_FORMAT(checkin_date, '%Y-%m') = ?");
         $stmt->execute([$userId, $thisMonth]);
@@ -119,17 +117,22 @@ function getCheckinStatus() {
         $stmt->execute([$userId]);
         $totalCount = $stmt->fetch()['count'];
         
-        // 计算今日奖励
-        $todayReward = calculateReward($consecutiveDays + 1);
-        
         echo json_encode([
             'success' => true,
             'hasCheckedIn' => $todayCheckin ? true : false,
-            'consecutiveDays' => $consecutiveDays,
             'monthlyDays' => $monthlyCount,
+            'maxMonthlyDays' => 7,
+            'remainingCheckins' => max(0, 7 - $monthlyCount),
             'totalDays' => $totalCount,
-            'todayReward' => $todayReward,
-            'currentTime' => getNetworkTime(), // 添加当前网络时间用于调试
+            'rewardRange' => '1-5金币（随机）',
+            'rewardProbability' => [
+                '5金币' => '1%',
+                '4金币' => '5%',
+                '3金币' => '9%',
+                '2金币' => '15%',
+                '1金币' => '70%'
+            ],
+            'currentTime' => getNetworkTime(),
             'currentDate' => $today
         ]);
         
@@ -145,6 +148,7 @@ function doCheckin() {
     
     try {
         $today = getCurrentDate(); // 使用网络时间
+        $thisMonth = substr($today, 0, 7); // Y-m 格式
         
         // 检查今天是否已签到
         $stmt = $db->prepare("SELECT id FROM user_checkin WHERE user_id = ? AND checkin_date = ?");
@@ -154,39 +158,72 @@ function doCheckin() {
             return;
         }
         
-        // 获取连续签到天数
-        $consecutiveDays = getConsecutiveDays($userId);
-        $newConsecutiveDays = $consecutiveDays + 1;
+        // 检查本月签到次数（限制每月最多7次）
+        $stmt = $db->prepare("SELECT COUNT(*) as count FROM user_checkin WHERE user_id = ? AND DATE_FORMAT(checkin_date, '%Y-%m') = ?");
+        $stmt->execute([$userId, $thisMonth]);
+        $monthlyCount = $stmt->fetch()['count'];
         
-        // 计算奖励
-        $reward = calculateReward($newConsecutiveDays);
+        if ($monthlyCount >= 7) {
+            echo json_encode(['error' => '本月签到次数已达上限（7次）']);
+            return;
+        }
+        
+        // 随机奖励：1-5绑定金币
+        $reward = calculateReward();
         
         // 开始事务
         $db->beginTransaction();
         
         // 插入签到记录，使用网络时间
         $networkTime = getNetworkTime();
-        $stmt = $db->prepare("INSERT INTO user_checkin (user_id, checkin_date, consecutive_days, reward_amount, created_at) VALUES (?, ?, ?, ?, ?)");
-        $stmt->execute([$userId, $today, $newConsecutiveDays, $reward, $networkTime]);
+        $stmt = $db->prepare("INSERT INTO user_checkin (user_id, checkin_date, consecutive_days, reward_amount, coin_type, created_at) VALUES (?, ?, 0, ?, 'bound', ?)");
+        $stmt->execute([$userId, $today, $reward, $networkTime]);
         
-        // 更新用户余额
-        $stmt = $db->prepare("UPDATE users SET balance = balance + ? WHERE id = ?");
-        $stmt->execute([$reward, $userId]);
+        // 直接在当前事务中增加绑定金币（签到奖励是绑定金币）
+        $stmt = $db->prepare("UPDATE users SET bound_coins = bound_coins + ?, balance = balance + ? WHERE id = ?");
+        $stmt->execute([$reward, $reward, $userId]);
+        
+        // 记录日志
+        $stmt = $db->prepare("SELECT bound_coins, unbound_coins FROM users WHERE id = ?");
+        $stmt->execute([$userId]);
+        $userCoins = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        $stmt = $db->prepare("
+            INSERT INTO coin_change_log 
+            (user_id, change_type, coin_type, bound_change, unbound_change, 
+             bound_balance_before, unbound_balance_before, bound_balance_after, unbound_balance_after,
+             related_id, description)
+            VALUES (?, 'checkin', 'bound', ?, 0, ?, ?, ?, ?, NULL, ?)
+        ");
+        $stmt->execute([
+            $userId, 
+            $reward,
+            $userCoins['bound_coins'] - $reward,
+            $userCoins['unbound_coins'],
+            $userCoins['bound_coins'],
+            $userCoins['unbound_coins'],
+            "每日签到奖励（本月第" . ($monthlyCount + 1) . "次）"
+        ]);
         
         // 获取更新后的用户余额
-        $stmt = $db->prepare("SELECT balance FROM users WHERE id = ?");
-        $stmt->execute([$userId]);
-        $newBalance = $stmt->fetch()['balance'];
+        $coins = getUserCoins($db, $userId);
+        if (!$coins) {
+            throw new Exception('获取用户余额失败');
+        }
         
         $db->commit();
         
         echo json_encode([
             'success' => true,
-            'message' => '签到成功！',
+            'message' => "签到成功！获得{$reward}绑定金币",
             'reward' => $reward,
-            'consecutiveDays' => $newConsecutiveDays,
-            'newBalance' => $newBalance,
-            'checkinTime' => $networkTime // 添加签到时间用于确认
+            'coin_type' => 'bound',
+            'monthlyCount' => $monthlyCount + 1,
+            'remainingCheckins' => 7 - ($monthlyCount + 1),
+            'bound_coins' => $coins['bound_coins'],
+            'unbound_coins' => $coins['unbound_coins'],
+            'total_coins' => $coins['total_coins'],
+            'checkinTime' => $networkTime
         ]);
         
     } catch (Exception $e) {
@@ -285,26 +322,29 @@ function getConsecutiveDays($userId) {
     return $consecutiveDays;
 }
 
-// 计算签到奖励
-function calculateReward($consecutiveDays) {
-    if ($consecutiveDays <= 0) return 10;
+// 计算签到奖励（随机1-5金币）
+function calculateReward() {
+    // 生成0-100的随机数
+    $random = mt_rand(1, 10000) / 100; // 精确到小数点后两位
     
-    $rewards = [
-        1 => 10,
-        2 => 15,
-        3 => 20,
-        4 => 25,
-        5 => 30,
-        6 => 40,
-        7 => 50
-    ];
+    // 概率分布：
+    // 5金币: 1%   (0-1)
+    // 4金币: 5%   (1-6)
+    // 3金币: 9%   (6-15)
+    // 2金币: 15%  (15-30)
+    // 1金币: 70%  (30-100)
     
-    // 7天以上都是50金币
-    if ($consecutiveDays >= 7) {
-        return 50;
+    if ($random <= 1) {
+        return 5;
+    } elseif ($random <= 6) {
+        return 4;
+    } elseif ($random <= 15) {
+        return 3;
+    } elseif ($random <= 30) {
+        return 2;
+    } else {
+        return 1;
     }
-    
-    return $rewards[$consecutiveDays] ?? 10;
 }
 
 // 获取签到历史记录

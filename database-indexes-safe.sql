@@ -1,13 +1,14 @@
 -- ========================================
--- 数据库索引优化脚本（安全版本）
+-- 数据库索引优化脚本（安全版本 - 已更新）
 -- 可重复执行，不会因索引已存在而报错
+-- 符合当前金币系统（bound_coins + unbound_coins）
 -- ========================================
 
 -- 设置分隔符，用于存储过程
-DELIMITER $$
+DELIMITER $
 
 -- 创建添加索引的存储过程（如果索引不存在才添加）
-DROP PROCEDURE IF EXISTS add_index_if_not_exists$$
+DROP PROCEDURE IF EXISTS add_index_if_not_exists$
 CREATE PROCEDURE add_index_if_not_exists(
     IN p_table_name VARCHAR(64),
     IN p_index_name VARCHAR(64),
@@ -33,7 +34,7 @@ BEGIN
     ELSE
         SELECT CONCAT('⚠️  索引 ', p_index_name, ' 已存在，跳过') AS result;
     END IF;
-END$$
+END$
 
 DELIMITER ;
 
@@ -86,6 +87,38 @@ CALL add_index_if_not_exists('prizes', 'idx_rarity', 'rarity');
 CALL add_index_if_not_exists('shop_purchase_history', 'idx_user_created', 'user_id, created_at');
 CALL add_index_if_not_exists('shop_purchase_history', 'idx_status_created', 'status, created_at');
 
+-- ========================================
+-- 9. coin_change_log 表索引优化（新增）
+-- ========================================
+CALL add_index_if_not_exists('coin_change_log', 'idx_user_id', 'user_id');
+CALL add_index_if_not_exists('coin_change_log', 'idx_change_type', 'change_type');
+CALL add_index_if_not_exists('coin_change_log', 'idx_created_at', 'created_at');
+
+-- ========================================
+-- 10. withdrawal_requests 表索引优化（新增）
+-- ========================================
+CALL add_index_if_not_exists('withdrawal_requests', 'idx_user_id', 'user_id');
+CALL add_index_if_not_exists('withdrawal_requests', 'idx_status', 'status');
+CALL add_index_if_not_exists('withdrawal_requests', 'idx_created_at', 'created_at');
+
+-- ========================================
+-- 11. withdrawal_history 表索引优化（新增）
+-- ========================================
+CALL add_index_if_not_exists('withdrawal_history', 'idx_user_id', 'user_id');
+CALL add_index_if_not_exists('withdrawal_history', 'idx_created_at', 'created_at');
+
+-- ========================================
+-- 12. recharge_history 表索引优化
+-- ========================================
+CALL add_index_if_not_exists('recharge_history', 'idx_user_id', 'user_id');
+
+-- ========================================
+-- 13. shop_items 表索引优化（新增）
+-- ========================================
+CALL add_index_if_not_exists('shop_items', 'idx_item_type', 'item_type');
+CALL add_index_if_not_exists('shop_items', 'idx_is_active', 'is_active');
+CALL add_index_if_not_exists('shop_items', 'idx_sort_order', 'sort_order');
+
 -- 清理存储过程
 DROP PROCEDURE IF EXISTS add_index_if_not_exists;
 
@@ -94,4 +127,5 @@ DROP PROCEDURE IF EXISTS add_index_if_not_exists;
 -- ========================================
 SELECT '========================================' AS '';
 SELECT '✅ 索引优化完成！' AS '';
+SELECT '已包含金币系统相关表的索引' AS '';
 SELECT '========================================' AS '';

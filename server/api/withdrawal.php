@@ -32,6 +32,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 session_start();
 
 require_once '../config/database.php';
+require_once '../config/coin-helper.php';
 
 $database = new Database();
 $db = $database->getConnection();
@@ -176,8 +177,8 @@ function submitWithdrawalRequest($db) {
         }
     }
     
-    // 频率限制：5分钟内最多3次提现申请
-    checkRateLimit('withdrawal_submit', 3, 300);
+    // 频率限制：5秒内最多3次提现申请（防止恶意攻击）
+    checkRateLimit('withdrawal_submit', 3, 5);
     
     $input = json_decode(file_get_contents('php://input'), true);
     
@@ -217,35 +218,87 @@ function submitWithdrawalRequest($db) {
             throw new Exception('提现金额不能超过 ' . $maxAmount . ' 金币');
         }
         
-        // 检查用户余额
-        $stmt = $db->prepare("SELECT balance FROM users WHERE id = ?");
-        $stmt->execute([$userId]);
-        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+        // 检查用户余额（可以混合使用绑定和非绑定金币）
+        $coins = getUserCoins($db, $userId);
+        if (!$coins) {
+            throw new Exception('获取用户余额失败');
+        }
         
-        if ($user['balance'] < $amount) {
+        $totalCoins = $coins['total_coins'];
+        if ($totalCoins < $amount) {
             throw new Exception('余额不足');
         }
         
         // 计算哈夫币（汇率：60金币=10000000哈夫币）
         $buffCoins = $amount * $exchangeRate;
         
-        // 扣除用户余额
-        $stmt = $db->prepare("UPDATE users SET balance = balance - ? WHERE id = ?");
-        $stmt->execute([$amount, $userId]);
+        // 直接在当前事务中混合扣除金币（优先使用绑定金币）
+        $stmt = $db->prepare("SELECT bound_coins, unbound_coins, has_recharged FROM users WHERE id = ? FOR UPDATE");
+        $stmt->execute([$userId]);
+        $userCoins = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$userCoins) {
+            throw new Exception('用户不存在');
+        }
+        
+        $boundCoins = $userCoins['bound_coins'];
+        $unboundCoins = $userCoins['unbound_coins'];
+        $hasRecharged = $userCoins['has_recharged'];
+        $totalAvailable = $boundCoins + $unboundCoins;
+        
+        // 如果用户有绑定金币但未充值过，则不允许使用绑定金币提现
+        if ($boundCoins > 0 && !$hasRecharged) {
+            // 只能使用非绑定金币
+            if ($unboundCoins < $amount) {
+                throw new Exception('您还未充值过，暂时无法使用绑定金币。当前可用非绑定金币：' . $unboundCoins);
+            }
+            $boundUsed = 0;
+            $unboundUsed = $amount;
+        } else {
+            if ($totalAvailable < $amount) {
+                throw new Exception('余额不足');
+            }
+            
+            // 优先使用绑定金币
+            $boundUsed = min($boundCoins, $amount);
+            $unboundUsed = $amount - $boundUsed;
+        }
+        
+        // 扣除金币
+        $stmt = $db->prepare("
+            UPDATE users 
+            SET bound_coins = bound_coins - ?, 
+                unbound_coins = unbound_coins - ?,
+                balance = balance - ?
+            WHERE id = ?
+        ");
+        $stmt->execute([$boundUsed, $unboundUsed, $amount, $userId]);
+        
+        // 记录日志
+        $stmt = $db->prepare("
+            INSERT INTO coin_change_log 
+            (user_id, change_type, coin_type, bound_change, unbound_change, 
+             bound_balance_before, unbound_balance_before, bound_balance_after, unbound_balance_after,
+             related_id, description)
+            VALUES (?, 'withdrawal', 'mixed', ?, ?, ?, ?, ?, ?, NULL, ?)
+        ");
+        $stmt->execute([
+            $userId, 
+            -$boundUsed,
+            -$unboundUsed,
+            $boundCoins,
+            $unboundCoins,
+            $boundCoins - $boundUsed,
+            $unboundCoins - $unboundUsed,
+            "跑刀提现申请"
+        ]);
         
         // 创建提现申请
         $stmt = $db->prepare("
-            INSERT INTO withdrawal_requests (user_id, amount, buff_coins, status)
-            VALUES (?, ?, ?, 'pending')
+            INSERT INTO withdrawal_requests (user_id, amount, buff_coins, status, coin_type)
+            VALUES (?, ?, ?, 'pending', 'mixed')
         ");
         $stmt->execute([$userId, $amount, $buffCoins]);
-        
-        // 记录交易
-        $stmt = $db->prepare("
-            INSERT INTO transactions (user_id, amount, description, type)
-            VALUES (?, ?, ?, 'expense')
-        ");
-        $stmt->execute([$userId, -$amount, "跑刀提现申请"]);
         
         // 查找负责该用户的客服并发送通知
         $stmt = $db->prepare("SELECT username FROM users WHERE id = ?");
@@ -552,29 +605,46 @@ function processWithdrawalRequest($db) {
             ]);
             
         } else if ($action === 'reject') {
-            // 拒绝提现，退还金币
+            // 拒绝提现，需要退还金币
             $status = 'rejected';
             
-            // 退还用户余额
-            $stmt = $db->prepare("UPDATE users SET balance = balance + ? WHERE id = ?");
-            $stmt->execute([$request['amount'], $request['user_id']]);
-            
-            // 记录交易
+            // 直接在当前事务中退还金币（退还非绑定金币）
             $stmt = $db->prepare("
-                INSERT INTO transactions (user_id, amount, description, type)
-                VALUES (?, ?, ?, 'income')
+                UPDATE users 
+                SET unbound_coins = unbound_coins + ?, 
+                    balance = balance + ?
+                WHERE id = ?
+            ");
+            $stmt->execute([$request['amount'], $request['amount'], $request['user_id']]);
+            
+            // 记录金币变动日志
+            $stmt = $db->prepare("SELECT bound_coins, unbound_coins FROM users WHERE id = ?");
+            $stmt->execute([$request['user_id']]);
+            $userCoins = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            $stmt = $db->prepare("
+                INSERT INTO coin_change_log 
+                (user_id, change_type, coin_type, bound_change, unbound_change, 
+                 bound_balance_before, unbound_balance_before, bound_balance_after, unbound_balance_after,
+                 related_id, description)
+                VALUES (?, 'refund', 'unbound', 0, ?, ?, ?, ?, ?, ?, ?)
             ");
             $stmt->execute([
-                $request['user_id'],
+                $request['user_id'], 
                 $request['amount'],
+                $userCoins['bound_coins'],
+                $userCoins['unbound_coins'] - $request['amount'],
+                $userCoins['bound_coins'],
+                $userCoins['unbound_coins'],
+                $requestId,
                 "跑刀提现被拒绝，退还金币"
             ]);
             
             // 移动到历史记录
             $stmt = $db->prepare("
                 INSERT INTO withdrawal_history 
-                (user_id, amount, buff_coins, status, created_at, processed_at, processed_by, reject_reason)
-                VALUES (?, ?, ?, ?, ?, NOW(), ?, ?)
+                (user_id, amount, buff_coins, status, created_at, processed_at, processed_by, reject_reason, coin_type)
+                VALUES (?, ?, ?, ?, ?, NOW(), ?, ?, 'mixed')
             ");
             $stmt->execute([
                 $request['user_id'],

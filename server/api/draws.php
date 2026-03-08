@@ -9,6 +9,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 require_once '../config/database.php';
+require_once '../config/coin-helper.php';
 
 // 初始化数据库连接
 $database = new Database();
@@ -22,7 +23,7 @@ function performLuckyDraw($userId, $count = 1, $page = 'lucky1.html') {
         $pdo->beginTransaction();
         
         // 🔒 使用 FOR UPDATE 锁定用户记录，防止并发问题
-        $stmt = $pdo->prepare("SELECT balance FROM users WHERE id = ? FOR UPDATE");
+        $stmt = $pdo->prepare("SELECT bound_coins, unbound_coins FROM users WHERE id = ? FOR UPDATE");
         $stmt->execute([$userId]);
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
         
@@ -64,9 +65,9 @@ function performLuckyDraw($userId, $count = 1, $page = 'lucky1.html') {
             $cost = $priceValue;
         }
         
-        // ✅ 检查余额（在锁定状态下）
-        if ($user['balance'] < $cost) {
-            throw new Exception('余额不足，请先充值！');
+        // ✅ 检查非绑定金币余额（抽奖只能使用非绑定金币）
+        if ($user['unbound_coins'] < $cost) {
+            throw new Exception('非绑定金币不足，请先充值！当前非绑定金币：' . $user['unbound_coins']);
         }
         
         // 获取指定页面的奖品列表
@@ -86,38 +87,68 @@ function performLuckyDraw($userId, $count = 1, $page = 'lucky1.html') {
             $prize = selectPrizeByProbability($prizes);
             $results[] = $prize;
             $totalValue += floatval($prize['value']);
+            
+            // 将抽中的物品添加到用户物品表
+            $stmt = $pdo->prepare("
+                INSERT INTO user_items (user_id, prize_id, name, icon, image_url, value, rarity)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ");
+            $stmt->execute([
+                $userId,
+                $prize['id'],
+                $prize['name'],
+                $prize['icon'] ?? '',
+                $prize['image_url'] ?? '',
+                $prize['value'],
+                $prize['rarity']
+            ]);
         }
         
-        // ✅ 扣除抽奖费用（使用 WHERE 条件二次确认，防止余额负数）
-        $stmt = $pdo->prepare("UPDATE users SET balance = balance - ? WHERE id = ? AND balance >= ?");
-        $stmt->execute([$cost, $userId, $cost]);
+        // ✅ 扣除非绑定金币（直接在当前事务中执行）
+        $stmt = $pdo->prepare("UPDATE users SET unbound_coins = unbound_coins - ?, balance = balance - ? WHERE id = ? AND unbound_coins >= ?");
+        $stmt->execute([$cost, $cost, $userId, $cost]);
         
-        // 检查是否真的扣除成功
         if ($stmt->rowCount() === 0) {
-            throw new Exception('余额扣除失败，请重试');
+            throw new Exception('扣除金币失败，请重试');
         }
         
-        // 记录抽奖消费
-        $stmt = $pdo->prepare("INSERT INTO transactions (user_id, amount, description, type) VALUES (?, ?, ?, 'expense')");
-        $stmt->execute([$userId, $cost, "幸运掉落抽奖x{$count}({$page})"]);
+        // 记录金币变动日志
+        $stmt = $pdo->prepare("SELECT bound_coins, unbound_coins FROM users WHERE id = ?");
+        $stmt->execute([$userId]);
+        $userAfter = $stmt->fetch(PDO::FETCH_ASSOC);
         
-        // 将奖品价值作为余额奖励给用户
-        $stmt = $pdo->prepare("UPDATE users SET balance = balance + ? WHERE id = ?");
-        $stmt->execute([$totalValue, $userId]);
+        $stmt = $pdo->prepare("
+            INSERT INTO coin_change_log 
+            (user_id, change_type, coin_type, bound_change, unbound_change, 
+             bound_balance_before, unbound_balance_before, bound_balance_after, unbound_balance_after,
+             related_id, description)
+            VALUES (?, 'draw', 'unbound', 0, ?, ?, ?, ?, ?, NULL, ?)
+        ");
+        $stmt->execute([
+            $userId, 
+            -$cost, 
+            $user['bound_coins'] ?? 0,
+            $user['unbound_coins'], 
+            $userAfter['bound_coins'],
+            $userAfter['unbound_coins'],
+            "幸运掉落抽奖x{$count}({$page})"
+        ]);
         
-        // 记录奖励交易
-        $prizeNames = implode('、', array_column($results, 'name'));
-        $description = "抽奖奖励: {$prizeNames}";
-        
-        // 限制描述长度，避免超过数据库字段限制(varchar(255))
-        // 使用字节长度检查，确保兼容性
-        if (strlen($description) > 250) {
-            // 安全截断，避免截断多字节字符
-            $description = substr($description, 0, 230) . '...(共' . count($results) . '件)';
+        // 记录抽奖到 draws 表
+        foreach ($results as $prize) {
+            $stmt = $pdo->prepare("
+                INSERT INTO draws (user_id, prize_id, prize_name, prize_value, draw_type, cost, coin_type)
+                VALUES (?, ?, ?, ?, ?, ?, 'unbound')
+            ");
+            $stmt->execute([
+                $userId,
+                $prize['id'],
+                $prize['name'],
+                $prize['value'],
+                $count == 1 ? 'single' : ($count == 3 ? 'triple' : ($count == 5 ? 'quintuple' : 'multiple')),
+                $cost / $count
+            ]);
         }
-        
-        $stmt = $pdo->prepare("INSERT INTO transactions (user_id, amount, description, type) VALUES (?, ?, ?, 'income')");
-        $stmt->execute([$userId, $totalValue, $description]);
         
         // 记录抽奖历史
         $stmt = $pdo->prepare("INSERT INTO lottery_records (user_id, game_type, cost, reward, result) VALUES (?, 'lucky_drop', ?, ?, ?)");

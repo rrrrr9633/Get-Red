@@ -34,6 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 require_once '../config/database.php';
+require_once '../config/coin-helper.php';
 
 $database = new Database();
 $db = $database->getConnection();
@@ -147,14 +148,24 @@ function register() {
     $hashedPassword = password_hash($input['password'], PASSWORD_DEFAULT);
     $avatar = isset($input['avatar']) ? $input['avatar'] : 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiByeD0iNTAiIGZpbGw9IiNmZmQ3MDAiLz4KPHN2ZyB4PSIyNSIgeT0iMjAiIHdpZHRoPSI1MCIgaGVpZ2h0PSI2MCI+CjxjaXJjbGUgY3g9IjI1IiBjeT0iMjAiIHI9IjE1IiBmaWxsPSIjMTExIi8+CjxlbGxpcHNlIGN4PSIyNSIgY3k9IjUwIiByeD0iMjAiIHJ5PSIxNSIgZmlsbD0iIzExMSIvPgo8L3N2Zz4KPC9zdmc+';
     
-    // 插入用户数据（初始余额10金币）
-    $stmt = $db->prepare("INSERT INTO users (username, password, nickname, avatar, balance) VALUES (?, ?, ?, ?, 10.00)");
+    // 插入用户数据（初始赠送10非绑定金币）
+    $stmt = $db->prepare("INSERT INTO users (username, password, nickname, avatar, balance, bound_coins, unbound_coins) VALUES (?, ?, ?, ?, 10.00, 0.00, 10.00)");
     
     if ($stmt->execute([$input['username'], $hashedPassword, $input['nickname'], $avatar])) {
         $userId = $db->lastInsertId();
         
-        // 记录注册奖励（10金币）
-        $stmt = $db->prepare("INSERT INTO transactions (user_id, amount, description, type) VALUES (?, 10.00, '注册奖励', 'income')");
+        // 记录注册奖励（10非绑定金币）
+        $stmt = $db->prepare("INSERT INTO transactions (user_id, amount, description, type) VALUES (?, 10.00, '注册奖励（非绑定金币）', 'income')");
+        $stmt->execute([$userId]);
+        
+        // 记录金币变动日志
+        $stmt = $db->prepare("
+            INSERT INTO coin_change_log 
+            (user_id, change_type, coin_type, bound_change, unbound_change, 
+             bound_balance_before, unbound_balance_before, bound_balance_after, unbound_balance_after,
+             related_id, description)
+            VALUES (?, 'register', 'unbound', 0, 10.00, 0, 0, 0, 10.00, NULL, '注册奖励')
+        ");
         $stmt->execute([$userId]);
         
         // 自动分配客服（分配给用户数最少的客服）
@@ -209,7 +220,7 @@ function login() {
     }
     
     // 只通过用户名查找用户
-    $stmt = $db->prepare("SELECT id, username, password, nickname, avatar, balance, session_token FROM users WHERE username = ?");
+    $stmt = $db->prepare("SELECT id, username, password, nickname, avatar, balance, bound_coins, unbound_coins, has_recharged, session_token FROM users WHERE username = ?");
     $stmt->execute([$input['username']]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
     
@@ -294,7 +305,7 @@ function getProfile() {
     global $db;
     
     // 验证会话token是否匹配（单点登录检查）
-    $stmt = $db->prepare("SELECT id, username, nickname, email, avatar, balance, created_at, last_login, user_type, status, session_token FROM users WHERE id = ?");
+    $stmt = $db->prepare("SELECT id, username, nickname, email, avatar, balance, bound_coins, unbound_coins, has_recharged, created_at, last_login, user_type, status, session_token FROM users WHERE id = ?");
     $stmt->execute([$_SESSION['user_id']]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
     
@@ -334,9 +345,20 @@ function getBalance() {
     }
     
     global $db;
-    $stmt = $db->prepare("SELECT balance FROM users WHERE id = ?");
-    $stmt->execute([$_SESSION['user_id']]);
-    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+    $coins = getUserCoins($db, $_SESSION['user_id']);
+    
+    if (!$coins) {
+        http_response_code(500);
+        echo json_encode(['error' => '获取余额失败']);
+        return;
+    }
+    
+    echo json_encode([
+        'success' => true,
+        'balance' => $coins['total_coins'],
+        'bound_coins' => $coins['bound_coins'],
+        'unbound_coins' => $coins['unbound_coins']
+    ]);
     
     if($result) {
         echo json_encode(['success' => true, 'balance' => $result['balance']]);

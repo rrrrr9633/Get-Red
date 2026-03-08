@@ -17,6 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 require_once '../config/database.php';
+require_once '../config/coin-helper.php';
 
 $database = new Database();
 $db = $database->getConnection();
@@ -145,7 +146,9 @@ function getUsers() {
                 u.id, 
                 u.username, 
                 u.nickname, 
-                u.balance, 
+                u.balance,
+                u.bound_coins,
+                u.unbound_coins,
                 u.is_online,
                 u.last_login,
                 u.last_activity,
@@ -617,7 +620,8 @@ function updateUser() {
     $id = $_POST['id'] ?? null;
     $username = $_POST['username'] ?? null;
     $email = $_POST['email'] ?? null;
-    $balance = $_POST['balance'] ?? null;
+    $boundCoins = $_POST['bound_coins'] ?? null;
+    $unboundCoins = $_POST['unbound_coins'] ?? null;
     
     if (!$id) {
         http_response_code(400);
@@ -640,9 +644,30 @@ function updateUser() {
             $values[] = $email;
         }
         
-        if ($balance !== null && is_numeric($balance)) {
+        // 更新绑定和非绑定金币，同时自动计算总余额
+        if ($boundCoins !== null && is_numeric($boundCoins)) {
+            $fields[] = "bound_coins = ?";
+            $values[] = floatval($boundCoins);
+        }
+        
+        if ($unboundCoins !== null && is_numeric($unboundCoins)) {
+            $fields[] = "unbound_coins = ?";
+            $values[] = floatval($unboundCoins);
+        }
+        
+        // 如果更新了任一金币字段，重新计算总余额
+        if ($boundCoins !== null || $unboundCoins !== null) {
+            // 获取当前值
+            $stmt = $db->prepare("SELECT bound_coins, unbound_coins FROM users WHERE id = ?");
+            $stmt->execute([$id]);
+            $current = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            $newBound = $boundCoins !== null ? floatval($boundCoins) : floatval($current['bound_coins']);
+            $newUnbound = $unboundCoins !== null ? floatval($unboundCoins) : floatval($current['unbound_coins']);
+            $newBalance = $newBound + $newUnbound;
+            
             $fields[] = "balance = ?";
-            $values[] = floatval($balance);
+            $values[] = $newBalance;
         }
         
         if (empty($fields)) {

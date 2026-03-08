@@ -11,6 +11,9 @@ CREATE TABLE IF NOT EXISTS users (
     nickname VARCHAR(50),
     avatar TEXT,
     balance DECIMAL(10,2) DEFAULT 10.00,
+    bound_coins DECIMAL(10,2) DEFAULT 0.00 COMMENT '绑定金币（签到、分解普通/稀有/史诗物品获得）',
+    unbound_coins DECIMAL(10,2) DEFAULT 10.00 COMMENT '非绑定金币（充值、分解传说物品获得）',
+    has_recharged TINYINT(1) DEFAULT 0 COMMENT '是否充值过（0=未充值，1=已充值）',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     last_login TIMESTAMP NULL,
@@ -41,7 +44,9 @@ CREATE TABLE IF NOT EXISTS prizes (
     original_probability DECIMAL(10,4),
     active TINYINT(1) DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    quantity INT
+    quantity INT,
+    INDEX idx_game_active (game_type, active),
+    INDEX idx_rarity (rarity)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- 3. 用户物品表
@@ -59,6 +64,9 @@ CREATE TABLE IF NOT EXISTS user_items (
     decomposed_at TIMESTAMP NULL,
     INDEX idx_user_id (user_id),
     INDEX idx_prize_id (prize_id),
+    INDEX idx_user_obtained (user_id, obtained_at),
+    INDEX idx_user_rarity (user_id, rarity),
+    INDEX idx_decomposed (decomposed),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (prize_id) REFERENCES prizes(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -70,9 +78,13 @@ CREATE TABLE IF NOT EXISTS draws (
     prize_id INT,
     prize_name VARCHAR(100),
     prize_value DECIMAL(10,2),
+    cost DECIMAL(10,2) DEFAULT 0.00 COMMENT '抽奖消耗的金币',
+    coin_type ENUM('unbound') DEFAULT 'unbound' COMMENT '使用的金币类型',
     draw_type VARCHAR(50) DEFAULT 'single',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_user_id (user_id),
+    INDEX idx_user_created (user_id, created_at),
+    INDEX idx_draw_type (draw_type),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -83,6 +95,7 @@ CREATE TABLE IF NOT EXISTS user_checkin (
     checkin_date DATE,
     consecutive_days INT DEFAULT 1,
     reward_amount DECIMAL(10,2) DEFAULT 10.00,
+    coin_type ENUM('bound','unbound') DEFAULT 'bound' COMMENT '奖励金币类型',
     reward_type ENUM('coins','item') DEFAULT 'coins',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_user_id (user_id),
@@ -107,7 +120,9 @@ CREATE TABLE IF NOT EXISTS security_logs (
     INDEX idx_user_type (user_type),
     INDEX idx_ip_address (ip_address),
     INDEX idx_action (action),
-    INDEX idx_created_at (created_at)
+    INDEX idx_created_at (created_at),
+    INDEX idx_user_action_time (user_id, action, created_at),
+    INDEX idx_ip_created (ip_address, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- 7. 客服配置表
@@ -152,6 +167,8 @@ CREATE TABLE IF NOT EXISTS chat_messages (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_session_id (session_id),
     INDEX idx_sender_id (sender_id),
+    INDEX idx_session_created (session_id, created_at),
+    INDEX idx_session_read (session_id, is_read),
     FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -192,10 +209,15 @@ CREATE TABLE IF NOT EXISTS transactions (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
     amount DECIMAL(10,2),
+    coin_type ENUM('bound','unbound','mixed') DEFAULT 'unbound' COMMENT '金币类型',
+    bound_amount DECIMAL(10,2) DEFAULT 0.00 COMMENT '绑定金币数量',
+    unbound_amount DECIMAL(10,2) DEFAULT 0.00 COMMENT '非绑定金币数量',
     description VARCHAR(255),
     type ENUM('income','expense'),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_user_id (user_id),
+    INDEX idx_user_created (user_id, created_at),
+    INDEX idx_user_type (user_id, type),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -233,6 +255,8 @@ CREATE TABLE IF NOT EXISTS lottery_records (
     result TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_user_id (user_id),
+    INDEX idx_user_created (user_id, created_at),
+    INDEX idx_game_type (game_type),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -260,6 +284,7 @@ CREATE TABLE IF NOT EXISTS recharge_history (
     user_id INT NOT NULL,
     amount DECIMAL(10,2),
     coins_gained INT,
+    coin_type ENUM('unbound') DEFAULT 'unbound' COMMENT '充值获得的金币类型',
     payment_method VARCHAR(50),
     transaction_id VARCHAR(255),
     status VARCHAR(50) DEFAULT 'pending',
@@ -340,8 +365,48 @@ INSERT INTO prizes (name, icon, value, rarity, game_type, probability, original_
 
 -- 插入默认超级管理员（用户名: admin, 密码: password, 身份码: admin）
 -- 注意：此账户在创建新超级管理员后会自动禁用
-INSERT INTO users (username, password, nickname, user_type, secret_key, balance, status, created_at) 
-VALUES ('admin', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', '默认超级管理员', 'super_admin', 'admin', 9999999.00, 'active', NOW());
+INSERT INTO users (username, password, nickname, user_type, secret_key, balance, bound_coins, unbound_coins, status, created_at) 
+VALUES ('admin', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', '默认超级管理员', 'super_admin', 'admin', 9999999.00, 0.00, 9999999.00, 'active', NOW());
+
+-- ========================================
+-- 金币变更日志表
+-- ========================================
+
+-- 30. 金币变更日志表
+CREATE TABLE IF NOT EXISTS coin_change_log (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    change_type ENUM('recharge','draw','decompose','shop_purchase','withdrawal','checkin','refund','admin_adjust') NOT NULL COMMENT '变更类型',
+    coin_type ENUM('bound','unbound','mixed') NOT NULL COMMENT '金币类型',
+    bound_change DECIMAL(10,2) DEFAULT 0.00 COMMENT '绑定金币变化量',
+    unbound_change DECIMAL(10,2) DEFAULT 0.00 COMMENT '非绑定金币变化量',
+    bound_balance_before DECIMAL(10,2) DEFAULT 0.00 COMMENT '变更前绑定金币余额',
+    unbound_balance_before DECIMAL(10,2) DEFAULT 0.00 COMMENT '变更前非绑定金币余额',
+    bound_balance_after DECIMAL(10,2) DEFAULT 0.00 COMMENT '变更后绑定金币余额',
+    unbound_balance_after DECIMAL(10,2) DEFAULT 0.00 COMMENT '变更后非绑定金币余额',
+    related_id INT COMMENT '关联记录ID（如交易ID、抽奖ID等）',
+    description VARCHAR(255) COMMENT '变更描述',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_user_id (user_id),
+    INDEX idx_change_type (change_type),
+    INDEX idx_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='金币变更日志表';
+
+-- ========================================
+-- 用户总余额视图
+-- ========================================
+
+CREATE OR REPLACE VIEW user_total_balance AS
+SELECT 
+    id,
+    username,
+    nickname,
+    bound_coins,
+    unbound_coins,
+    (bound_coins + unbound_coins) AS total_balance,
+    balance AS old_balance
+FROM users;
 
 SELECT '数据库初始化完成！默认超级管理员已创建（用户名: admin, 密码: password, 身份码: admin）' AS message;
 
@@ -355,6 +420,7 @@ CREATE TABLE IF NOT EXISTS withdrawal_requests (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
     amount DECIMAL(10,2) NOT NULL COMMENT '提现金币数量',
+    coin_type ENUM('unbound') DEFAULT 'unbound' COMMENT '提现金币类型',
     buff_coins DECIMAL(10,2) NOT NULL COMMENT '转换后的哈夫币数量（汇率：60金币=10000000哈夫币）',
     status ENUM('pending', 'processing', 'completed', 'rejected') DEFAULT 'pending' COMMENT '状态：待处理、处理中、已完成、已拒绝',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '申请时间',
@@ -372,6 +438,7 @@ CREATE TABLE IF NOT EXISTS withdrawal_history (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
     amount DECIMAL(10,2) NOT NULL COMMENT '提现金币数量',
+    coin_type ENUM('unbound') DEFAULT 'unbound' COMMENT '提现金币类型',
     buff_coins DECIMAL(10,2) NOT NULL COMMENT '转换后的哈夫币数量（汇率：60金币=10000000哈夫币）',
     status ENUM('completed', 'rejected') NOT NULL COMMENT '最终状态',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '申请时间',
@@ -434,6 +501,8 @@ CREATE TABLE IF NOT EXISTS shop_purchase_history (
     item_name VARCHAR(100) NOT NULL,
     item_type ENUM('skin', 'escort') NOT NULL,
     price DECIMAL(10,2) NOT NULL,
+    bound_coins_used DECIMAL(10,2) DEFAULT 0.00 COMMENT '使用的绑定金币',
+    unbound_coins_used DECIMAL(10,2) DEFAULT 0.00 COMMENT '使用的非绑定金币',
     purchase_type ENUM('coin', 'legendary') DEFAULT 'coin' COMMENT '购买方式：金币或传说级兑换',
     used_items TEXT COMMENT '使用的传说级物品JSON（仅传说级兑换）',
     player_id VARCHAR(100) COMMENT '玩家ID（提现账号）',
@@ -447,7 +516,9 @@ CREATE TABLE IF NOT EXISTS shop_purchase_history (
     INDEX idx_user_id (user_id),
     INDEX idx_status (status),
     INDEX idx_purchase_type (purchase_type),
-    INDEX idx_created_at (created_at)
+    INDEX idx_created_at (created_at),
+    INDEX idx_user_created (user_id, created_at),
+    INDEX idx_status_created (status, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户购买记录表';
 
 -- 插入示例商城物品
