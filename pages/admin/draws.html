@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>牛皮俱乐部</title>
+    <title>无敌俱乐部</title>
     <style>
         * {
             margin: 0;
@@ -589,7 +589,13 @@
             const currentUsers = filteredUsers.slice(startIndex, endIndex);
 
             const grid = document.getElementById('usersGrid');
-            grid.innerHTML = currentUsers.map(user => `
+            grid.innerHTML = currentUsers.map(user => {
+                // 确保金币字段是数字类型
+                const boundCoins = parseFloat(user.bound_coins) || 0;
+                const unboundCoins = parseFloat(user.unbound_coins) || 0;
+                const totalBalance = (boundCoins + unboundCoins).toFixed(2);
+                
+                return `
                 <div class="user-card" onclick="showUserDetail(${user.id})">
                     <div class="user-info">
                         <img src="${user.avatar || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiByeD0iNTAiIGZpbGw9IiNmZmQ3MDAiLz4KPHN2ZyB4PSIyNSIgeT0iMjAiIHdpZHRoPSI1MCIgaGVpZ2h0PSI2MCI+CjxjaXJjbGUgY3g9IjI1IiBjeT0iMjAiIHI9IjE1IiBmaWxsPSIjMTExIi8+CjxlbGxpcHNlIGN4PSIyNSIgY3k9IjUwIiByeD0iMjAiIHJ5PSIxNSIgZmlsbD0iIzExMSIvPgo8L3N2Zz4KPC9zdmc+'}" alt="头像" class="user-avatar">
@@ -597,7 +603,13 @@
                             <h3>${user.nickname || user.username}</h3>
                             <p>用户名: ${user.username}</p>
                             <p>ID: ${user.id}</p>
-                            <p>余额: ${user.balance || 0} 金币</p>
+                            <p style="margin: 5px 0;">
+                                总余额: <span style="color: #ffd700;">${totalBalance}</span> 金币
+                            </p>
+                            <p style="margin: 5px 0; font-size: 13px; opacity: 0.8;">
+                                绑定: <span style="color: #4ade80;">${boundCoins.toFixed(2)}</span> | 
+                                非绑定: <span style="color: #60a5fa;">${unboundCoins.toFixed(2)}</span>
+                            </p>
                         </div>
                     </div>
                     <div class="user-stats">
@@ -613,7 +625,8 @@
                         </div>
                     </div>
                 </div>
-            `).join('');
+            `;
+            }).join('');
 
             renderPagination();
         }
@@ -717,10 +730,26 @@
         // 加载余额信息
         function loadBalanceInfo() {
             const balanceInfo = document.getElementById('balanceInfo');
+            const totalBalance = (parseFloat(currentUser.bound_coins || 0) + parseFloat(currentUser.unbound_coins || 0)).toFixed(2);
+            const boundCoins = parseFloat(currentUser.bound_coins || 0).toFixed(2);
+            const unboundCoins = parseFloat(currentUser.unbound_coins || 0).toFixed(2);
+            
             balanceInfo.innerHTML = `
-                <div class="balance-item">
-                    <span class="balance-label">当前余额:</span>
-                    <span class="balance-value">${currentUser.balance || 0} 金币</span>
+                <div class="balance-item" style="background: rgba(255,215,0,0.1); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                    <span class="balance-label" style="font-size: 16px;">总余额:</span>
+                    <span class="balance-value" style="font-size: 20px; color: #ffd700; font-weight: bold;">${totalBalance} 金币</span>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+                    <div class="balance-item" style="background: rgba(74,222,128,0.1); padding: 12px; border-radius: 8px;">
+                        <span class="balance-label" style="font-size: 14px;">绑定金币:</span>
+                        <span class="balance-value" style="font-size: 16px; color: #4ade80;">${boundCoins}</span>
+                        <div style="font-size: 11px; opacity: 0.7; margin-top: 5px;">仅限商城兑换</div>
+                    </div>
+                    <div class="balance-item" style="background: rgba(96,165,250,0.1); padding: 12px; border-radius: 8px;">
+                        <span class="balance-label" style="font-size: 14px;">非绑定金币:</span>
+                        <span class="balance-value" style="font-size: 16px; color: #60a5fa;">${unboundCoins}</span>
+                        <div style="font-size: 11px; opacity: 0.7; margin-top: 5px;">可用于抽奖</div>
+                    </div>
                 </div>
                 <div class="balance-item">
                     <span class="balance-label">用户ID:</span>
@@ -755,6 +784,45 @@
             `;
         }
 
+        // 格式化抽奖结果
+        function formatResult(result) {
+            if (!result) return '无';
+            
+            // 如果是数组，显示物品列表
+            if (Array.isArray(result)) {
+                return result.map(item => {
+                    if (typeof item === 'object') {
+                        return item.name || item.prize_name || JSON.stringify(item);
+                    }
+                    return String(item);
+                }).join('、');
+            }
+            
+            // 如果是对象，尝试提取有用信息
+            if (typeof result === 'object') {
+                // 检查常见的字段
+                if (result.items && Array.isArray(result.items)) {
+                    return result.items.map(item => item.name || item.prize_name || '未知物品').join('、');
+                }
+                if (result.prizes && Array.isArray(result.prizes)) {
+                    return result.prizes.map(item => item.name || item.prize_name || '未知物品').join('、');
+                }
+                if (result.name) {
+                    return result.name;
+                }
+                if (result.prize_name) {
+                    return result.prize_name;
+                }
+                // 如果有多个字段，尝试显示关键信息
+                const keys = Object.keys(result);
+                if (keys.length > 0) {
+                    return keys.map(key => `${key}: ${result[key]}`).join(', ');
+                }
+            }
+            
+            return String(result);
+        }
+
         // 加载抽奖记录
         async function loadDrawsRecords(page = 1) {
             try {
@@ -775,23 +843,69 @@
                     const drawsList = document.getElementById('drawsList');
                     const records = data.draws;
                     
+                    console.log('抽奖记录数据:', records); // 调试信息
+                    
                     if (records.length === 0) {
                         drawsList.innerHTML = '<p style="text-align: center; color: #ccc; padding: 20px;">暂无抽奖记录</p>';
                     } else {
-                        drawsList.innerHTML = records.map(record => `
-                            <div class="record-item">
-                                <div class="record-header">
-                                    <span class="record-type">抽奖记录</span>
-                                    <span class="record-time">${new Date(record.created_at).toLocaleString()}</span>
+                        drawsList.innerHTML = records.map(record => {
+                            const boundChange = parseFloat(record.bound_change || 0);
+                            const unboundChange = parseFloat(record.unbound_change || 0);
+                            const cost = parseFloat(record.cost || 0);
+                            
+                            console.log('记录ID:', record.id, 'bound_change:', boundChange, 'unbound_change:', unboundChange); // 调试信息
+                            
+                            // 解析result字段
+                            let resultText = '';
+                            if (record.result) {
+                                if (typeof record.result === 'string') {
+                                    try {
+                                        const resultObj = JSON.parse(record.result);
+                                        resultText = formatResult(resultObj);
+                                    } catch (e) {
+                                        resultText = record.result;
+                                    }
+                                } else if (typeof record.result === 'object') {
+                                    resultText = formatResult(record.result);
+                                } else {
+                                    resultText = String(record.result);
+                                }
+                            }
+                            
+                            // 构建金币类型说明
+                            let coinTypeText = '';
+                            if (boundChange !== 0 || unboundChange !== 0) {
+                                // 有coin_change_log记录
+                                if (boundChange !== 0 && unboundChange !== 0) {
+                                    coinTypeText = `<div style="font-size: 12px; opacity: 0.7; margin-top: 5px;">绑定: ${Math.abs(boundChange)} | 非绑定: ${Math.abs(unboundChange)}</div>`;
+                                } else if (boundChange !== 0) {
+                                    coinTypeText = `<div style="font-size: 12px; opacity: 0.7; margin-top: 5px;">绑定金币</div>`;
+                                } else if (unboundChange !== 0) {
+                                    coinTypeText = `<div style="font-size: 12px; opacity: 0.7; margin-top: 5px;">非绑定金币</div>`;
+                                }
+                            } else if (cost > 0) {
+                                // 没有coin_change_log记录，但有cost，假设是旧数据，使用非绑定金币
+                                coinTypeText = `<div style="font-size: 12px; opacity: 0.7; margin-top: 5px; color: #888;">非绑定金币（历史记录）</div>`;
+                            }
+                            
+                            return `
+                                <div class="record-item">
+                                    <div class="record-header">
+                                        <span class="record-type">抽奖记录</span>
+                                        <span class="record-time">${new Date(record.created_at).toLocaleString()}</span>
+                                    </div>
+                                    <div class="record-details">
+                                        <div style="max-width: 400px; word-wrap: break-word;">结果: ${resultText}</div>
+                                        <div>
+                                            <div class="record-amount negative">-${cost} 金币</div>
+                                            ${coinTypeText}
+                                        </div>
+                                        <div>游戏类型: ${record.game_type}</div>
+                                        <div>记录ID: ${record.id}</div>
+                                    </div>
                                 </div>
-                                <div class="record-details">
-                                    <div>结果: ${record.result}</div>
-                                    <div class="record-amount negative">-${record.cost} 金币</div>
-                                    <div>游戏类型: ${record.game_type}</div>
-                                    <div>记录ID: ${record.id}</div>
-                                </div>
-                            </div>
-                        `).join('');
+                            `;
+                        }).join('');
                     }
                     
                     // 渲染抽奖记录分页
@@ -825,23 +939,48 @@
                     const transactionsList = document.getElementById('transactionsList');
                     const records = data.transactions;
                     
+                    console.log('交易记录数据:', records); // 调试信息
+                    
                     if (records.length === 0) {
                         transactionsList.innerHTML = '<p style="text-align: center; color: #ccc; padding: 20px;">暂无交易记录</p>';
                     } else {
                         transactionsList.innerHTML = records.map(record => {
-                            const amount = parseFloat(record.amount);
+                            const amount = parseFloat(record.amount || 0);
+                            const boundChange = parseFloat(record.bound_change || 0);
+                            const unboundChange = parseFloat(record.unbound_change || 0);
                             const isPositive = amount > 0;
+                            
+                            console.log('交易ID:', record.id, 'bound_change:', boundChange, 'unbound_change:', unboundChange); // 调试信息
+                            
+                            // 构建金币类型说明
+                            let coinTypeText = '';
+                            if (boundChange !== 0 || unboundChange !== 0) {
+                                // 有详细的金币变化记录
+                                if (boundChange !== 0 && unboundChange !== 0) {
+                                    coinTypeText = `<div style="font-size: 12px; opacity: 0.7; margin-top: 5px;">绑定: ${boundChange > 0 ? '+' : ''}${boundChange} | 非绑定: ${unboundChange > 0 ? '+' : ''}${unboundChange}</div>`;
+                                } else if (boundChange !== 0) {
+                                    coinTypeText = `<div style="font-size: 12px; opacity: 0.7; margin-top: 5px;">绑定金币</div>`;
+                                } else if (unboundChange !== 0) {
+                                    coinTypeText = `<div style="font-size: 12px; opacity: 0.7; margin-top: 5px;">非绑定金币</div>`;
+                                }
+                            } else if (amount !== 0) {
+                                // 没有详细记录，显示为历史记录
+                                coinTypeText = `<div style="font-size: 12px; opacity: 0.7; margin-top: 5px; color: #888;">金币类型未记录（历史数据）</div>`;
+                            }
                             
                             return `
                                 <div class="record-item">
                                     <div class="record-header">
-                                        <span class="record-type">${record.description}</span>
+                                        <span class="record-type">${record.description || '交易记录'}</span>
                                         <span class="record-time">${new Date(record.created_at).toLocaleString()}</span>
                                     </div>
                                     <div class="record-details">
-                                        <div>类型: ${record.type === 'income' ? '收入' : '支出'}</div>
-                                        <div class="record-amount ${isPositive ? 'positive' : 'negative'}">
-                                            ${isPositive ? '+' : ''}${amount} 金币
+                                        <div>类型: ${record.type || '未知'}</div>
+                                        <div>
+                                            <div class="record-amount ${isPositive ? 'positive' : 'negative'}">
+                                                ${isPositive ? '+' : ''}${amount.toFixed(2)} 金币
+                                            </div>
+                                            ${coinTypeText}
                                         </div>
                                         <div>交易ID: ${record.id}</div>
                                         <div></div>

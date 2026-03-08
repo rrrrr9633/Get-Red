@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>牛皮俱乐部</title>
+    <title>无敌俱乐部</title>
     <link rel="stylesheet" href="../../css/neon.css">
     <link rel="stylesheet" href="../../css/customer-service.css">
     <style>
@@ -15,11 +15,28 @@
 
         body {
             font-family: 'Arial', sans-serif;
-            background: linear-gradient(135deg, #0a0a0a 0%, #1a0a1a 50%, #0a1a0a 100%);
             color: #fff;
             min-height: 100vh;
             position: relative;
             overflow-x: hidden;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+        }
+        
+        /* 电脑端使用背景图片 */
+        @media (min-width: 769px) {
+            body {
+                background-image: url('../../images/7.png');
+            }
+        }
+        
+        /* 手机端使用渐变背景 */
+        @media (max-width: 768px) {
+            body {
+                background: linear-gradient(135deg, #0a0a0a 0%, #1a0a1a 50%, #0a1a0a 100%);
+            }
         }
 
         /* 粒子背景 */

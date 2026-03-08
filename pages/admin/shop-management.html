@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>牛皮俱乐部</title>
+    <title>无敌俱乐部</title>
     <script>
         // 超级管理员权限验证
         async function checkAdminAccess() {
@@ -510,8 +510,24 @@
                     </div>
                     
                     <div class="form-group">
-                        <label class="form-label">物品图片URL:</label>
-                        <input type="url" id="itemImageUrl" class="form-input" placeholder="https://example.com/image.jpg">
+                        <label class="form-label">物品图片:</label>
+                        <div style="margin-bottom: 10px;">
+                            <label style="display: inline-flex; align-items: center; margin-right: 20px; cursor: pointer;">
+                                <input type="radio" name="itemImageInputType" value="url" checked style="margin-right: 5px;">
+                                <span>URL地址</span>
+                            </label>
+                            <label style="display: inline-flex; align-items: center; cursor: pointer;">
+                                <input type="radio" name="itemImageInputType" value="file" style="margin-right: 5px;">
+                                <span>本地上传</span>
+                            </label>
+                        </div>
+                        <div id="itemUrlInputGroup">
+                            <input type="url" id="itemImageUrl" class="form-input" placeholder="https://example.com/image.jpg">
+                        </div>
+                        <div id="itemFileInputGroup" style="display: none;">
+                            <input type="file" id="itemImageFile" accept="image/*" class="form-input">
+                        </div>
+                        <div id="itemImagePreview" style="margin-top: 10px; text-align: center;"></div>
                     </div>
                     
                     <div class="form-group">
@@ -793,19 +809,27 @@
                         return;
                     }
                     
-                    listElement.innerHTML = data.icons.map(icon => `
-                        <div class="icon-card">
-                            <div class="icon-preview">
-                                ${icon.icon_url ? 
-                                    `<img src="${icon.icon_url}" alt="${icon.icon_name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-                                     <div style="font-size:80px;display:none;">${icon.fallback_icon || '🎁'}</div>` :
-                                    `<div style="font-size:80px;">${icon.fallback_icon || '🎁'}</div>`
-                                }
+                    listElement.innerHTML = data.icons.map(icon => {
+                        // 处理图片路径：如果是相对路径，添加../../前缀
+                        let imageSrc = icon.icon_url;
+                        if (imageSrc && !imageSrc.startsWith('http://') && !imageSrc.startsWith('https://') && !imageSrc.startsWith('data:')) {
+                            imageSrc = '../../' + imageSrc;
+                        }
+                        
+                        return `
+                            <div class="icon-card">
+                                <div class="icon-preview">
+                                    ${icon.icon_url ? 
+                                        `<img src="${imageSrc}" alt="${icon.icon_name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                                         <div style="font-size:80px;display:none;">${icon.fallback_icon || '🎁'}</div>` :
+                                        `<div style="font-size:80px;">${icon.fallback_icon || '🎁'}</div>`
+                                    }
+                                </div>
+                                <div class="icon-name">${icon.icon_name}</div>
+                                <button class="btn btn-edit" onclick="changeIcon('${icon.id}', '${icon.icon_name}')">更改图标</button>
                             </div>
-                            <div class="icon-name">${icon.icon_name}</div>
-                            <button class="btn btn-edit" onclick="changeIcon('${icon.id}', '${icon.icon_name}')">更改图标</button>
-                        </div>
-                    `).join('');
+                        `;
+                    }).join('');
                 } else {
                     listElement.innerHTML = `
                         <div class="empty-state">
@@ -877,6 +901,22 @@
                     document.getElementById('itemStock').value = item.stock;
                     document.getElementById('itemSortOrder').value = item.sort_order;
                     document.getElementById('itemActive').value = item.is_active;
+                    
+                    // 显示图片预览
+                    const preview = document.getElementById('itemImagePreview');
+                    if (preview && item.image_url) {
+                        preview.innerHTML = `<img src="../../${item.image_url}" alt="预览" style="max-width: 150px; max-height: 150px; border-radius: 8px; border: 2px solid #ffd700;">`;
+                    }
+                    
+                    // 重置图片输入方式为URL模式
+                    const urlRadio = document.querySelector('input[name="itemImageInputType"][value="url"]');
+                    if (urlRadio) {
+                        urlRadio.checked = true;
+                        const urlGroup = document.getElementById('itemUrlInputGroup');
+                        const fileGroup = document.getElementById('itemFileInputGroup');
+                        if (urlGroup) urlGroup.style.display = 'block';
+                        if (fileGroup) fileGroup.style.display = 'none';
+                    }
                     
                     // 切换到基本信息标签页
                     switchItemTab('basic');
@@ -1081,49 +1121,108 @@
 
         function closeItemModal() {
             document.getElementById('itemModal').style.display = 'none';
+            editingItemId = null;
+            
+            // 重置表单
+            document.getElementById('itemForm').reset();
+            const preview = document.getElementById('itemImagePreview');
+            if (preview) preview.innerHTML = '';
+            
+            // 重置图片输入方式为URL模式
+            const urlRadio = document.querySelector('input[name="itemImageInputType"][value="url"]');
+            if (urlRadio) {
+                urlRadio.checked = true;
+                const urlGroup = document.getElementById('itemUrlInputGroup');
+                const fileGroup = document.getElementById('itemFileInputGroup');
+                if (urlGroup) urlGroup.style.display = 'block';
+                if (fileGroup) fileGroup.style.display = 'none';
+            }
         }
 
         // 保存商品
         document.getElementById('itemForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
-            const formData = {
-                id: document.getElementById('itemId').value,
-                name: document.getElementById('itemName').value,
-                icon: document.getElementById('itemIcon').value,
-                image_url: document.getElementById('itemImageUrl').value,
-                description: document.getElementById('itemDescription').value,
-                price: parseFloat(document.getElementById('itemPrice').value),
-                item_type: document.getElementById('itemType').value,
-                rarity: document.getElementById('itemRarity').value,
-                stock: parseInt(document.getElementById('itemStock').value),
-                sort_order: parseInt(document.getElementById('itemSortOrder').value),
-                is_active: parseInt(document.getElementById('itemActive').value)
-            };
+            const imageInputType = document.querySelector('input[name="itemImageInputType"]:checked').value;
+            const imageFile = document.getElementById('itemImageFile').files[0];
+            const imageUrl = document.getElementById('itemImageUrl').value;
             
-            try {
-                const action = editingItemId ? 'update_item' : 'add_item';
-                const response = await fetch(`../../server/api/shop.php?action=${action}`, {
-                    method: editingItemId ? 'PUT' : 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    credentials: 'include',
-                    body: JSON.stringify(formData)
-                });
+            // 如果选择了文件上传，使用FormData
+            if (imageInputType === 'file' && imageFile) {
+                const formData = new FormData();
+                formData.append('id', document.getElementById('itemId').value);
+                formData.append('name', document.getElementById('itemName').value);
+                formData.append('icon', document.getElementById('itemIcon').value);
+                formData.append('image_file', imageFile);
+                formData.append('description', document.getElementById('itemDescription').value);
+                formData.append('price', document.getElementById('itemPrice').value);
+                formData.append('item_type', document.getElementById('itemType').value);
+                formData.append('rarity', document.getElementById('itemRarity').value);
+                formData.append('stock', document.getElementById('itemStock').value);
+                formData.append('sort_order', document.getElementById('itemSortOrder').value);
+                formData.append('is_active', document.getElementById('itemActive').value);
                 
-                const data = await response.json();
-                
-                if (data.success) {
-                    alert(editingItemId ? '商品更新成功' : '商品添加成功');
-                    closeItemModal();
-                    loadItems(formData.item_type);
-                } else {
-                    alert('保存失败: ' + data.error);
+                try {
+                    const action = editingItemId ? 'update_item' : 'add_item';
+                    const response = await fetch(`../../server/api/shop.php?action=${action}`, {
+                        method: 'POST',
+                        credentials: 'include',
+                        body: formData
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        alert(editingItemId ? '商品更新成功' : '商品添加成功');
+                        closeItemModal();
+                        loadItems(document.getElementById('itemType').value);
+                    } else {
+                        alert('保存失败: ' + data.error);
+                    }
+                } catch (error) {
+                    console.error('保存商品失败:', error);
+                    alert('网络错误');
                 }
-            } catch (error) {
-                console.error('保存商品失败:', error);
-                alert('网络错误');
+            } else {
+                // 使用URL方式，保持原有的JSON格式
+                const formData = {
+                    id: document.getElementById('itemId').value,
+                    name: document.getElementById('itemName').value,
+                    icon: document.getElementById('itemIcon').value,
+                    image_url: imageUrl,
+                    description: document.getElementById('itemDescription').value,
+                    price: parseFloat(document.getElementById('itemPrice').value),
+                    item_type: document.getElementById('itemType').value,
+                    rarity: document.getElementById('itemRarity').value,
+                    stock: parseInt(document.getElementById('itemStock').value),
+                    sort_order: parseInt(document.getElementById('itemSortOrder').value),
+                    is_active: parseInt(document.getElementById('itemActive').value)
+                };
+                
+                try {
+                    const action = editingItemId ? 'update_item' : 'add_item';
+                    const response = await fetch(`../../server/api/shop.php?action=${action}`, {
+                        method: editingItemId ? 'PUT' : 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        credentials: 'include',
+                        body: JSON.stringify(formData)
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        alert(editingItemId ? '商品更新成功' : '商品添加成功');
+                        closeItemModal();
+                        loadItems(formData.item_type);
+                    } else {
+                        alert('保存失败: ' + data.error);
+                    }
+                } catch (error) {
+                    console.error('保存商品失败:', error);
+                    alert('网络错误');
+                }
             }
         });
 
@@ -1216,6 +1315,8 @@
 
         // 显示图标编辑模态框
         function showIconEditModal(icon) {
+            console.log('打开图标编辑模态框:', icon);
+            
             document.getElementById('iconEditModalTitle').textContent = '编辑图标 - ' + icon.icon_name;
             document.getElementById('iconEditId').value = icon.id;
             document.getElementById('iconEditKey').value = icon.icon_key || '';
@@ -1226,6 +1327,17 @@
             
             // 显示模态框
             document.getElementById('iconEditModal').style.display = 'flex';
+            
+            // 重置单选按钮和输入框显示
+            document.querySelector('input[name="iconInputType"][value="url"]').checked = true;
+            document.getElementById('iconUrlInput').style.display = 'block';
+            document.getElementById('iconFileInput').style.display = 'none';
+            document.getElementById('iconEditFile').value = '';
+            
+            // 初始化事件监听器
+            setTimeout(() => {
+                initIconEditListeners();
+            }, 100);
             
             // 更新预览
             updateIconPreview();
@@ -1244,7 +1356,14 @@
             const previewEmoji = document.getElementById('iconPreviewEmoji');
             
             if (url) {
-                previewImg.src = url;
+                // 如果是相对路径，添加../../前缀
+                let imageSrc = url;
+                if (!url.startsWith('http://') && !url.startsWith('https://') && !url.startsWith('data:')) {
+                    // 相对路径，需要根据当前页面位置调整
+                    imageSrc = '../../' + url;
+                }
+                
+                previewImg.src = imageSrc;
                 previewImg.style.display = 'block';
                 previewEmoji.style.display = 'none';
                 
@@ -1261,53 +1380,241 @@
             }
         }
 
-        // 保存图标配置
-        document.getElementById('iconEditForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            const formData = {
-                id: document.getElementById('iconEditId').value,
-                icon_key: document.getElementById('iconEditKey').value,
-                icon_url: document.getElementById('iconEditUrl').value,
-                fallback_icon: document.getElementById('iconEditFallback').value,
-                description: document.getElementById('iconEditDescription').value
-            };
-            
-            try {
-                const response = await fetch('../../server/api/admin.php?action=update_shop_icon', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    credentials: 'include',
-                    body: JSON.stringify(formData)
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    alert('图标更新成功！');
-                    closeIconEditModal();
-                    loadIcons();
-                } else {
-                    alert('保存失败: ' + data.error);
-                }
-            } catch (error) {
-                console.error('保存图标失败:', error);
-                alert('网络错误');
+        // 保存图标配置 - 改进版本，添加调试和错误处理
+        let formSubmitHandlerBound = false;
+        
+        function setupFormSubmitHandler() {
+            if (formSubmitHandlerBound) {
+                console.log('表单提交处理器已绑定，跳过');
+                return;
             }
+            
+            const form = document.getElementById('iconEditForm');
+            if (!form) {
+                console.error('找不到iconEditForm表单');
+                return;
+            }
+            
+            form.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                console.log('=== 表单提交开始 ===');
+                
+                const inputType = document.querySelector('input[name="iconInputType"]:checked')?.value;
+                const fileInput = document.getElementById('iconEditFile');
+                
+                console.log('输入类型:', inputType);
+                console.log('是否有文件:', fileInput?.files?.length > 0);
+                
+                // 如果选择了文件上传
+                if (inputType === 'upload' && fileInput?.files && fileInput.files[0]) {
+                    console.log('使用文件上传模式，文件名:', fileInput.files[0].name);
+                    
+                    const formData = new FormData();
+                    formData.append('action', 'update_shop_icon');
+                    formData.append('id', document.getElementById('iconEditId').value);
+                    formData.append('icon_key', document.getElementById('iconEditKey').value);
+                    formData.append('fallback_icon', document.getElementById('iconEditFallback').value);
+                    formData.append('description', document.getElementById('iconEditDescription').value);
+                    formData.append('icon_image', fileInput.files[0]);
+                    
+                    try {
+                        console.log('发送文件上传请求...');
+                        const response = await fetch('../../server/api/admin.php', {
+                            method: 'POST',
+                            credentials: 'include',
+                            body: formData
+                        });
+                        
+                        const responseText = await response.text();
+                        console.log('服务器原始响应:', responseText);
+                        
+                        const data = JSON.parse(responseText);
+                        console.log('解析后的响应:', data);
+                        
+                        if (data.success) {
+                            alert('图标更新成功！');
+                            closeIconEditModal();
+                            loadIcons();
+                        } else {
+                            alert('保存失败: ' + (data.error || '未知错误'));
+                        }
+                    } catch (error) {
+                        console.error('保存图标失败:', error);
+                        alert('网络错误: ' + error.message);
+                    }
+                } else {
+                    console.log('使用URL/相对路径模式');
+                    
+                    // 使用URL/相对路径
+                    const formData = {
+                        id: document.getElementById('iconEditId').value,
+                        icon_key: document.getElementById('iconEditKey').value,
+                        icon_url: document.getElementById('iconEditUrl').value,
+                        fallback_icon: document.getElementById('iconEditFallback').value,
+                        description: document.getElementById('iconEditDescription').value
+                    };
+                    
+                    console.log('提交的数据:', formData);
+                    
+                    try {
+                        console.log('发送URL更新请求...');
+                        const response = await fetch('../../server/api/admin.php?action=update_shop_icon', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            credentials: 'include',
+                            body: JSON.stringify(formData)
+                        });
+                        
+                        const responseText = await response.text();
+                        console.log('服务器原始响应:', responseText);
+                        
+                        const data = JSON.parse(responseText);
+                        console.log('解析后的响应:', data);
+                        
+                        if (data.success) {
+                            alert('图标更新成功！');
+                            closeIconEditModal();
+                            loadIcons();
+                        } else {
+                            alert('保存失败: ' + (data.error || '未知错误'));
+                        }
+                    } catch (error) {
+                        console.error('保存图标失败:', error);
+                        alert('网络错误: ' + error.message);
+                    }
+                }
+            });
+            
+            formSubmitHandlerBound = true;
+            console.log('表单提交处理器绑定成功');
+        }
+        
+        // 页面加载时绑定
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('页面加载完成，准备绑定表单');
+            setTimeout(setupFormSubmitHandler, 500);
+            
+            // 初始化物品图片上传监听器
+            initItemImageListeners();
         });
+        
+        // 初始化物品图片上传监听器
+        function initItemImageListeners() {
+            const radioButtons = document.querySelectorAll('input[name="itemImageInputType"]');
+            const urlInput = document.getElementById('itemImageUrl');
+            const fileInput = document.getElementById('itemImageFile');
+            const preview = document.getElementById('itemImagePreview');
+            
+            // 检查元素是否存在
+            if (!urlInput || !fileInput || !preview) {
+                console.warn('物品图片上传元素未找到，跳过初始化');
+                return;
+            }
+            
+            // 监听单选按钮切换
+            radioButtons.forEach(radio => {
+                radio.addEventListener('change', function() {
+                    const urlGroup = document.getElementById('itemUrlInputGroup');
+                    const fileGroup = document.getElementById('itemFileInputGroup');
+                    
+                    if (this.value === 'url') {
+                        urlGroup.style.display = 'block';
+                        fileGroup.style.display = 'none';
+                        fileInput.value = '';
+                        urlInput.disabled = false;
+                        // 不清空预览，保持当前显示的图片
+                    } else {
+                        urlGroup.style.display = 'none';
+                        fileGroup.style.display = 'block';
+                        urlInput.disabled = true;
+                        // 切换到文件上传时，不清空URL和预览，让用户可以看到当前图片
+                    }
+                });
+            });
+            
+            // URL输入预览
+            if (urlInput) {
+                urlInput.addEventListener('input', function() {
+                    const url = this.value;
+                    if (url) {
+                        preview.innerHTML = `<img src="${url}" alt="预览" style="max-width: 150px; max-height: 150px; border-radius: 8px; border: 2px solid #ffd700;" onerror="this.style.display='none'">`;
+                    } else {
+                        preview.innerHTML = '';
+                    }
+                });
+            }
+            
+            // 文件上传预览
+            if (fileInput) {
+                fileInput.addEventListener('change', function() {
+                    const file = this.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            preview.innerHTML = `<img src="${e.target.result}" alt="预览" style="max-width: 150px; max-height: 150px; border-radius: 8px; border: 2px solid #ffd700;">`;
+                        };
+                        reader.readAsDataURL(file);
+                    } else {
+                        preview.innerHTML = '';
+                    }
+                });
+            }
+        }
 
         // 初始化输入监听
         function initIconEditListeners() {
             const urlInput = document.getElementById('iconEditUrl');
             const fallbackInput = document.getElementById('iconEditFallback');
+            const fileInput = document.getElementById('iconEditFile');
+            const radioButtons = document.querySelectorAll('input[name="iconInputType"]');
+            
+            // 添加空值检查
+            if (!urlInput || !fallbackInput || !fileInput || radioButtons.length === 0) {
+                console.warn('图标编辑元素未找到，跳过初始化');
+                return;
+            }
+            
+            // 监听单选按钮切换
+            radioButtons.forEach(radio => {
+                radio.addEventListener('change', function() {
+                    const urlDiv = document.getElementById('iconUrlInput');
+                    const fileDiv = document.getElementById('iconFileInput');
+                    
+                    if (this.value === 'url') {
+                        urlDiv.style.display = 'block';
+                        fileDiv.style.display = 'none';
+                        fileInput.value = '';
+                    } else {
+                        urlDiv.style.display = 'none';
+                        fileDiv.style.display = 'block';
+                        urlInput.value = '';
+                    }
+                    updateIconPreview();
+                });
+            });
             
             if (urlInput) {
                 urlInput.addEventListener('input', updateIconPreview);
             }
             if (fallbackInput) {
                 fallbackInput.addEventListener('input', updateIconPreview);
+            }
+            if (fileInput) {
+                fileInput.addEventListener('change', function() {
+                    if (this.files && this.files[0]) {
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            const previewImg = document.getElementById('iconPreviewImg');
+                            const previewEmoji = document.getElementById('iconPreviewEmoji');
+                            previewImg.src = e.target.result;
+                            previewImg.style.display = 'block';
+                            previewEmoji.style.display = 'none';
+                        };
+                        reader.readAsDataURL(this.files[0]);
+                    }
+                });
             }
         }
 
@@ -1331,9 +1638,27 @@
                 </div>
                 
                 <div class="form-group">
-                    <label class="form-label">图标图片URL:</label>
-                    <input type="url" id="iconEditUrl" class="form-input" placeholder="https://example.com/image.png">
-                    <small style="color:#888;font-size:12px;">留空则使用备用图标（Emoji）</small>
+                    <label class="form-label">图标图片:</label>
+                    <div style="margin-bottom:10px;">
+                        <label style="display:inline-flex;align-items:center;margin-right:15px;">
+                            <input type="radio" name="iconInputType" value="url" checked style="margin-right:5px;">
+                            <span>输入URL/相对路径</span>
+                        </label>
+                        <label style="display:inline-flex;align-items:center;">
+                            <input type="radio" name="iconInputType" value="upload" style="margin-right:5px;">
+                            <span>上传图片</span>
+                        </label>
+                    </div>
+                    
+                    <div id="iconUrlInput" style="display:block;">
+                        <input type="text" id="iconEditUrl" class="form-input" placeholder="https://example.com/image.png 或 images/shop/icon.png">
+                        <small style="color:#888;font-size:12px;">支持完整URL或相对路径（如：images/shop/icon.png），留空则使用备用图标</small>
+                    </div>
+                    
+                    <div id="iconFileInput" style="display:none;">
+                        <input type="file" id="iconEditFile" class="form-input" accept="image/*">
+                        <small style="color:#888;font-size:12px;">上传的图片将保存到 images/shop/ 目录</small>
+                    </div>
                 </div>
                 
                 <div class="form-group">

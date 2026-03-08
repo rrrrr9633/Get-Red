@@ -3,10 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>牛皮俱乐部</title>
+    <title>无敌俱乐部</title>
     <link rel="stylesheet" href="../../css/style.css">
     <link rel="stylesheet" href="../../css/neon.css">
     <link rel="stylesheet" href="../../css/customer-service.css">
+    <style>
+        /* 电脑端使用背景图片 */
+        @media (min-width: 769px) {
+            body {
+                background-image: url('../../images/6.png');
+                background-size: cover;
+                background-position: center;
+                background-repeat: no-repeat;
+                background-attachment: fixed;
+            }
+        }
+    </style>
 </head>
 <body>
     <div class="particles"></div>
@@ -14,7 +26,7 @@
     <!-- 导航栏 -->
     <nav class="navbar">
         <div class="nav-brand">
-            <h1 class="neon-text gold" onclick="goToHome()" style="cursor: pointer;" title="返回主页">牛皮俱乐部</h1>
+            <h1 class="neon-text gold" onclick="goToHome()" style="cursor: pointer;" title="返回主页">无敌俱乐部</h1>
         </div>
         
         <div class="nav-user">
@@ -1301,6 +1313,8 @@
                 container.innerHTML = transactions.map(transaction => {
                     const date = new Date(transaction.created_at).toLocaleString();
                     const amount = parseFloat(transaction.amount);
+                    const boundChange = parseFloat(transaction.bound_change || 0);
+                    const unboundChange = parseFloat(transaction.unbound_change || 0);
                     const amountClass = amount > 0 ? 'green' : 'red';
                     const amountText = amount > 0 ? `+${amount}` : amount;
                     
@@ -1319,6 +1333,16 @@
                         statusText = ` (${statusMap[transaction.status] || transaction.status})`;
                     }
                     
+                    // 构建金币类型说明
+                    let coinTypeText = '';
+                    if (boundChange !== 0 && unboundChange !== 0) {
+                        coinTypeText = `<div style="font-size: 11px; opacity: 0.7; margin-top: 3px;">绑定: ${boundChange > 0 ? '+' : ''}${boundChange} | 非绑定: ${unboundChange > 0 ? '+' : ''}${unboundChange}</div>`;
+                    } else if (boundChange !== 0) {
+                        coinTypeText = `<div style="font-size: 11px; opacity: 0.7; margin-top: 3px;">绑定金币</div>`;
+                    } else if (unboundChange !== 0) {
+                        coinTypeText = `<div style="font-size: 11px; opacity: 0.7; margin-top: 3px;">非绑定金币</div>`;
+                    }
+                    
                     return `
                         <div class="transaction-item">
                             <div>
@@ -1327,8 +1351,11 @@
                                     ${date}
                                 </div>
                             </div>
-                            <div class="neon-text ${amountClass}">
-                                ${amountText} 金币
+                            <div>
+                                <div class="neon-text ${amountClass}">
+                                    ${amountText} 金币
+                                </div>
+                                ${coinTypeText}
                             </div>
                         </div>
                     `;

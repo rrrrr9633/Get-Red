@@ -565,7 +565,15 @@ function addShopItem($pdo) {
         return;
     }
     
-    $input = json_decode(file_get_contents('php://input'), true);
+    // 检查是否是文件上传
+    $isFileUpload = isset($_FILES['image_file']) && $_FILES['image_file']['error'] === UPLOAD_ERR_OK;
+    
+    // 如果是文件上传，从$_POST获取数据；否则从JSON获取
+    if ($isFileUpload) {
+        $input = $_POST;
+    } else {
+        $input = json_decode(file_get_contents('php://input'), true);
+    }
     
     if (!isset($input['name']) || !isset($input['price']) || !isset($input['item_type'])) {
         http_response_code(400);
@@ -574,6 +582,32 @@ function addShopItem($pdo) {
     }
     
     try {
+        // 处理图片上传
+        $imageUrl = '';
+        if ($isFileUpload) {
+            $file = $_FILES['image_file'];
+            $uploadDir = dirname(__DIR__, 2) . '/images/shop/';
+            
+            // 确保上传目录存在
+            if (!file_exists($uploadDir)) {
+                mkdir($uploadDir, 0755, true);
+            }
+            
+            // 生成唯一文件名（使用时间戳+唯一ID避免重复）
+            $fileExtension = pathinfo($file['name'], PATHINFO_EXTENSION);
+            $fileName = 'item_' . time() . '_' . uniqid() . '.' . $fileExtension;
+            $filePath = $uploadDir . $fileName;
+            
+            // 移动上传的文件
+            if (move_uploaded_file($file['tmp_name'], $filePath)) {
+                $imageUrl = 'images/shop/' . $fileName;
+            } else {
+                throw new Exception('文件上传失败');
+            }
+        } else {
+            $imageUrl = $input['image_url'] ?? '';
+        }
+        
         $stmt = $pdo->prepare("
             INSERT INTO shop_items 
             (name, icon, image_url, description, price, item_type, rarity, stock, is_active, sort_order)
@@ -582,7 +616,7 @@ function addShopItem($pdo) {
         $stmt->execute([
             $input['name'],
             $input['icon'] ?? '🎁',
-            $input['image_url'] ?? '',
+            $imageUrl,
             $input['description'] ?? '',
             $input['price'],
             $input['item_type'],
@@ -610,7 +644,15 @@ function updateShopItem($pdo) {
         return;
     }
     
-    $input = json_decode(file_get_contents('php://input'), true);
+    // 检查是否是文件上传（POST请求）
+    $isFileUpload = isset($_FILES['image_file']) && $_FILES['image_file']['error'] === UPLOAD_ERR_OK;
+    
+    // 如果是文件上传，从$_POST获取数据；否则从JSON获取
+    if ($isFileUpload) {
+        $input = $_POST;
+    } else {
+        $input = json_decode(file_get_contents('php://input'), true);
+    }
     
     if (!isset($input['id'])) {
         http_response_code(400);
@@ -619,6 +661,46 @@ function updateShopItem($pdo) {
     }
     
     try {
+        // 获取当前商品的图片URL
+        $stmt = $pdo->prepare("SELECT image_url FROM shop_items WHERE id = ?");
+        $stmt->execute([$input['id']]);
+        $currentItem = $stmt->fetch(PDO::FETCH_ASSOC);
+        $currentImageUrl = $currentItem['image_url'] ?? '';
+        
+        // 处理图片上传
+        $imageUrl = $currentImageUrl; // 默认保持原有图片
+        if ($isFileUpload) {
+            $file = $_FILES['image_file'];
+            $uploadDir = dirname(__DIR__, 2) . '/images/shop/';
+            
+            // 确保上传目录存在
+            if (!file_exists($uploadDir)) {
+                mkdir($uploadDir, 0755, true);
+            }
+            
+            // 生成唯一文件名（使用时间戳+唯一ID避免重复）
+            $fileExtension = pathinfo($file['name'], PATHINFO_EXTENSION);
+            $fileName = 'item_' . time() . '_' . uniqid() . '.' . $fileExtension;
+            $filePath = $uploadDir . $fileName;
+            
+            // 移动上传的文件
+            if (move_uploaded_file($file['tmp_name'], $filePath)) {
+                $imageUrl = 'images/shop/' . $fileName;
+                
+                // 删除旧图片（如果存在且是本地文件）
+                if ($currentImageUrl && strpos($currentImageUrl, 'images/shop/item_') === 0) {
+                    $oldFilePath = dirname(__DIR__, 2) . '/' . $currentImageUrl;
+                    if (file_exists($oldFilePath)) {
+                        unlink($oldFilePath);
+                    }
+                }
+            } else {
+                throw new Exception('文件上传失败');
+            }
+        } else if (isset($input['image_url'])) {
+            $imageUrl = $input['image_url'];
+        }
+        
         $stmt = $pdo->prepare("
             UPDATE shop_items 
             SET name = ?, icon = ?, image_url = ?, description = ?, 
@@ -629,7 +711,7 @@ function updateShopItem($pdo) {
         $stmt->execute([
             $input['name'],
             $input['icon'] ?? '🎁',
-            $input['image_url'] ?? '',
+            $imageUrl,
             $input['description'] ?? '',
             $input['price'],
             $input['item_type'],

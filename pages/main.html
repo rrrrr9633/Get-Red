@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>牛皮俱乐部</title>
+    <title>无敌俱乐部</title>
     <link rel="stylesheet" href="../css/colors.css">
     <link rel="stylesheet" href="../css/style.css">
     <link rel="stylesheet" href="../css/neon.css">
@@ -33,7 +33,7 @@
     <!-- 导航栏 -->
     <nav class="navbar">
         <div class="nav-brand">
-            <h1 class="neon-text gold" onclick="goToHome()" style="cursor: pointer;" title="返回主页">牛皮俱乐部</h1>
+            <h1 class="neon-text gold" onclick="goToHome()" style="cursor: pointer;" title="返回主页">无敌俱乐部</h1>
             
             <!-- 模块切换 -->
             <div class="module-switcher">
@@ -84,7 +84,7 @@
         <!-- 幸运抽奖模块 -->
         <div id="luckyModule" class="module-content active">
             <div class="welcome-section">
-                <h2 id="welcomeTitle" class="neon-text rainbow">欢迎来到牛皮俱乐部</h2>
+                <h2 id="welcomeTitle" class="neon-text rainbow">欢迎来到无敌俱乐部</h2>
                 <p class="neon-text">选择您喜欢的游戏模式，开始您的幸运之旅！</p>
             </div>
 
@@ -108,13 +108,52 @@
     </div>
 
     <style>
+        body {
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            position: relative;
+        }
+        
+        /* 电脑端使用背景图片 */
+        @media (min-width: 769px) {
+            body {
+                background-image: url('../images/1.jpg');
+            }
+        }
+        
+        /* 手机端使用渐变背景 */
+        @media (max-width: 768px) {
+            body {
+                background-image: none;
+                background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
+            }
+        }
+        
+        /* 添加半透明遮罩层以提高内容可读性 */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.4);
+            z-index: -1;
+        }
+        
         .navbar {
             position: fixed;
             top: 0;
             left: 0;
             right: 0;
             height: 70px;
-            background: var(--bg-secondary);
+            background: rgba(26, 31, 46, 0.85);
+            backdrop-filter: blur(10px);
             border-bottom: 1px solid var(--border-green);
             display: flex;
             justify-content: space-between;
@@ -445,7 +484,8 @@
         
         .shop-card {
             position: relative;
-            background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
+            background: linear-gradient(135deg, rgba(26, 31, 46, 0.9) 0%, rgba(31, 41, 55, 0.9) 100%);
+            backdrop-filter: blur(10px);
             border: 1px solid var(--border-green);
             border-radius: 16px;
             padding: 0;
@@ -637,7 +677,8 @@
         
         .game-card {
             position: relative;
-            background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
+            background: linear-gradient(135deg, rgba(26, 31, 46, 0.9) 0%, rgba(31, 41, 55, 0.9) 100%);
+            backdrop-filter: blur(10px);
             border: 1px solid var(--border-green);
             border-radius: 16px;
             padding: 0;
@@ -755,6 +796,10 @@
         }
         
         @media (max-width: 768px) {
+            body::before {
+                display: none;
+            }
+            
             .navbar {
                 padding: 0 6px;
                 height: 50px;
@@ -1315,25 +1360,33 @@
         function renderShopCards(icons) {
             const container = document.getElementById('shopCategoriesGrid');
             
-            container.innerHTML = icons.map(icon => `
-                <div class="shop-card" onclick="navigateToShop('${icon.icon_key}')">
-                    <div class="shop-card-image">
-                        ${icon.icon_url ? 
-                            `<img src="${icon.icon_url}" alt="${icon.icon_name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-                             <div class="shop-card-icon" style="display: none;">${icon.fallback_icon}</div>` :
-                            `<div class="shop-card-icon">${icon.fallback_icon}</div>`
-                        }
+            container.innerHTML = icons.map(icon => {
+                // 处理图片路径：如果是相对路径，添加../前缀
+                let imageSrc = icon.icon_url;
+                if (imageSrc && !imageSrc.startsWith('http://') && !imageSrc.startsWith('https://') && !imageSrc.startsWith('data:')) {
+                    imageSrc = '../' + imageSrc;
+                }
+                
+                return `
+                    <div class="shop-card" onclick="navigateToShop('${icon.icon_key}')">
+                        <div class="shop-card-image">
+                            ${icon.icon_url ? 
+                                `<img src="${imageSrc}" alt="${icon.icon_name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                                 <div class="shop-card-icon" style="display: none;">${icon.fallback_icon}</div>` :
+                                `<div class="shop-card-icon">${icon.fallback_icon}</div>`
+                            }
+                        </div>
+                        <div class="shop-card-content">
+                            <h3 class="neon-text">${icon.icon_name}</h3>
+                            <p class="neon-text">${icon.description || ''}</p>
+                        </div>
+                        <button class="shop-btn">
+                            <span class="btn-text">立即查看</span>
+                            <span class="btn-arrow">→</span>
+                        </button>
                     </div>
-                    <div class="shop-card-content">
-                        <h3 class="neon-text">${icon.icon_name}</h3>
-                        <p class="neon-text">${icon.description || ''}</p>
-                    </div>
-                    <button class="shop-btn">
-                        <span class="btn-text">立即查看</span>
-                        <span class="btn-arrow">→</span>
-                    </button>
-                </div>
-            `).join('');
+                `;
+            }).join('');
         }
 
         // 渲染默认商店卡片（备用）
@@ -1434,30 +1487,72 @@
         // 加载Lucky页面列表
         async function loadLuckyPages() {
             try {
-                const response = await fetch('../server/api/admin.php?action=list_lucky_pages');
+                // 使用新的合并接口
+                const response = await fetch('../server/api/admin.php?action=list_lucky_pages_merged');
                 const data = await response.json();
                 
-                if (data.success && data.pages) {
-                    renderLuckyPages(data.pages);
+                if (data.success && data.items) {
+                    renderLuckyPagesMerged(data.items);
                 } else {
                     // fallback到默认页面
                     renderLuckyPages([
-                        {fileName: "lucky1.html", displayName: "大红行动", icon: "🍎"},
-                        {fileName: "lucky2.html", displayName: "大红行动2", icon: "🍎"},
-                        {fileName: "lucky3.html", displayName: "大红行动3", icon: "🍎"},
-                        {fileName: "lucky4.html", displayName: "大红行动4", icon: "🍎"}
+                        {fileName: "lucky1.html", displayName: "大红行动", icon: "🍎"}
                     ]);
                 }
             } catch (error) {
                 console.error('加载Lucky页面失败:', error);
                 // fallback到默认页面
                 renderLuckyPages([
-                    {fileName: "lucky1.html", displayName: "大红行动", icon: "🍎"},
-                    {fileName: "lucky2.html", displayName: "大红行动2", icon: "🍎"},
-                    {fileName: "lucky3.html", displayName: "大红行动3", icon: "🍎"},
-                    {fileName: "lucky4.html", displayName: "大红行动4", icon: "🍎"}
+                    {fileName: "lucky1.html", displayName: "大红行动", icon: "🍎"}
                 ]);
             }
+        }
+
+        // 渲染合并后的Lucky页面
+        function renderLuckyPagesMerged(items) {
+            const gameGrid = document.getElementById('gameGrid');
+            gameGrid.innerHTML = '';
+            
+            console.log('Lucky页面数据（合并）:', items);
+            
+            items.forEach(function(item) {
+                const gameCard = document.createElement('div');
+                gameCard.className = 'game-card';
+                
+                // 点击进入fileName指定的页面
+                gameCard.onclick = function() { navigateToGame(item.fileName); };
+                
+                // 构建卡片内容
+                let cardContent = '<div class="card-glow"></div>';
+                
+                // 获取描述文本
+                const description = item.description || '抽取心爱的大红';
+                
+                // 如果有缩略图，显示图片；否则显示icon
+                if (item.thumbImage) {
+                    cardContent += `
+                        <div class="card-thumb">
+                            <img src="../${item.thumbImage}" alt="${item.displayName}" 
+                                 onerror="console.error('图片加载失败:', this.src); this.style.display='none'; this.parentElement.innerHTML='<div class=\\'card-icon\\'>${item.icon || '🍎'}</div>';" />
+                        </div>
+                        <div class="card-content">
+                            <h3>${item.displayName}</h3>
+                            <p>${description}</p>
+                        </div>
+                    `;
+                } else {
+                    cardContent += `
+                        <div class="card-icon">${item.icon || '🍎'}</div>
+                        <div class="card-content">
+                            <h3>${item.displayName}</h3>
+                            <p>${description}</p>
+                        </div>
+                    `;
+                }
+                
+                gameCard.innerHTML = cardContent;
+                gameGrid.appendChild(gameCard);
+            });
         }
 
         // 渲染Lucky页面卡片
@@ -1465,7 +1560,11 @@
             const gameGrid = document.getElementById('gameGrid');
             gameGrid.innerHTML = '';
             
+            console.log('Lucky页面数据:', pages); // 调试信息
+            
             pages.forEach(function(page, index) {
+                console.log('处理页面:', page.fileName, '缩略图路径:', page.thumbImage); // 调试信息
+                
                 const gameCard = document.createElement('div');
                 gameCard.className = 'game-card';
                 gameCard.onclick = function() { navigateToGame(page.fileName); };
@@ -1480,7 +1579,7 @@
                 if (page.thumbImage) {
                     cardContent += `
                         <div class="card-thumb">
-                            <img src="../${page.thumbImage}" alt="${page.displayName}" />
+                            <img src="${page.thumbImage}" alt="${page.displayName}" onerror="console.error('图片加载失败:', this.src); this.style.display='none'; this.parentElement.innerHTML='<div class=\\'card-icon\\'>${page.icon || '🍎'}</div>';" />
                         </div>
                         <div class="card-content">
                             <h3>${page.displayName || page.fileName}</h3>

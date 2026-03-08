@@ -3,10 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>牛皮俱乐部</title>
+    <title>无敌俱乐部</title>
     <link rel="stylesheet" href="../../css/style.css">
     <link rel="stylesheet" href="../../css/neon.css">
     <link rel="stylesheet" href="../../css/customer-service.css">
+    <style>
+        /* 电脑端使用背景图片 */
+        @media (min-width: 769px) {
+            body {
+                background-image: url('../../images/9.png');
+                background-size: cover;
+                background-position: center;
+                background-repeat: no-repeat;
+                background-attachment: fixed;
+            }
+        }
+    </style>
 </head>
 <body>
     <div class="particles"></div>
@@ -14,7 +26,7 @@
     <!-- 导航栏 -->
     <nav class="navbar">
         <div class="nav-brand">
-            <h1 class="neon-text gold" onclick="goToHome()" style="cursor: pointer;" title="返回主页">牛皮俱乐部</h1>
+            <h1 class="neon-text gold" onclick="goToHome()" style="cursor: pointer;" title="返回主页">无敌俱乐部</h1>
         </div>
         
         <div class="nav-user">
@@ -43,7 +55,7 @@
     <div class="container">
         <div class="header">
             <h2 class="neon-text rainbow">我的仓库</h2>
-            <p class="neon-text">管理您获得的所有物品，可以分解获得金币</p>
+            <p class="neon-text">管理您获得的所有物品，可以分解获得<span style="color: #4ade80;">绑定金币</span>（不能用于抽奖）</p>
         </div>
 
         <!-- 操作工具栏 -->
@@ -74,11 +86,22 @@
             </div>
             <div class="stat-card">
                 <div class="stat-value" id="totalValue">0.00</div>
-                <div class="stat-label neon-text">总价值</div>
+                <div class="stat-label neon-text">总价值（绑定金币）</div>
             </div>
             <div class="stat-card">
                 <div class="stat-value" id="selectedValue">0.00</div>
-                <div class="stat-label neon-text">选中价值</div>
+                <div class="stat-label neon-text">选中价值（绑定金币）</div>
+            </div>
+        </div>
+        
+        <!-- 金币类型提示 -->
+        <div style="margin: 15px 20px; padding: 12px 15px; background: rgba(255,165,0,0.15); border-left: 4px solid #ffa500; border-radius: 8px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="font-size: 20px;">💡</span>
+                <div style="flex: 1;">
+                    <div class="neon-text" style="font-size: 14px; color: #ffa500; margin-bottom: 3px;">温馨提示</div>
+                    <div style="font-size: 13px; opacity: 0.9; color: #fff;">分解物品获得的是<span style="color: #4ade80; font-weight: bold;">绑定金币</span>，只能在商城兑换物品，不能用于抽奖</div>
+                </div>
             </div>
         </div>
 
@@ -972,7 +995,15 @@
             }
             
             info.innerHTML = displayContent + `
-                <div class="neon-text">将获得金币: <span class="neon-text green">${totalValue.toFixed(2)}</span></div>
+                <div style="margin: 15px 0; padding: 15px; background: rgba(255,215,0,0.1); border-radius: 10px; border: 1px solid rgba(255,215,0,0.3);">
+                    <div class="neon-text gold" style="font-size: 16px; margin-bottom: 8px;">
+                        💰 将获得金币: <span style="font-size: 18px; font-weight: bold;">${totalValue.toFixed(2)}</span>
+                    </div>
+                    <div style="font-size: 13px; opacity: 0.8; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,215,0,0.2);">
+                        <div style="color: #ffd700; margin-bottom: 5px;">📌 金币类型: <span style="color: #4ade80;">绑定金币</span></div>
+                        <div style="color: #ffa500;">⚠️ 绑定金币不能用于抽奖，只能在商城兑换物品</div>
+                    </div>
+                </div>
             `;
             
             modal.classList.add('show');
@@ -1029,7 +1060,7 @@
                     updateBatchButtons();
                     loadUserInfo(); // 刷新用户余额
                     
-                    alert(`成功分解 ${itemCount} 件物品，获得 ${totalValue.toFixed(2)} 金币！`);
+                    alert(`✅ 成功分解 ${itemCount} 件物品\n\n💰 获得 ${totalValue.toFixed(2)} 绑定金币\n\n📌 绑定金币只能在商城兑换物品，不能用于抽奖`);
                 } else {
                     alert('分解失败: ' + (result.message || '未知错误'));
                 }

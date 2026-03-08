@@ -23,7 +23,7 @@ $database = new Database();
 $db = $database->getConnection();
 
 $input = json_decode(file_get_contents('php://input'), true) ?: [];
-$action = $input['action'] ?? $_GET['action'] ?? '';
+$action = $input['action'] ?? $_POST['action'] ?? $_GET['action'] ?? '';
 
 switch ($action) {
     case 'users':
@@ -127,6 +127,33 @@ switch ($action) {
         break;
     case 'monitor_data':
         getMonitorData();
+        break;
+    case 'get_merge_groups':
+        getMergeGroups();
+        break;
+    case 'create_merge_group':
+        createMergeGroup();
+        break;
+    case 'update_merge_group':
+        updateMergeGroup();
+        break;
+    case 'delete_merge_group':
+        deleteMergeGroup();
+        break;
+    case 'update_page_merge':
+        updatePageMerge();
+        break;
+    case 'list_lucky_pages_merged':
+        listLuckyPagesMerged();
+        break;
+    case 'get_page_merge_info':
+        getPageMergeInfo();
+        break;
+    case 'get_group_pages':
+        getGroupPages();
+        break;
+    case 'sync_page_titles':
+        syncPageTitles();
         break;
     default:
         http_response_code(400);
@@ -339,7 +366,17 @@ function addUser() {
 function addPrize() {
     global $db, $input;
     
-    if (!isset($input['name']) || !isset($input['icon']) || !isset($input['value']) || !isset($input['probability'])) {
+    // 检查是否是文件上传
+    $isFileUpload = isset($_FILES['image_file']) && $_FILES['image_file']['error'] === UPLOAD_ERR_OK;
+    
+    // 如果是文件上传，从$_POST获取数据；否则从$input获取
+    if ($isFileUpload) {
+        $data = $_POST;
+    } else {
+        $data = $input;
+    }
+    
+    if (!isset($data['name']) || !isset($data['icon']) || !isset($data['value']) || !isset($data['probability'])) {
         http_response_code(400);
         echo json_encode(['error' => '缺少必要参数']);
         return;
@@ -360,35 +397,61 @@ function addPrize() {
             $tableName = 'prizes';
         }
         
+        // 处理图片上传
+        $imageUrl = null;
+        if ($isFileUpload) {
+            $file = $_FILES['image_file'];
+            $uploadDir = dirname(__DIR__, 2) . '/images/prizes/';
+            
+            // 确保上传目录存在
+            if (!file_exists($uploadDir)) {
+                mkdir($uploadDir, 0755, true);
+            }
+            
+            // 生成唯一文件名
+            $fileExtension = pathinfo($file['name'], PATHINFO_EXTENSION);
+            $fileName = 'prize_' . time() . '_' . uniqid() . '.' . $fileExtension;
+            $filePath = $uploadDir . $fileName;
+            
+            // 移动上传的文件
+            if (move_uploaded_file($file['tmp_name'], $filePath)) {
+                $imageUrl = 'images/prizes/' . $fileName;
+            } else {
+                throw new Exception('文件上传失败');
+            }
+        } else {
+            $imageUrl = $data['image_url'] ?? null;
+        }
+        
         // 处理数量字段
         $quantity = null;
-        if (isset($input['quantity']) && $input['quantity'] !== '' && $input['quantity'] !== null) {
-            $quantity = intval($input['quantity']);
+        if (isset($data['quantity']) && $data['quantity'] !== '' && $data['quantity'] !== null) {
+            $quantity = intval($data['quantity']);
         }
         
         // 如果是传说物品，保存原始概率
         $originalProbability = null;
-        if (isset($input['rarity']) && $input['rarity'] === 'legendary') {
-            $originalProbability = $input['probability'];
+        if (isset($data['rarity']) && $data['rarity'] === 'legendary') {
+            $originalProbability = $data['probability'];
         }
         
         $stmt = $db->prepare("INSERT INTO `{$tableName}` (name, icon, image_url, value, probability, original_probability, rarity, quantity, active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
         $stmt->execute([
-            $input['name'],
-            $input['icon'],
-            $input['image_url'] ?? null,
-            $input['value'],
-            $input['probability'],
+            $data['name'],
+            $data['icon'],
+            $imageUrl,
+            $data['value'],
+            $data['probability'],
             $originalProbability,
-            $input['rarity'] ?? 'common',
+            $data['rarity'] ?? 'common',
             $quantity,
-            $input['active'] ?? 1
+            $data['active'] ?? 1
         ]);
         
         echo json_encode(['success' => true, 'message' => '奖品添加成功']);
         
         // 如果添加的是传说奖品，检查并更新概率状态
-        if (isset($input['rarity']) && $input['rarity'] === 'legendary') {
+        if (isset($data['rarity']) && $data['rarity'] === 'legendary') {
             updateLegendaryProbabilities($tableName);
         }
     } catch (Exception $e) {
@@ -427,7 +490,17 @@ function getPrize() {
 function updatePrize() {
     global $db, $input;
     
-    if (!isset($input['id'])) {
+    // 检查是否是文件上传
+    $isFileUpload = isset($_FILES['image_file']) && $_FILES['image_file']['error'] === UPLOAD_ERR_OK;
+    
+    // 如果是文件上传，从$_POST获取数据；否则从$input获取
+    if ($isFileUpload) {
+        $data = $_POST;
+    } else {
+        $data = $input;
+    }
+    
+    if (!isset($data['id'])) {
         http_response_code(400);
         echo json_encode(['error' => '缺少奖品ID']);
         return;
@@ -448,24 +521,59 @@ function updatePrize() {
             $tableName = 'prizes';
         }
         
-        // 处理数量字段
-        $quantity = null;
-        if (isset($input['quantity']) && $input['quantity'] !== '' && $input['quantity'] !== null) {
-            $quantity = intval($input['quantity']);
-        }
-        
-        // 获取当前奖品的稀有度
-        $stmt = $db->prepare("SELECT rarity, original_probability FROM `{$tableName}` WHERE id = ?");
-        $stmt->execute([$input['id']]);
+        // 获取当前奖品的稀有度和图片URL
+        $stmt = $db->prepare("SELECT rarity, original_probability, image_url FROM `{$tableName}` WHERE id = ?");
+        $stmt->execute([$data['id']]);
         $currentPrize = $stmt->fetch(PDO::FETCH_ASSOC);
         $currentRarity = $currentPrize['rarity'];
+        $currentImageUrl = $currentPrize['image_url'];
+        
+        // 处理图片上传
+        $imageUrl = $currentImageUrl; // 默认保持原有图片
+        if ($isFileUpload) {
+            $file = $_FILES['image_file'];
+            $uploadDir = dirname(__DIR__, 2) . '/images/prizes/';
+            
+            // 确保上传目录存在
+            if (!file_exists($uploadDir)) {
+                mkdir($uploadDir, 0755, true);
+            }
+            
+            // 生成唯一文件名
+            $fileExtension = pathinfo($file['name'], PATHINFO_EXTENSION);
+            $fileName = 'prize_' . time() . '_' . uniqid() . '.' . $fileExtension;
+            $filePath = $uploadDir . $fileName;
+            
+            // 移动上传的文件
+            if (move_uploaded_file($file['tmp_name'], $filePath)) {
+                $imageUrl = 'images/prizes/' . $fileName;
+                
+                // 删除旧图片（如果存在且是本地文件）
+                if ($currentImageUrl && strpos($currentImageUrl, 'images/prizes/') === 0) {
+                    $oldFilePath = dirname(__DIR__, 2) . '/' . $currentImageUrl;
+                    if (file_exists($oldFilePath)) {
+                        unlink($oldFilePath);
+                    }
+                }
+            } else {
+                throw new Exception('文件上传失败');
+            }
+        } else if (isset($data['image_url'])) {
+            $imageUrl = $data['image_url'];
+        }
+        
+        // 处理数量字段
+        $quantity = null;
+        if (isset($data['quantity']) && $data['quantity'] !== '' && $data['quantity'] !== null) {
+            $quantity = intval($data['quantity']);
+        }
         
         // 处理概率逻辑
         $originalProbability = null;
-        if (isset($input['rarity']) && $input['rarity'] === 'legendary') {
+        if (isset($data['rarity']) && $data['rarity'] === 'legendary') {
             // 如果是传说奖品，始终使用用户输入的概率作为原始概率
-            $originalProbability = $input['probability'];
-        } else if ($currentRarity === 'legendary' && $input['rarity'] !== 'legendary') {
+            $originalProbability = $data['probability'];
+        } else if ($currentRarity === 'legendary' && $data['rarity'] !== 'legendary') {
             // 从传说变为非传说，清除original_probability
             $originalProbability = null;
         } else if ($currentRarity !== 'legendary') {
@@ -475,22 +583,22 @@ function updatePrize() {
         
         $stmt = $db->prepare("UPDATE `{$tableName}` SET name = ?, icon = ?, image_url = ?, value = ?, probability = ?, original_probability = ?, rarity = ?, quantity = ?, active = ? WHERE id = ?");
         $stmt->execute([
-            $input['name'],
-            $input['icon'],
-            $input['image_url'] ?? null,
-            $input['value'],
-            $input['probability'],
+            $data['name'],
+            $data['icon'],
+            $imageUrl,
+            $data['value'],
+            $data['probability'],
             $originalProbability,
-            $input['rarity'] ?? 'common',
+            $data['rarity'] ?? 'common',
             $quantity,
-            $input['active'] ?? 1,
-            $input['id']
+            $data['active'] ?? 1,
+            $data['id']
         ]);
         
         echo json_encode(['success' => true, 'message' => '奖品更新成功']);
         
         // 如果修改了传说奖品的数量，检查并更新概率状态
-        if ((isset($input['rarity']) && $input['rarity'] === 'legendary') || $currentRarity === 'legendary') {
+        if ((isset($data['rarity']) && $data['rarity'] === 'legendary') || $currentRarity === 'legendary') {
             updateLegendaryProbabilities($tableName);
         }
     } catch (Exception $e) {
@@ -1273,8 +1381,13 @@ function extractShowcaseImage($filePath) {
         // 从 showcase-icon 中提取图片 src
         if (preg_match('/<div class="showcase-icon">.*?<img[^>]+src="([^"]+)"[^>]*>/s', $content, $matches)) {
             $imageSrc = $matches[1];
-            // 移除路径前缀 ../ 
-            $imageSrc = str_replace('../', '', $imageSrc);
+            
+            // 如果包含占位符（如 ${...}），则忽略
+            if (strpos($imageSrc, '${') !== false || strpos($imageSrc, '$') !== false) {
+                return null;
+            }
+            
+            // 保持 ../ 前缀，因为 main.html 在 pages 目录下
             return $imageSrc;
         }
         
@@ -1294,7 +1407,8 @@ function getPageThumbImage($fileName) {
     foreach ($extensions as $ext) {
         $thumbPath = $imagesDir . $pageBaseName . '.' . $ext;
         if (file_exists($thumbPath)) {
-            return 'images/thumbs/' . $pageBaseName . '.' . $ext;
+            // 返回相对于 pages 目录的路径（需要 ../ 前缀）
+            return '../images/thumbs/' . $pageBaseName . '.' . $ext;
         }
     }
     
@@ -1370,7 +1484,7 @@ function updateLuckyPageThumb() {
             echo json_encode([
                 'success' => true,
                 'message' => '小图片上传成功',
-                'thumbImage' => 'images/thumbs/' . $newFileName
+                'thumbImage' => '../images/thumbs/' . $newFileName
             ]);
         } else {
             http_response_code(400);
@@ -1528,19 +1642,23 @@ function getUserDraws() {
         $countStmt->execute([$userId]);
         $total = $countStmt->fetch(PDO::FETCH_ASSOC)['total'];
         
-        // 获取抽奖记录
+        // 获取抽奖记录，关联coin_change_log获取金币类型信息
         $stmt = $db->prepare("
             SELECT 
-                id,
-                user_id,
-                game_type,
-                cost,
-                reward,
-                result,
-                created_at
-            FROM lottery_records 
-            WHERE user_id = ?
-            ORDER BY created_at DESC
+                lr.id,
+                lr.user_id,
+                lr.game_type,
+                lr.cost,
+                lr.reward,
+                lr.result,
+                lr.created_at,
+                ccl.coin_type,
+                ccl.bound_change,
+                ccl.unbound_change
+            FROM lottery_records lr
+            LEFT JOIN coin_change_log ccl ON ccl.related_id = lr.id AND ccl.change_type = 'draw' AND ccl.user_id = lr.user_id
+            WHERE lr.user_id = ?
+            ORDER BY lr.created_at DESC
             LIMIT {$limit} OFFSET {$offset}
         ");
         $stmt->execute([$userId]);
@@ -1588,20 +1706,23 @@ function getUserTransactions() {
     
     try {
         // 获取总数
-        $countStmt = $db->prepare("SELECT COUNT(*) as total FROM transactions WHERE user_id = ?");
+        $countStmt = $db->prepare("SELECT COUNT(*) as total FROM coin_change_log WHERE user_id = ?");
         $countStmt->execute([$userId]);
         $total = $countStmt->fetch(PDO::FETCH_ASSOC)['total'];
         
-        // 获取交易记录
+        // 获取交易记录 - 使用coin_change_log表获取详细信息
         $stmt = $db->prepare("
             SELECT 
                 id,
                 user_id,
-                type,
-                amount,
+                change_type as type,
+                coin_type,
+                bound_change,
+                unbound_change,
+                (bound_change + unbound_change) as amount,
                 description,
                 created_at
-            FROM transactions 
+            FROM coin_change_log 
             WHERE user_id = ?
             ORDER BY created_at DESC
             LIMIT {$limit} OFFSET {$offset}
@@ -1862,7 +1983,11 @@ function updateThemeSettings() {
                     $content = preg_replace('/(<h1[^>]*?class="[^"]*neon-text[^"]*"[^>]*?>)([^<]+)(<\/h1>)/i', '$1' . $themeName . '$3', $content);
                 }
                 
-                // 3. 替换主页中心的欢迎标题（id="welcomeTitle"）
+                // 4. 特殊处理index.html中的内联样式h1标签（XX俱乐部）
+                // 匹配 <h1 class="neon-text gold" style="...">XX俱乐部</h1>
+                $content = preg_replace('/(<h1[^>]*?class="[^"]*neon-text[^"]*"[^>]*?style="[^"]*"[^>]*?>)[^<]+俱乐部(<\/h1>)/i', '$1' . $themeName . '$2', $content);
+                
+                // 5. 替换主页中心的欢迎标题（id="welcomeTitle"）
                 // 匹配 <h2 id="welcomeTitle" ...>欢迎来到XXX</h2>
                 $content = preg_replace_callback('/(<h2[^>]*?id="welcomeTitle"[^>]*?>)欢迎来到[^<]+(<\/h2>)/i', function($matches) use ($themeName) {
                     return $matches[1] . '欢迎来到' . $themeName . $matches[2];
@@ -2168,43 +2293,146 @@ function getShopIcons() {
 function updateShopIcon() {
     global $db, $input;
     
-    if (!isset($input['id']) || !isset($input['icon_key'])) {
-        http_response_code(400);
-        echo json_encode([
-            'success' => false,
-            'error' => '缺少必要参数'
-        ]);
-        return;
-    }
+    // 检查是否是文件上传请求
+    $isFileUpload = isset($_FILES['icon_image']) && $_FILES['icon_image']['error'] === UPLOAD_ERR_OK;
     
-    try {
-        $stmt = $db->prepare("
-            UPDATE shop_icon_config 
-            SET icon_url = ?, 
-                fallback_icon = ?, 
-                description = ?,
-                updated_at = NOW()
-            WHERE id = ? AND icon_key = ?
-        ");
+    if ($isFileUpload) {
+        // 处理文件上传
+        $id = $_POST['id'] ?? null;
+        $iconKey = $_POST['icon_key'] ?? null;
         
-        $stmt->execute([
-            $input['icon_url'] ?? '',
-            $input['fallback_icon'] ?? '🎁',
-            $input['description'] ?? '',
-            $input['id'],
-            $input['icon_key']
-        ]);
+        if (!$id || !$iconKey) {
+            http_response_code(400);
+            echo json_encode([
+                'success' => false,
+                'error' => '缺少必要参数'
+            ]);
+            return;
+        }
         
-        echo json_encode([
-            'success' => true,
-            'message' => '图标更新成功'
-        ]);
-    } catch (Exception $e) {
-        http_response_code(500);
-        echo json_encode([
-            'success' => false,
-            'error' => '更新图标失败: ' . $e->getMessage()
-        ]);
+        // 验证文件类型
+        $allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp'];
+        $fileType = $_FILES['icon_image']['type'];
+        
+        if (!in_array($fileType, $allowedTypes)) {
+            http_response_code(400);
+            echo json_encode([
+                'success' => false,
+                'error' => '不支持的图片格式，仅支持 PNG、JPG、GIF、WebP'
+            ]);
+            return;
+        }
+        
+        // 检查文件大小（最大2MB）
+        if ($_FILES['icon_image']['size'] > 2 * 1024 * 1024) {
+            http_response_code(400);
+            echo json_encode([
+                'success' => false,
+                'error' => '图片文件过大，最大支持2MB'
+            ]);
+            return;
+        }
+        
+        // 生成文件名
+        $extension = pathinfo($_FILES['icon_image']['name'], PATHINFO_EXTENSION);
+        $fileName = 'icon_' . $iconKey . '_' . time() . '.' . $extension;
+        
+        // 确保目录存在
+        $uploadDir = dirname(__DIR__, 2) . '/images/shop/';
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0755, true);
+        }
+        
+        $uploadPath = $uploadDir . $fileName;
+        
+        // 移动上传的文件
+        if (!move_uploaded_file($_FILES['icon_image']['tmp_name'], $uploadPath)) {
+            http_response_code(500);
+            echo json_encode([
+                'success' => false,
+                'error' => '文件上传失败'
+            ]);
+            return;
+        }
+        
+        // 更新数据库，使用相对路径
+        $iconUrl = 'images/shop/' . $fileName;
+        
+        try {
+            $stmt = $db->prepare("
+                UPDATE shop_icon_config 
+                SET icon_url = ?, 
+                    fallback_icon = ?, 
+                    description = ?,
+                    updated_at = NOW()
+                WHERE id = ? AND icon_key = ?
+            ");
+            
+            $stmt->execute([
+                $iconUrl,
+                $_POST['fallback_icon'] ?? '🎁',
+                $_POST['description'] ?? '',
+                $id,
+                $iconKey
+            ]);
+            
+            echo json_encode([
+                'success' => true,
+                'message' => '图标更新成功',
+                'icon_url' => $iconUrl
+            ]);
+        } catch (Exception $e) {
+            // 如果数据库更新失败，删除已上传的文件
+            if (file_exists($uploadPath)) {
+                unlink($uploadPath);
+            }
+            
+            http_response_code(500);
+            echo json_encode([
+                'success' => false,
+                'error' => '更新图标失败: ' . $e->getMessage()
+            ]);
+        }
+    } else {
+        // 处理URL/相对路径输入
+        if (!isset($input['id']) || !isset($input['icon_key'])) {
+            http_response_code(400);
+            echo json_encode([
+                'success' => false,
+                'error' => '缺少必要参数'
+            ]);
+            return;
+        }
+        
+        try {
+            $stmt = $db->prepare("
+                UPDATE shop_icon_config 
+                SET icon_url = ?, 
+                    fallback_icon = ?, 
+                    description = ?,
+                    updated_at = NOW()
+                WHERE id = ? AND icon_key = ?
+            ");
+            
+            $stmt->execute([
+                $input['icon_url'] ?? '',
+                $input['fallback_icon'] ?? '🎁',
+                $input['description'] ?? '',
+                $input['id'],
+                $input['icon_key']
+            ]);
+            
+            echo json_encode([
+                'success' => true,
+                'message' => '图标更新成功'
+            ]);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode([
+                'success' => false,
+                'error' => '更新图标失败: ' . $e->getMessage()
+            ]);
+        }
     }
 }
 
@@ -2369,6 +2597,466 @@ function getMonitorData() {
             'success' => false,
             'error' => '获取监控数据失败: ' . $e->getMessage()
         ]);
+    }
+}
+
+// ========== Lucky页面合并管理函数 ==========
+
+// 获取合并组列表
+function getMergeGroups() {
+    global $db;
+    try {
+        $stmt = $db->query("
+            SELECT g.*, 
+                   COUNT(p.id) as page_count
+            FROM lucky_merge_groups g
+            LEFT JOIN lucky_pages_meta p ON g.id = p.merge_group_id
+            WHERE g.is_active = 1
+            GROUP BY g.id
+            ORDER BY g.created_at DESC
+        ");
+        $groups = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        echo json_encode(['success' => true, 'groups' => $groups]);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['error' => '获取合并组列表失败: ' . $e->getMessage()]);
+    }
+}
+
+// 创建合并组
+function createMergeGroup() {
+    global $db;
+    
+    // 处理FormData上传，使用$_POST和$_FILES
+    $groupName = $_POST['groupName'] ?? '';
+    $groupIcon = $_POST['groupIcon'] ?? '🎰';
+    $description = $_POST['description'] ?? '';
+    
+    if (!$groupName) {
+        http_response_code(400);
+        echo json_encode(['error' => '合并组名称不能为空']);
+        return;
+    }
+    
+    try {
+        $groupThumb = null;
+        
+        // 处理封面图片上传
+        if (isset($_FILES['groupThumb']) && $_FILES['groupThumb']['error'] === UPLOAD_ERR_OK) {
+            $uploadedFile = $_FILES['groupThumb'];
+            
+            // 验证文件类型
+            $allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+            if (!in_array($uploadedFile['type'], $allowedTypes)) {
+                http_response_code(400);
+                echo json_encode(['error' => '不支持的图片格式']);
+                return;
+            }
+            
+            // 验证文件大小（最大2MB）
+            if ($uploadedFile['size'] > 2 * 1024 * 1024) {
+                http_response_code(400);
+                echo json_encode(['error' => '图片文件过大，请控制在2MB以内']);
+                return;
+            }
+            
+            // 生成唯一文件名
+            $extension = pathinfo($uploadedFile['name'], PATHINFO_EXTENSION);
+            $newFileName = 'group_' . time() . '_' . uniqid() . '.' . $extension;
+            $uploadDir = dirname(__DIR__, 2) . '/images/thumbs/';
+            
+            // 确保目录存在
+            if (!is_dir($uploadDir)) {
+                mkdir($uploadDir, 0755, true);
+            }
+            
+            $targetPath = $uploadDir . $newFileName;
+            
+            // 移动上传的文件
+            if (move_uploaded_file($uploadedFile['tmp_name'], $targetPath)) {
+                $groupThumb = 'images/thumbs/' . $newFileName;
+            } else {
+                http_response_code(500);
+                echo json_encode(['error' => '图片上传失败']);
+                return;
+            }
+        }
+        
+        $stmt = $db->prepare("
+            INSERT INTO lucky_merge_groups (group_name, group_icon, group_thumb, description)
+            VALUES (?, ?, ?, ?)
+        ");
+        $stmt->execute([$groupName, $groupIcon, $groupThumb, $description]);
+        
+        $groupId = $db->lastInsertId();
+        echo json_encode(['success' => true, 'groupId' => $groupId, 'message' => '合并组创建成功']);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['error' => '创建合并组失败: ' . $e->getMessage()]);
+    }
+}
+
+// 更新合并组
+function updateMergeGroup() {
+    global $db, $input;
+    
+    $groupId = $input['groupId'] ?? 0;
+    $groupName = $input['groupName'] ?? '';
+    $groupIcon = $input['groupIcon'] ?? '🎰';
+    $description = $input['description'] ?? '';
+    
+    if (!$groupId || !$groupName) {
+        http_response_code(400);
+        echo json_encode(['error' => '参数不完整']);
+        return;
+    }
+    
+    try {
+        $stmt = $db->prepare("
+            UPDATE lucky_merge_groups 
+            SET group_name = ?, group_icon = ?, description = ?
+            WHERE id = ?
+        ");
+        $stmt->execute([$groupName, $groupIcon, $description, $groupId]);
+        
+        echo json_encode(['success' => true, 'message' => '合并组更新成功']);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['error' => '更新合并组失败: ' . $e->getMessage()]);
+    }
+}
+
+// 删除合并组
+function deleteMergeGroup() {
+    global $db, $input;
+    
+    $groupId = $input['groupId'] ?? 0;
+    
+    if (!$groupId) {
+        http_response_code(400);
+        echo json_encode(['error' => '合并组ID不能为空']);
+        return;
+    }
+    
+    try {
+        // 先将该组内的页面设置为独立显示
+        $stmt = $db->prepare("
+            UPDATE lucky_pages_meta 
+            SET merge_group_id = NULL, merge_order = 0
+            WHERE merge_group_id = ?
+        ");
+        $stmt->execute([$groupId]);
+        
+        // 删除合并组
+        $stmt = $db->prepare("DELETE FROM lucky_merge_groups WHERE id = ?");
+        $stmt->execute([$groupId]);
+        
+        echo json_encode(['success' => true, 'message' => '合并组删除成功']);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['error' => '删除合并组失败: ' . $e->getMessage()]);
+    }
+}
+
+// 更新页面合并关系
+function updatePageMerge() {
+    global $db, $input;
+    
+    $pages = $input['pages'] ?? [];
+    $targetGroupId = $input['targetGroupId'] ?? null;
+    
+    if (empty($pages)) {
+        http_response_code(400);
+        echo json_encode(['error' => '页面列表不能为空']);
+        return;
+    }
+    
+    try {
+        $db->beginTransaction();
+        
+        // 如果指定了目标合并组，先将该组原有的页面设置为独立显示
+        if ($targetGroupId) {
+            $stmt = $db->prepare("
+                UPDATE lucky_pages_meta 
+                SET merge_group_id = NULL, merge_order = 0
+                WHERE merge_group_id = ?
+            ");
+            $stmt->execute([$targetGroupId]);
+        }
+        
+        foreach ($pages as $page) {
+            $fileName = $page['fileName'] ?? '';
+            $mergeGroupId = $page['mergeGroupId'] ?? null;
+            $mergeOrder = $page['mergeOrder'] ?? 0;
+            
+            if (!$fileName) continue;
+            
+            // 从HTML文件中提取实际的页面标题
+            $filePath = dirname(__DIR__, 2) . '/pages/' . $fileName;
+            $displayName = extractPageTitle($filePath);
+            if (!$displayName) {
+                // 如果无法提取标题，使用文件名
+                $displayName = str_replace('.html', '', $fileName);
+            }
+            
+            // 检查页面元数据是否存在
+            $stmt = $db->prepare("SELECT id FROM lucky_pages_meta WHERE file_name = ?");
+            $stmt->execute([$fileName]);
+            $exists = $stmt->fetch();
+            
+            if ($exists) {
+                // 更新（同时更新display_name）
+                $stmt = $db->prepare("
+                    UPDATE lucky_pages_meta 
+                    SET display_name = ?, merge_group_id = ?, merge_order = ?
+                    WHERE file_name = ?
+                ");
+                $stmt->execute([$displayName, $mergeGroupId, $mergeOrder, $fileName]);
+            } else {
+                // 插入
+                $stmt = $db->prepare("
+                    INSERT INTO lucky_pages_meta (file_name, display_name, merge_group_id, merge_order)
+                    VALUES (?, ?, ?, ?)
+                ");
+                $stmt->execute([$fileName, $displayName, $mergeGroupId, $mergeOrder]);
+            }
+        }
+        
+        $db->commit();
+        echo json_encode(['success' => true, 'message' => '页面合并关系更新成功']);
+    } catch (Exception $e) {
+        $db->rollBack();
+        http_response_code(500);
+        echo json_encode(['error' => '更新页面合并关系失败: ' . $e->getMessage()]);
+    }
+}
+
+// 获取合并后的页面列表（用于main.html）
+function listLuckyPagesMerged() {
+    global $db;
+    try {
+        $items = [];
+        
+        // 1. 获取所有合并组
+        $stmt = $db->query("
+            SELECT id, group_name, group_icon, group_thumb, description
+            FROM lucky_merge_groups
+            WHERE is_active = 1
+            ORDER BY id ASC
+        ");
+        $groups = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        foreach ($groups as $group) {
+            // 获取该组的第一个页面作为入口
+            $stmt = $db->prepare("
+                SELECT file_name, display_name, thumb_image
+                FROM lucky_pages_meta
+                WHERE merge_group_id = ? AND is_active = 1
+                ORDER BY merge_order ASC
+                LIMIT 1
+            ");
+            $stmt->execute([$group['id']]);
+            $firstPage = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if ($firstPage) {
+                // 自动选择modle图片：按照合并组ID选择 modle1.png, modle2.png 等
+                $modleImage = "images/modle/modle{$group['id']}.png";
+                $modleImagePath = dirname(__DIR__, 2) . '/' . $modleImage;
+                
+                // 如果modle图片不存在，使用默认的modle1.png
+                if (!file_exists($modleImagePath)) {
+                    $modleImage = "images/modle/modle1.png";
+                }
+                
+                $items[] = [
+                    'type' => 'group',
+                    'groupId' => $group['id'],
+                    'fileName' => $firstPage['file_name'],
+                    'displayName' => $group['group_name'],
+                    'description' => $group['description'],
+                    'icon' => $group['group_icon'],
+                    'thumbImage' => $modleImage  // 使用modle图片作为封面
+                ];
+            }
+        }
+        
+        // 2. 获取所有独立页面（未合并的）
+        $stmt = $db->query("
+            SELECT file_name, display_name, description, thumb_image
+            FROM lucky_pages_meta
+            WHERE (merge_group_id IS NULL OR merge_group_id = 0) AND is_active = 1
+            ORDER BY file_name ASC
+        ");
+        $independentPages = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        foreach ($independentPages as $page) {
+            $items[] = [
+                'type' => 'page',
+                'fileName' => $page['file_name'],
+                'displayName' => $page['display_name'],
+                'description' => $page['description'] ?: '抽取心爱的大红',
+                'icon' => '🍎',
+                'thumbImage' => $page['thumb_image']
+            ];
+        }
+        
+        // 3. 获取数据库中不存在的页面（兼容旧系统）
+        $pagesDir = dirname(__DIR__, 2) . '/pages/';
+        if (is_dir($pagesDir)) {
+            $files = glob($pagesDir . 'lucky*.html');
+            $existingFiles = array_column($independentPages, 'file_name');
+            
+            // 获取合并组中的文件
+            foreach ($groups as $group) {
+                $stmt = $db->prepare("SELECT file_name FROM lucky_pages_meta WHERE merge_group_id = ?");
+                $stmt->execute([$group['id']]);
+                $groupFiles = $stmt->fetchAll(PDO::FETCH_COLUMN);
+                $existingFiles = array_merge($existingFiles, $groupFiles);
+            }
+            
+            foreach ($files as $file) {
+                $fileName = basename($file);
+                if (!in_array($fileName, $existingFiles)) {
+                    $displayName = extractPageTitle($file) ?: str_replace('.html', '', $fileName);
+                    $items[] = [
+                        'type' => 'page',
+                        'fileName' => $fileName,
+                        'displayName' => $displayName,
+                        'description' => '抽取心爱的大红',
+                        'icon' => '🍎',
+                        'thumbImage' => null
+                    ];
+                }
+            }
+        }
+        
+        echo json_encode(['success' => true, 'items' => $items]);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['error' => '获取页面列表失败: ' . $e->getMessage()]);
+    }
+}
+
+// 获取页面合并信息（用于lucky页面判断是否显示选项卡）
+function getPageMergeInfo() {
+    global $db;
+
+    $fileName = $_GET['page'] ?? '';
+
+    if (!$fileName) {
+        http_response_code(400);
+        echo json_encode(['error' => '页面文件名不能为空']);
+        return;
+    }
+
+    try {
+        $stmt = $db->prepare("
+            SELECT merge_group_id, merge_order
+            FROM lucky_pages_meta
+            WHERE file_name = ? AND is_active = 1
+        ");
+        $stmt->execute([$fileName]);
+        $page = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        // 根据文件名生成thumbs图片路径（lucky1.html -> images/thumbs/lucky1.png）
+        $thumbImage = null;
+        if (preg_match('/^(lucky\d+)\.html$/', $fileName, $matches)) {
+            $baseName = $matches[1];
+            $thumbPath = "images/thumbs/{$baseName}.png";
+            $fullPath = dirname(__DIR__, 2) . '/' . $thumbPath;
+
+            // 检查文件是否存在
+            if (file_exists($fullPath)) {
+                $thumbImage = $thumbPath;
+            }
+        }
+
+        if ($page && $page['merge_group_id']) {
+            echo json_encode([
+                'success' => true,
+                'mergeGroupId' => $page['merge_group_id'],
+                'mergeOrder' => $page['merge_order'],
+                'thumbImage' => $thumbImage
+            ]);
+        } else {
+            echo json_encode([
+                'success' => true,
+                'mergeGroupId' => null,
+                'thumbImage' => $thumbImage
+            ]);
+        }
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['error' => '获取页面合并信息失败: ' . $e->getMessage()]);
+    }
+}
+
+
+// 获取合并组内的页面列表（用于lucky页面选项卡）
+function getGroupPages() {
+    global $db;
+    
+    $groupId = $_GET['groupId'] ?? 0;
+    
+    if (!$groupId) {
+        http_response_code(400);
+        echo json_encode(['error' => '合并组ID不能为空']);
+        return;
+    }
+    
+    try {
+        $stmt = $db->prepare("
+            SELECT file_name, display_name, thumb_image
+            FROM lucky_pages_meta
+            WHERE merge_group_id = ? AND is_active = 1
+            ORDER BY merge_order ASC
+        ");
+        $stmt->execute([$groupId]);
+        $pages = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        echo json_encode(['success' => true, 'pages' => $pages]);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['error' => '获取合并组页面列表失败: ' . $e->getMessage()]);
+    }
+}
+
+// 同步所有页面的标题（从HTML文件中提取）
+function syncPageTitles() {
+    global $db;
+    
+    try {
+        $pagesDir = dirname(__DIR__, 2) . '/pages/';
+        $updated = 0;
+        
+        // 获取所有lucky页面的元数据
+        $stmt = $db->query("SELECT file_name FROM lucky_pages_meta");
+        $pages = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        
+        foreach ($pages as $fileName) {
+            $filePath = $pagesDir . $fileName;
+            
+            if (file_exists($filePath)) {
+                // 从HTML文件中提取标题
+                $displayName = extractPageTitle($filePath);
+                
+                if ($displayName) {
+                    // 更新数据库
+                    $stmt = $db->prepare("UPDATE lucky_pages_meta SET display_name = ? WHERE file_name = ?");
+                    $stmt->execute([$displayName, $fileName]);
+                    $updated++;
+                }
+            }
+        }
+        
+        echo json_encode([
+            'success' => true, 
+            'message' => "成功同步 {$updated} 个页面的标题",
+            'updated' => $updated
+        ]);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['error' => '同步页面标题失败: ' . $e->getMessage()]);
     }
 }
 ?>

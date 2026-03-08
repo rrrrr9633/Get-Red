@@ -146,7 +146,7 @@ function register() {
     
     // 创建用户（不包含手机号）
     $hashedPassword = password_hash($input['password'], PASSWORD_DEFAULT);
-    $avatar = isset($input['avatar']) ? $input['avatar'] : 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiByeD0iNTAiIGZpbGw9IiNmZmQ3MDAiLz4KPHN2ZyB4PSIyNSIgeT0iMjAiIHdpZHRoPSI1MCIgaGVpZ2h0PSI2MCI+CjxjaXJjbGUgY3g9IjI1IiBjeT0iMjAiIHI9IjE1IiBmaWxsPSIjMTExIi8+CjxlbGxpcHNlIGN4PSIyNSIgY3k9IjUwIiByeD0iMjAiIHJ5PSIxNSIgZmlsbD0iIzExMSIvPgo8L3N2Zz4KPC9zdmc+';
+    $avatar = isset($input['avatar']) ? $input['avatar'] : 'images/default-avatar.gif';
     
     // 插入用户数据（初始赠送10非绑定金币）
     $stmt = $db->prepare("INSERT INTO users (username, password, nickname, avatar, balance, bound_coins, unbound_coins) VALUES (?, ?, ?, ?, 10.00, 0.00, 10.00)");
@@ -585,15 +585,15 @@ function getTransactions() {
         switch($type) {
             case 'draws':
                 // 抽奖相关记录
-                $whereClause .= " AND (description LIKE '%抽奖%' OR description LIKE '%奖励%')";
+                $whereClause .= " AND change_type = 'draw'";
                 break;
             case 'decompose':
                 // 分解相关记录
-                $whereClause .= " AND description LIKE '%分解%'";
+                $whereClause .= " AND change_type = 'decompose'";
                 break;
             case 'financial':
                 // 资金流水（排除抽奖和分解）
-                $whereClause .= " AND description NOT LIKE '%抽奖%' AND description NOT LIKE '%分解%'";
+                $whereClause .= " AND change_type NOT IN ('draw', 'decompose')";
                 break;
             case 'all':
             default:
@@ -602,15 +602,25 @@ function getTransactions() {
         }
         
         // 获取总记录数
-        $countStmt = $db->prepare("SELECT COUNT(*) as total FROM transactions $whereClause");
+        $countStmt = $db->prepare("SELECT COUNT(*) as total FROM coin_change_log $whereClause");
         $countStmt->execute($params);
         $totalRecords = $countStmt->fetch()['total'];
         $totalPages = ceil($totalRecords / $limit);
         
-        // 获取分页记录
+        // 获取分页记录 - 使用coin_change_log表
         $stmt = $db->prepare("
-            SELECT id, amount, description, type, created_at 
-            FROM transactions 
+            SELECT 
+                id, 
+                change_type as type,
+                coin_type,
+                bound_change,
+                unbound_change,
+                (bound_change + unbound_change) as amount,
+                bound_balance_after,
+                unbound_balance_after,
+                description, 
+                created_at 
+            FROM coin_change_log 
             $whereClause 
             ORDER BY created_at DESC 
             LIMIT $limit OFFSET $offset

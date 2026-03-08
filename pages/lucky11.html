@@ -1,0 +1,3111 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>无敌俱乐部</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/neon.css">
+    <link rel="stylesheet" href="../css/lucky-page.css">
+<style>
+.showcase-icon img {
+    animation: float 3s ease-in-out infinite;
+}
+/* 完全移除所有黑色背景，让背景图片完全可见 */
+body {
+    background: url('../images/shop/lucky11.png') no-repeat center center fixed !important;
+    background-size: cover !important;
+    background-color: transparent !important;
+}
+body::before,
+body::after {
+    display: none !important;
+}
+.particles {
+    display: none !important;
+}
+.game-container {
+    background: transparent !important;
+}
+.showcase-area {
+    background: transparent !important;
+}
+.showcase-item {
+    background: transparent !important;
+    border: 2px solid rgba(239, 68, 68, 0.8) !important;
+}
+.slot-row {
+    background: rgba(0, 0, 0, 0.3) !important;
+}
+.prize-info {
+    background: rgba(26, 27, 46, 0.6) !important;
+}
+.navbar {
+    background: rgba(26, 27, 46, 0.85) !important;
+}
+.limited-drop-window {
+    background: rgba(26, 27, 46, 0.85) !important;
+}
+.horizontal-slot-container {
+    background: transparent !important;
+}
+.slot-rows {
+    background: transparent !important;
+}
+</style>
+</head>
+<body>
+    <div class="particles"></div>
+    
+    <!-- 导航栏 -->
+    <nav class="navbar">
+        <div class="nav-brand">
+            <h1 class="neon-text gold" onclick="goToHome()" style="cursor: pointer;" title="返回主页">无敌俱乐部</h1>
+        </div>
+        
+        <div class="nav-user">
+            <!-- 仓库功能 -->
+            <div class="nav-item warehouse-btn" onclick="window.location.href='modules/container.html'" title="宝箱寻宝">
+                <i class="icon">📦</i>
+                <span>仓库</span>
+            </div>
+            
+            <!-- 每日签到 -->
+            <div class="nav-item checkin-btn" onclick="window.location.href='modules/checkin.html'" title="每日签到">
+                <i class="icon">📅</i>
+                <span>签到</span>
+            </div>
+            
+            <div class="user-info" id="userInfo">
+                <img id="userAvatar" src="" alt="头像" class="user-avatar">
+                <span id="userNickname" class="neon-text"></span>
+                <span id="userBalance" class="neon-text gold" style="display: flex; flex-direction: column; align-items: flex-end; font-size: 0.85em; line-height: 1.3;">
+                    <span class="total-balance" style="font-size: 1.1em;">总额: 0.00</span>
+                    <span class="coin-details" style="font-size: 0.9em; opacity: 0.8;">绑定: 0.00 | 非绑定: 0.00</span>
+                </span>
+                <a href="user/recharge.html" class="recharge-btn" title="充值">💰</a>
+                <div class="user-dropdown">
+                    <a href="user/profile.html" class="neon-text">个人中心</a>
+                    <a href="main.html" class="neon-text">返回主页</a>
+                    <a href="#" onclick="logout()" class="neon-text">退出登录</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 页面选项卡（仅在合并页面时显示） -->
+    <div id="pageTabs" class="page-tabs" style="display:none;">
+        <div class="tabs-container">
+            <!-- 动态生成选项卡 -->
+        </div>
+    </div>
+
+    <!-- 限时掉落窗口 -->
+    <div id="limitedDropWindow" class="limited-drop-window">
+        <div class="limited-drop-header">
+            <h3 id="limitedDropTitle" class="neon-text gold">限时掉落，爆率提升</h3>
+            <span class="limited-drop-hint">💡 真实数量更新有延迟，刷新后查看</span>
+        </div>
+        <div class="limited-drop-content">
+            <div id="limitedDropPrizes" class="limited-drop-prizes">
+                <!-- 限时掉落奖品将通过JS动态生成 -->
+            </div>
+        </div>
+    </div>
+
+    <div class="game-container">
+        <div class="game-header">
+            <h2 class="neon-text rainbow">潮汐监狱(绝密)</h2>
+            <p class="neon-text">无需任何怜悯，这些害群之马罪有应得</p>
+        </div>
+
+        <!-- 3D展示区域 - CS2风格 -->
+        <div class="showcase-area">
+            <div class="showcase-glow"></div>
+            <div class="showcase-item" id="showcaseItem">
+                <div class="showcase-icon"><img src="../images/lucky11_1772976019.png" alt="潮汐监狱(绝密)" style="max-width: 180px; max-height: 180px; object-fit: contain; border-radius: 15px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); filter: drop-shadow(0 10px 30px rgba(0, 0, 0, 0.5));"></div>
+                <div class="showcase-name">准备开始</div>
+                <div class="showcase-price">0.00</div>
+            </div>
+            <div class="showcase-arrows">
+                <div class="arrow-left">
+                    <span class="arrow-layer">‹</span>
+                    <span class="arrow-layer">‹</span>
+                    <span class="arrow-layer">‹</span>
+                </div>
+                <div class="arrow-right">
+                    <span class="arrow-layer">›</span>
+                    <span class="arrow-layer">›</span>
+                    <span class="arrow-layer">›</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 抽奖设置 -->
+        <div class="draw-settings">
+            <div class="draw-mode-selector">
+                <button class="mode-btn active" data-mode="1">单抽</button>
+                <button class="mode-btn" data-mode="3">三连抽</button>
+                <button class="mode-btn" data-mode="5">五连抽</button>
+            </div>
+            
+            <div class="animation-settings">
+                <label class="setting-item">
+                    <input type="checkbox" id="skipAnimation" class="skip-checkbox">
+                    <span class="neon-text">跳过动画</span>
+                </label>
+            </div>
+        </div>
+
+        <!-- 抽奖按钮 -->
+        <div class="slot-controls">
+            <button id="spinBtn" class="btn-spin">
+                <span class="btn-text">开始抽奖</span>
+                <span class="btn-cost" id="btnCost">(消耗: 10)</span>
+            </button>
+        </div>
+
+        <!-- 横向滚动老虎机 -->
+        <div class="horizontal-slot-container">
+            <div class="slot-rows" id="slotRows">
+                <!-- 抽奖行将动态生成 -->
+            </div>
+        </div>
+
+        <!-- 奖品说明 - 卡片式展示 -->
+        <div class="prize-info">
+            <h3 class="neon-text gold">🎯 奖励列表</h3>
+            <div class="prize-grid" id="prizeGrid">
+                <!-- 奖品说明将通过JS动态生成 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 每日签到弹窗 -->
+    <div id="checkinModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="neon-text gold">每日签到</h3>
+                <span class="close" onclick="closeCheckinModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div id="checkinContent">
+                    <div class="checkin-calendar">
+                        <div class="calendar-header">
+                            <h4 class="neon-text">本月签到记录</h4>
+                        </div>
+                        <div class="calendar-grid" id="calendarGrid">
+                            <!-- 日历网格将通过JS生成 -->
+                        </div>
+                    </div>
+                    <div class="checkin-rewards">
+                        <h4 class="neon-text gold">签到奖励</h4>
+                        <div class="reward-item">
+                            <span>连续签到1天：金币 +10</span>
+                        </div>
+                        <div class="reward-item">
+                            <span>连续签到7天：金币 +100</span>
+                        </div>
+                        <div class="reward-item">
+                            <span>连续签到30天：神秘礼品</span>
+                        </div>
+                    </div>
+                    <button id="checkinBtn" class="btn-checkin" onclick="performCheckin()">
+                        立即签到
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 仓库弹窗 -->
+    <div id="warehouseModal" class="modal">
+        <div class="modal-content warehouse-modal">
+            <div class="modal-header">
+                <h3 class="neon-text gold">我的仓库</h3>
+                <span class="close" onclick="closeWarehouseModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="warehouse-tabs">
+                    <button class="tab-btn active" data-tab="items">物品</button>
+                    <button class="tab-btn" data-tab="rewards">奖励</button>
+                    <button class="tab-btn" data-tab="gifts">礼品</button>
+                </div>
+                <div class="warehouse-content">
+                    <div id="warehouseItems" class="warehouse-grid">
+                        <!-- 仓库物品将通过JS生成 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 中奖提示 -->
+    <div id="winModal" class="modal">
+        <div class="modal-content">
+            <h3 class="neon-text gold">恭喜中奖！</h3>
+            <div id="winResult" class="win-result"></div>
+            <button onclick="closeWinModal()" class="btn-neon">确定</button>
+        </div>
+    </div>
+
+    <style>
+        /* 页面选项卡样式 - 垂直堆叠设计 */
+        .page-tabs {
+            position: fixed;
+            top: 90px;
+            left: 20px;
+            z-index: 999;
+            display: none; /* 默认隐藏，不占用空间 */
+        }
+
+        .page-tabs.show {
+            display: block; /* 显示时才出现 */
+        }
+
+        .tabs-container {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            align-items: flex-start;
+        }
+
+        .tab-item {
+            padding: 12px 24px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 0 12px 12px 0;
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+            font-weight: 600;
+            font-size: 14px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            position: relative;
+        }
+
+        /* 右对齐缩进 - 红绿蓝三色交替 */
+        .tab-item:nth-child(1) {
+            margin-right: 0;
+            z-index: 10;
+            background: rgba(239, 68, 68, 0.9); /* 红色 */
+        }
+
+        .tab-item:nth-child(2) {
+            margin-right: 15px;
+            z-index: 9;
+            background: rgba(74, 222, 128, 0.9); /* 绿色 */
+        }
+
+        .tab-item:nth-child(3) {
+            margin-right: 30px;
+            z-index: 8;
+            background: rgba(59, 130, 246, 0.9); /* 蓝色 */
+        }
+
+        .tab-item:nth-child(4) {
+            margin-right: 45px;
+            z-index: 7;
+            background: rgba(239, 68, 68, 0.9); /* 红色 */
+        }
+
+        .tab-item:nth-child(5) {
+            margin-right: 60px;
+            z-index: 6;
+            background: rgba(74, 222, 128, 0.9); /* 绿色 */
+        }
+
+        .tab-item:nth-child(6) {
+            margin-right: 75px;
+            z-index: 5;
+            background: rgba(59, 130, 246, 0.9); /* 蓝色 */
+        }
+
+        .tab-item:hover {
+            border-color: rgba(255, 255, 255, 0.5);
+            transform: translateX(10px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+            filter: brightness(1.2);
+        }
+
+        .tab-item.active {
+            border-color: rgba(255, 255, 255, 0.6);
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.4);
+            transform: translateX(15px);
+            z-index: 15 !important;
+            filter: brightness(1.3);
+        }
+
+        /* 移动端适配 */
+        @media (max-width: 768px) {
+            .page-tabs {
+                top: 70px;
+                left: 10px;
+            }
+            
+            .tab-item {
+                padding: 10px 18px;
+                font-size: 12px;
+            }
+
+            .tab-item:nth-child(2) {
+                margin-right: 10px;
+            }
+
+            .tab-item:nth-child(3) {
+                margin-right: 20px;
+            }
+
+            .tab-item:nth-child(4) {
+                margin-right: 30px;
+            }
+
+            .tab-item:nth-child(5) {
+                margin-right: 40px;
+            }
+
+            .tab-item:nth-child(6) {
+                margin-right: 50px;
+            }
+        }
+
+        /* 防止页面被挤压 */
+        html, body {
+            overflow-x: hidden;
+            width: 100%;
+            position: relative;
+        }
+        
+        /* 弹窗显示时防止body滚动 */
+        body.modal-open {
+            overflow: hidden;
+            position: fixed;
+            width: 100%;
+        }
+        
+        /* 移动端性能优化 - 减少动画 */
+        @media (max-width: 768px) {
+            /* 禁用部分耗性能的动画 */
+            .limited-drop-window::before,
+            .game-container::before,
+            .showcase-glow {
+                animation: none !important;
+            }
+            
+            /* 简化彩虹文字动画 */
+            .limited-drop-header h3 {
+                animation: none !important;
+                background: linear-gradient(90deg, #ff0080, #ff8c00);
+                background-clip: text;
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+            }
+            
+            /* 禁用粒子特效 */
+            .particles {
+                display: none !important;
+            }
+        }
+        
+        /* 使用红色主题的自定义样式覆盖 */
+        
+        /* 限时掉落窗口样式 - 彩虹霓虹特效 */
+        .limited-drop-window {
+            position: fixed;
+            top: 70px;
+            left: 0;
+            right: 0;
+            width: 100%;
+            background: linear-gradient(135deg, rgba(15, 15, 25, 0.98), rgba(20, 20, 35, 0.98));
+            backdrop-filter: blur(10px);
+            border-bottom: 3px solid transparent;
+            background-image: 
+                linear-gradient(135deg, rgba(15, 15, 25, 0.98), rgba(20, 20, 35, 0.98)),
+                linear-gradient(90deg, #ff0080, #ff8c00, #40e0d0, #9370db, #ff0080);
+            background-origin: border-box;
+            background-clip: padding-box, border-box;
+            z-index: 998;
+            transform: translateY(-100%);
+            transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        }
+        
+        .limited-drop-window.show {
+            transform: translateY(0);
+        }
+        
+        .limited-drop-window.collapsed {
+            transform: translateY(calc(-100% + 8px));
+        }
+        
+        .limited-drop-window.collapsed:hover {
+            transform: translateY(0);
+        }
+        
+        /* 添加一个顶部触发条 */
+        .limited-drop-window::after {
+            content: '▼ 限时掉落 ▼';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(90deg, #ff0080, #ff8c00, #40e0d0, #9370db);
+            color: #fff;
+            padding: 2px 20px;
+            border-radius: 0 0 8px 8px;
+            font-size: 11px;
+            font-weight: bold;
+            letter-spacing: 1px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+            white-space: nowrap;
+        }
+        
+        .limited-drop-window.collapsed::after {
+            opacity: 1;
+        }
+        
+        /* 彩虹边框动画 */
+        @keyframes rainbow-border {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        .limited-drop-window::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, 
+                rgba(255, 0, 128, 0.1), 
+                rgba(255, 140, 0, 0.1), 
+                rgba(64, 224, 208, 0.1), 
+                rgba(147, 112, 219, 0.1));
+            background-size: 200% 200%;
+            animation: rainbow-border 3s ease infinite;
+            pointer-events: none;
+        }
+        
+        .limited-drop-header {
+            background: linear-gradient(90deg, 
+                rgba(255, 0, 128, 0.15), 
+                rgba(255, 140, 0, 0.15), 
+                rgba(64, 224, 208, 0.15));
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+            padding: 15px 35px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        
+        .limited-drop-header h3 {
+            margin: 0;
+            font-size: 24px;
+            background: linear-gradient(90deg, 
+                #ff0080, 
+                #ff8c00, 
+                #40e0d0, 
+                #9370db, 
+                #ff0080);
+            background-size: 200% auto;
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: rainbow-text 3s linear infinite;
+            font-weight: 700;
+            text-shadow: 0 0 30px rgba(255, 255, 255, 0.5);
+            letter-spacing: 2px;
+        }
+        
+        .limited-drop-hint {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.6);
+            background: rgba(0, 0, 0, 0.3);
+            padding: 5px 12px;
+            border-radius: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            white-space: nowrap;
+        }
+        
+        @keyframes rainbow-text {
+            0% { background-position: 0% center; }
+            100% { background-position: 200% center; }
+        }
+        
+        .close-btn {
+            color: #fff;
+            opacity: 0.7;
+            transition: all 0.3s ease;
+        }
+        
+        .close-btn:hover {
+            opacity: 1;
+            background: rgba(255, 255, 255, 0.1);
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
+        }
+        
+        .limited-drop-prize .prize-name {
+            background: linear-gradient(135deg, #40e0d0, #9370db);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 600;
+        }
+        
+        /* 游戏容器 - CS2风格深色背景 */
+        .game-container {
+            margin-top: 70px;
+            padding: 20px 20px 40px;
+            max-width: 1400px;
+            margin-left: auto;
+            margin-right: auto;
+            text-align: center;
+            position: relative;
+            background: linear-gradient(180deg, 
+                rgba(15, 15, 20, 0.95) 0%, 
+                rgba(20, 20, 25, 0.98) 50%,
+                rgba(15, 15, 20, 0.95) 100%);
+        }
+        
+        /* 添加背景装饰 - 红色渐变光效 */
+        .game-container::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 800px;
+            height: 800px;
+            background: radial-gradient(circle, 
+                rgba(239, 68, 68, 0.12) 0%, 
+                rgba(220, 38, 38, 0.08) 30%,
+                transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+            animation: pulse-glow 8s ease-in-out infinite;
+        }
+        
+        @keyframes pulse-glow {
+            0%, 100% { opacity: 0.5; transform: translateX(-50%) scale(1); }
+            50% { opacity: 0.8; transform: translateX(-50%) scale(1.1); }
+        }
+        
+        /* 3D展示区域 - CS2风格 红色主题 */
+        .showcase-area {
+            position: relative;
+            margin: 30px auto;
+            padding: 60px 40px;
+            max-width: 600px;
+            z-index: 1;
+            transition: all 0.5s ease;
+        }
+        
+        .showcase-area.hidden {
+            opacity: 0;
+            transform: scale(0.8);
+            pointer-events: none;
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%) scale(0.8);
+        }
+        
+        .showcase-glow {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, 
+                rgba(239, 68, 68, 0.25) 0%, 
+                rgba(220, 38, 38, 0.15) 30%,
+                transparent 70%);
+            filter: blur(40px);
+            animation: showcase-pulse 3s ease-in-out infinite;
+        }
+        
+        @keyframes showcase-pulse {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.6; }
+            50% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+        }
+        
+        .showcase-item {
+            position: relative;
+            z-index: 2;
+            padding: 50px 40px;
+            background: linear-gradient(135deg, 
+                rgba(30, 20, 20, 0.6), 
+                rgba(20, 15, 15, 0.8));
+            border: 2px solid rgba(239, 68, 68, 0.3);
+            border-radius: 20px;
+            box-shadow: 
+                0 20px 60px rgba(0, 0, 0, 0.5),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1),
+                0 0 40px rgba(239, 68, 68, 0.2);
+            transition: all 0.4s ease;
+        }
+        
+        .showcase-item:hover {
+            transform: translateY(-10px);
+            box-shadow: 
+                0 30px 80px rgba(0, 0, 0, 0.6),
+                inset 0 1px 0 rgba(255, 255, 255, 0.15),
+                0 0 60px rgba(239, 68, 68, 0.4);
+        }
+        
+        .showcase-icon {
+            font-size: 100px;
+            margin-bottom: 15px;
+            filter: drop-shadow(0 10px 30px rgba(0, 0, 0, 0.5));
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-15px); }
+        }
+        
+        .showcase-name {
+            font-size: 22px;
+            font-weight: bold;
+            color: #4ade80;
+            margin-bottom: 8px;
+            text-shadow: 0 0 10px rgba(74, 222, 128, 0.5);
+        }
+        
+        .showcase-price {
+            font-size: 28px;
+            font-weight: bold;
+            color: #4ade80;
+            text-shadow: 0 0 20px rgba(74, 222, 128, 0.5);
+        }
+        
+        .showcase-arrows {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            transform: translateY(-50%);
+            display: flex;
+            justify-content: space-between;
+            padding: 0 20px;
+            pointer-events: none;
+            z-index: 3;
+        }
+        
+        /* 装饰性箭头容器 */
+        .arrow-left, .arrow-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            pointer-events: none;
+        }
+        
+        /* 箭头层 - 扩散效果 */
+        .arrow-layer {
+            font-size: 40px;
+            font-weight: bold;
+            color: rgba(239, 68, 68, 0.6);
+            text-shadow: 0 0 15px rgba(239, 68, 68, 0.5);
+            animation: arrow-pulse 2s ease-in-out infinite;
+            display: inline-block;
+        }
+        
+        /* 为每个箭头层设置不同的延迟，创建扩散效果 */
+        .arrow-left .arrow-layer:nth-child(1),
+        .arrow-right .arrow-layer:nth-child(1) {
+            animation-delay: 0s;
+            opacity: 0.8;
+        }
+        
+        .arrow-left .arrow-layer:nth-child(2),
+        .arrow-right .arrow-layer:nth-child(2) {
+            animation-delay: 0.2s;
+            opacity: 0.6;
+        }
+        
+        .arrow-left .arrow-layer:nth-child(3),
+        .arrow-right .arrow-layer:nth-child(3) {
+            animation-delay: 0.4s;
+            opacity: 0.4;
+        }
+        
+        /* 箭头脉动动画 */
+        @keyframes arrow-pulse {
+            0%, 100% {
+                transform: scale(1);
+                opacity: 0.4;
+                text-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
+            }
+            50% {
+                transform: scale(1.2);
+                opacity: 0.8;
+                text-shadow: 0 0 25px rgba(239, 68, 68, 0.8);
+            }
+        }
+        
+        .game-header {
+            margin-bottom: 40px;
+        }
+        
+        .game-header h2 {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+        
+        .game-header p {
+            font-size: 18px;
+            opacity: 0.8;
+        }
+
+        /* 抽奖设置样式 - 红色主题 */
+        .draw-settings {
+            margin: 30px 0;
+        }
+        
+        .draw-mode-selector {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .mode-btn {
+            padding: 10px 25px;
+            border: 2px solid #ef4444;
+            background: transparent;
+            color: #4ade80;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        
+        .mode-btn:hover {
+            background: rgba(239, 68, 68, 0.1);
+        }
+        
+        .mode-btn.active {
+            background: #ef4444;
+            color: #fff;
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.5);
+        }
+
+        .animation-settings {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        
+        .setting-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            padding: 8px 15px;
+            border-radius: 20px;
+            transition: all 0.3s ease;
+        }
+        
+        .setting-item:hover {
+            background: rgba(239, 68, 68, 0.1);
+        }
+        
+        .skip-checkbox {
+            width: 18px;
+            height: 18px;
+            accent-color: #ef4444;
+            cursor: pointer;
+        }
+        
+        .skip-checkbox:checked + .neon-text {
+            color: #ef4444;
+            text-shadow: 0 0 10px #ef4444;
+        }
+
+        /* 横向滚动老虎机样式 - 红色主题 + CS2风格 */
+        .horizontal-slot-container {
+            margin: 0;
+            padding: 0 10px;
+            position: relative;
+            z-index: 1;
+            opacity: 0;
+            max-height: 0;
+            overflow: hidden;
+            transition: all 0.5s ease;
+        }
+        
+        .horizontal-slot-container.active {
+            opacity: 1;
+            max-height: 1000px;
+            margin: 30px 0;
+        }
+        
+        .slot-rows {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .slot-row {
+            position: relative;
+            height: 100px;
+            border: 2px solid rgba(239, 68, 68, 0.3);
+            border-radius: 12px;
+            overflow: hidden;
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.6), rgba(20, 20, 40, 0.8));
+            width: 100%;
+            min-width: 320px;
+            box-shadow: 
+                0 4px 20px rgba(0, 0, 0, 0.5),
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        }
+        
+        .slot-strip {
+            display: flex;
+            height: 100%;
+            transform: translateX(0px);
+            transition: none;
+            will-change: transform;
+            min-width: 100%;
+            /* 强制使用GPU加速，防止滚动时暂停 */
+            transform: translate3d(0, 0, 0);
+            backface-visibility: hidden;
+            perspective: 1000px;
+        }
+        
+        .slot-item {
+            flex: 0 0 100px;
+            height: 100px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-right: 1px solid rgba(239, 68, 68, 0.15);
+            background: linear-gradient(180deg, rgba(239, 68, 68, 0.05), rgba(239, 68, 68, 0.02));
+            min-width: 100px;
+            max-width: 100px;
+            transition: all 0.2s ease;
+            box-sizing: border-box;
+        }
+        
+        .slot-item:hover {
+            background: linear-gradient(180deg, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.05));
+        }
+        
+        .slot-item:last-child {
+            border-right: none;
+        }
+        
+        .slot-item .icon {
+            font-size: 32px;
+            margin-bottom: 8px;
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+        }
+        
+        .slot-item .name {
+            font-size: 11px;
+            color: #4ade80;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            width: 100%;
+            padding: 0 4px;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+        }
+        
+        /* 中心指针 - 红色 + 增强效果 */
+        .slot-pointer {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 3px;
+            height: 80px;
+            background: linear-gradient(to bottom, #ef4444, #dc2626, #ef4444);
+            border-radius: 2px;
+            box-shadow: 
+                0 0 10px #ef4444,
+                0 0 20px rgba(239, 68, 68, 0.5),
+                0 0 30px rgba(239, 68, 68, 0.3);
+            z-index: 10;
+            animation: pointer-glow 2s ease-in-out infinite alternate;
+        }
+        
+        .slot-pointer::before {
+            content: '';
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 10px solid transparent;
+            border-right: 10px solid transparent;
+            border-bottom: 12px solid #ef4444;
+            filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.8));
+        }
+        
+        .slot-pointer::after {
+            content: '';
+            position: absolute;
+            bottom: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 10px solid transparent;
+            border-right: 10px solid transparent;
+            border-top: 12px solid #ef4444;
+            filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.8));
+        }
+        
+        @keyframes pointer-glow {
+            0% { 
+                box-shadow: 
+                    0 0 10px #ef4444,
+                    0 0 20px rgba(239, 68, 68, 0.5),
+                    0 0 30px rgba(239, 68, 68, 0.3);
+            }
+            100% { 
+                box-shadow: 
+                    0 0 20px #ef4444,
+                    0 0 40px rgba(239, 68, 68, 0.8),
+                    0 0 60px rgba(239, 68, 68, 0.5);
+            }
+        }
+        
+        .slot-machine-container {
+            margin: 40px 0;
+        }
+        
+        /* 抽奖按钮 - CS2风格 红色主题 */
+        .slot-controls {
+            margin: 20px 0 30px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1;
+            position: relative;
+        }
+        
+        .btn-spin {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            border: 2px solid rgba(239, 68, 68, 0.5);
+            padding: 16px 50px;
+            border-radius: 50px;
+            color: #fff;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 
+                0 8px 25px rgba(239, 68, 68, 0.4),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            position: relative;
+            overflow: hidden;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .btn-spin::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, 
+                transparent, 
+                rgba(255, 255, 255, 0.2), 
+                transparent);
+            transition: left 0.5s ease;
+        }
+        
+        .btn-spin:hover::before {
+            left: 100%;
+        }
+        
+        .btn-spin:hover {
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 
+                0 12px 35px rgba(239, 68, 68, 0.6),
+                0 0 40px rgba(239, 68, 68, 0.4),
+                inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            border-color: rgba(239, 68, 68, 0.8);
+        }
+        
+        .btn-spin:active {
+            transform: translateY(-1px) scale(1.02);
+        }
+        
+        .btn-spin:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            background: linear-gradient(135deg, #6b7280, #4b5563);
+            border-color: rgba(107, 114, 128, 0.5);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .btn-text {
+            position: relative;
+            z-index: 1;
+        }
+        
+        .btn-cost {
+            display: block;
+            font-size: 12px;
+            opacity: 0.9;
+            margin-top: 3px;
+            font-weight: 600;
+        }
+        
+        /* 奖品区域 - CS2卡片风格 */
+        .prize-info {
+            margin-top: 80px;
+            padding: 50px 30px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .prize-info h3 {
+            font-size: 28px;
+            margin-bottom: 40px;
+            text-shadow: 0 2px 10px rgba(74, 222, 128, 0.3);
+            letter-spacing: 1px;
+        }
+        
+        .prize-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        /* CS2风格卡片 - 红色主题 */
+        .prize-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px 15px;
+            background: linear-gradient(135deg, 
+                rgba(30, 20, 20, 0.7), 
+                rgba(20, 15, 15, 0.9));
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            border-radius: 12px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+            box-shadow: 
+                0 4px 15px rgba(0, 0, 0, 0.4),
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        }
+        
+        /* 顶部渐变条 - 红色 */
+        .prize-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, 
+                transparent, 
+                rgba(239, 68, 68, 0.8), 
+                transparent);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        /* 悬浮光效 - 红色 */
+        .prize-item::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 0;
+            height: 0;
+            background: radial-gradient(circle, 
+                rgba(239, 68, 68, 0.3) 0%, 
+                transparent 70%);
+            border-radius: 50%;
+            transition: all 0.4s ease;
+        }
+        
+        .prize-item:hover {
+            transform: translateY(-8px) scale(1.02);
+            border-color: rgba(239, 68, 68, 0.5);
+            box-shadow: 
+                0 15px 40px rgba(0, 0, 0, 0.6),
+                0 0 30px rgba(239, 68, 68, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            background: linear-gradient(135deg, 
+                rgba(40, 25, 25, 0.8), 
+                rgba(30, 20, 20, 0.95));
+        }
+        
+        .prize-item:hover::before {
+            opacity: 1;
+        }
+        
+        .prize-item:hover::after {
+            width: 200px;
+            height: 200px;
+        }
+        
+        .prize-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+            filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.4));
+            transition: all 0.3s ease;
+            z-index: 1;
+        }
+        
+        .prize-item:hover .prize-icon {
+            transform: scale(1.1) translateY(-5px);
+            filter: drop-shadow(0 8px 20px rgba(239, 68, 68, 0.4));
+        }
+        
+        .prize-name {
+            color: #4ade80;
+            font-weight: 600;
+            margin-bottom: 10px;
+            font-size: 14px;
+            text-shadow: 0 0 8px rgba(74, 222, 128, 0.5);
+            z-index: 1;
+            text-align: center;
+            line-height: 1.3;
+        }
+        
+        .prize-value {
+            color: #4ade80;
+            font-weight: bold;
+            font-size: 16px;
+            text-shadow: 0 0 10px rgba(74, 222, 128, 0.5);
+            z-index: 1;
+        }
+        
+        /* 稀有度标签 */
+        .prize-item .prize-rarity {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            font-size: 10px;
+            padding: 3px 8px;
+            border-radius: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            z-index: 2;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal.show {
+            display: flex;
+        }
+        
+        .modal-content {
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #ef4444;
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+        }
+
+        .warehouse-modal {
+            max-width: 600px;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .close {
+            font-size: 30px;
+            cursor: pointer;
+            color: #999;
+            transition: color 0.3s;
+        }
+
+        .close:hover {
+            color: #ef4444;
+        }
+
+        /* 签到弹窗样式 */
+        .checkin-calendar {
+            margin: 20px 0;
+        }
+
+        .calendar-header {
+            margin-bottom: 15px;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+            margin-bottom: 20px;
+        }
+
+        .calendar-day {
+            padding: 8px;
+            border: 1px solid #444;
+            border-radius: 5px;
+            font-size: 12px;
+            text-align: center;
+        }
+
+        .calendar-day.checked {
+            background: #4ade80;
+            color: #000;
+        }
+
+        .calendar-day.today {
+            border-color: #ef4444;
+            border-width: 2px;
+        }
+
+        .checkin-rewards {
+            margin: 20px 0;
+            text-align: left;
+        }
+
+        .reward-item {
+            padding: 8px 0;
+            border-bottom: 1px solid #333;
+        }
+
+        .btn-checkin {
+            background: linear-gradient(45deg, #4ade80, #22c55e);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-checkin:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(74, 222, 128, 0.4);
+        }
+
+        .btn-checkin:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        /* 仓库弹窗样式 */
+        .warehouse-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            justify-content: center;
+        }
+
+        .tab-btn {
+            padding: 8px 20px;
+            border: 2px solid #444;
+            background: transparent;
+            color: #fff;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .tab-btn.active {
+            border-color: #ef4444;
+            color: #ef4444;
+        }
+
+        .warehouse-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 15px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .warehouse-item {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid #444;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .warehouse-item:hover {
+            border-color: #ef4444;
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.2);
+        }
+
+        .warehouse-item-icon {
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+
+        .warehouse-item-name {
+            font-size: 12px;
+            color: #4ade80;
+            margin-bottom: 5px;
+        }
+
+        .warehouse-item-count {
+            font-size: 10px;
+            opacity: 0.7;
+        }
+        
+        .modal-content h3 {
+            font-size: 28px;
+            margin-bottom: 20px;
+        }
+        
+        .win-result {
+            margin: 30px 0;
+            font-size: 48px;
+        }
+        
+        .prize-image {
+            width: 40px;
+            height: 40px;
+            object-fit: cover;
+            border-radius: 8px;
+            margin-bottom: 5px;
+        }
+        
+        .slot-item-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+        }
+        
+        .slot-item .prize-name {
+            font-size: 10px;
+            color: #4ade80;
+            text-align: center;
+            margin-top: 5px;
+        }
+        
+        .slot-item.active {
+            background: rgba(239, 68, 68, 0.3);
+            border: 2px solid #ef4444;
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.5);
+        }
+        
+        .prize-item .prize-display {
+            margin-bottom: 15px;
+        }
+        
+        .prize-item .prize-image {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 10px;
+        }
+        
+        .prize-item .prize-rarity {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 12px;
+            padding: 2px 8px;
+            border-radius: 10px;
+            background: rgba(0, 0, 0, 0.7);
+        }
+        
+        .prize-item.common .prize-rarity {
+            color: #9ca3af;
+        }
+        
+        .prize-item.rare .prize-rarity {
+            color: #3b82f6;
+        }
+        
+        .prize-item.epic .prize-rarity {
+            color: #8b5cf6;
+        }
+        
+        .prize-item.legendary .prize-rarity {
+            color: #f59e0b;
+        }
+        
+        @keyframes spin {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(-400%); }
+        }
+        
+        @media (max-width: 768px) {
+            .navbar {
+                padding: 0 8px;
+                height: 56px;
+                backdrop-filter: blur(15px);
+            }
+            
+            .nav-brand h1 {
+                font-size: 15px;
+            }
+            
+            .nav-user {
+                gap: 6px;
+            }
+            
+            .nav-item {
+                padding: 6px 8px;
+                border-radius: 12px;
+                min-width: 40px;
+            }
+            
+            .nav-item .icon {
+                font-size: 18px;
+            }
+            
+            /* 移动端隐藏金币详情，只显示总额 */
+            .coin-details {
+                display: none !important;
+            }
+            
+            .nav-item span {
+                display: none;
+            }
+            
+            .user-info {
+                gap: 6px;
+                padding: 4px 8px;
+                border-radius: 20px;
+            }
+            
+            .user-info #userNickname,
+            .user-info #userBalance {
+                display: none;
+            }
+            
+            .user-avatar {
+                width: 32px;
+                height: 32px;
+            }
+            
+            .recharge-btn {
+                font-size: 18px;
+            }
+            
+            /* 限时掉落窗口移动端优化 */
+            .limited-drop-window {
+                top: 56px;
+            }
+            
+            .limited-drop-header {
+                padding: 10px 12px;
+                flex-direction: column;
+                gap: 8px;
+                align-items: flex-start;
+            }
+            
+            .limited-drop-header h3 {
+                font-size: 16px;
+                letter-spacing: 1px;
+            }
+            
+            .limited-drop-hint {
+                font-size: 10px;
+                padding: 4px 10px;
+                width: 100%;
+                text-align: center;
+                white-space: normal;
+                line-height: 1.3;
+            }
+            
+            .limited-drop-content {
+                padding: 10px 8px;
+            }
+            
+            .limited-drop-prizes {
+                gap: 10px;
+                grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            }
+            
+            .limited-drop-prize {
+                padding: 10px 8px;
+            }
+            
+            .limited-drop-prize .prize-icon {
+                font-size: 32px;
+            }
+            
+            .limited-drop-prize .prize-name {
+                font-size: 12px;
+            }
+            
+            .limited-drop-prize .prize-quantity {
+                font-size: 11px;
+                padding: 3px 8px;
+            }
+            
+            .game-container {
+                padding: 20px 12px;
+                margin-top: 56px;
+            }
+            
+            .game-header h2 {
+                font-size: 32px;
+                margin-bottom: 12px;
+            }
+            
+            .game-header p {
+                font-size: 16px;
+            }
+            
+            .draw-settings {
+                flex-direction: column;
+                gap: 15px;
+                padding: 15px 5px;
+            }
+            
+            .draw-mode-selector {
+                gap: 10px;
+            }
+            
+            .mode-btn {
+                padding: 8px 16px;
+                font-size: 14px;
+            }
+            
+            .horizontal-slot-container {
+                padding: 10px 5px;
+                margin: 20px 0;
+            }
+            
+            .slot-rows {
+                gap: 8px;
+            }
+            
+            .slot-row {
+                height: 70px;
+                min-width: 300px;
+                margin: 0 auto;
+                max-width: 95vw;
+                border-radius: 10px;
+            }
+            
+            .slot-strip {
+                min-width: 600px; /* 确保足够的宽度来容纳所有奖品 */
+            }
+            
+            .slot-item {
+                flex: 0 0 50px;
+                height: 70px;
+                min-width: 50px;
+                max-width: 50px;
+                box-sizing: border-box;
+            }
+            
+            .slot-item .icon {
+                font-size: 20px;
+                margin-bottom: 4px;
+            }
+            
+            .slot-item .name {
+                font-size: 9px;
+                line-height: 1.1;
+                padding: 0 2px;
+            }
+            
+            .slot-pointer {
+                width: 3px;
+                height: 55px;
+            }
+            
+            .slot-pointer::before,
+            .slot-pointer::after {
+                border-left-width: 6px;
+                border-right-width: 6px;
+                border-bottom-width: 8px;
+                border-top-width: 8px;
+            }
+            
+            .slot-controls {
+                margin-top: 15px;
+            }
+            
+            .btn-spin {
+                padding: 12px 30px;
+                font-size: 16px;
+            }
+            
+            .prize-info {
+                padding: 15px;
+            }
+            
+            .prize-info h3 {
+                font-size: 20px;
+            }
+            
+            .prize-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 12px;
+            }
+            
+            .prize-item {
+                padding: 12px;
+            }
+            
+            .prize-name {
+                font-size: 14px;
+            }
+            
+            .prize-value {
+                font-size: 12px;
+            }
+            
+            .modal-content {
+                max-width: 90vw;
+                padding: 20px;
+                margin: 10px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .navbar {
+                padding: 0 6px;
+                height: 52px;
+            }
+            
+            .nav-brand h1 {
+                font-size: 14px;
+            }
+            
+            .nav-user {
+                gap: 4px;
+            }
+            
+            .nav-item {
+                padding: 5px 6px;
+                min-width: 36px;
+            }
+            
+            .nav-item .icon {
+                font-size: 16px;
+            }
+            
+            .user-info {
+                padding: 3px 6px;
+                gap: 4px;
+            }
+            
+            .user-avatar {
+                width: 28px;
+                height: 28px;
+            }
+            
+            .recharge-btn {
+                font-size: 16px;
+            }
+            
+            /* 限时掉落窗口小屏优化 */
+            .limited-drop-window {
+                top: 52px;
+            }
+            
+            .limited-drop-header {
+                padding: 8px 10px;
+            }
+            
+            .limited-drop-header h3 {
+                font-size: 14px;
+                letter-spacing: 0.5px;
+            }
+            
+            .limited-drop-hint {
+                font-size: 9px;
+                padding: 3px 8px;
+            }
+            
+            .limited-drop-content {
+                padding: 8px 6px;
+            }
+            
+            .limited-drop-prizes {
+                gap: 8px;
+                grid-template-columns: repeat(auto-fit, minmax(85px, 1fr));
+            }
+            
+            .limited-drop-prize {
+                padding: 8px 6px;
+            }
+            
+            .limited-drop-prize .prize-icon {
+                font-size: 28px;
+            }
+            
+            .limited-drop-prize .prize-name {
+                font-size: 11px;
+            }
+            
+            .limited-drop-prize .prize-quantity {
+                font-size: 10px;
+                padding: 2px 6px;
+            }
+            
+            .game-container {
+                padding: 15px 8px;
+                margin-top: 52px;
+            }
+            
+            .game-header h2 {
+                font-size: 28px;
+            }
+            
+            .draw-settings {
+                padding: 10px 3px;
+            }
+            
+            .mode-btn {
+                padding: 6px 12px;
+                font-size: 13px;
+            }
+            
+            .horizontal-slot-container {
+                padding: 8px 3px;
+            }
+            
+            .slot-rows {
+                gap: 6px;
+            }
+            
+            .slot-row {
+                height: 40px;
+                min-width: 280px;
+                max-width: 92vw;
+                margin: 0 auto;
+                border-radius: 6px;
+            }
+            
+            .slot-strip {
+                min-width: 500px; /* 确保足够的宽度来容纳所有奖品 */
+            }
+            
+            .slot-item {
+                flex: 0 0 40px;
+                height: 40px;
+                min-width: 40px;
+                max-width: 40px;
+                box-sizing: border-box;
+            }
+            
+            .slot-item .icon {
+                font-size: 14px;
+                margin-bottom: 1px;
+            }
+            
+            .slot-item .name {
+                font-size: 7px;
+                line-height: 1;
+                padding: 0;
+            }
+            
+            .slot-pointer {
+                width: 2px;
+                height: 30px;
+            }
+            
+            .slot-pointer::before,
+            .slot-pointer::after {
+                border-left-width: 4px;
+                border-right-width: 4px;
+                border-bottom-width: 6px;
+                border-top-width: 6px;
+            }
+            
+            .btn-spin {
+                padding: 10px 25px;
+                font-size: 15px;
+            }
+            
+            .prize-grid {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+            
+            .prize-item {
+                padding: 10px;
+            }
+        }
+    </style>
+
+    <script src="../js/api-client.js"></script>
+    <script src="../js/effects.js"></script>
+    <script>
+        // ========== 页面选项卡功能 ==========
+
+        // 在页面加载时检查是否属于合并组
+        async function checkAndLoadTabs() {
+            try {
+                // 获取当前页面文件名
+                const currentPage = window.location.pathname.split('/').pop();
+                
+                // 查询该页面是否属于合并组
+                const response = await fetch(`../server/api/admin.php?action=get_page_merge_info&page=${currentPage}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    // 如果有thumbs图片，设置中心展示图片
+                    if (data.thumbImage) {
+                        setShowcaseImage(data.thumbImage);
+                    }
+                    
+                    // 如果属于合并组，加载选项卡
+                    if (data.mergeGroupId) {
+                        await loadPageTabs(data.mergeGroupId, currentPage);
+                    }
+                }
+            } catch (error) {
+                console.error('检查页面合并状态失败:', error);
+            }
+        }
+        
+        // 设置中心展示区域的图片
+        function setShowcaseImage(imagePath) {
+            const showcaseIcon = document.querySelector('.showcase-icon');
+            if (showcaseIcon && imagePath) {
+                // 将emoji替换为图片
+                showcaseIcon.innerHTML = `<img src="../${imagePath}" alt="展示图片" style="max-width: 100%; max-height: 100%; object-fit: contain;">`;
+            }
+        }
+
+        // 加载选项卡
+        async function loadPageTabs(groupId, currentPage) {
+            try {
+                const response = await fetch(`../server/api/admin.php?action=get_group_pages&groupId=${groupId}`);
+                const data = await response.json();
+                
+                if (data.success && data.pages && data.pages.length > 1) {
+                    const tabsContainer = document.querySelector('.tabs-container');
+                    const pageTabs = document.getElementById('pageTabs');
+                    
+                    // 生成选项卡
+                    tabsContainer.innerHTML = data.pages.map(page => `
+                        <div class="tab-item ${page.file_name === currentPage ? 'active' : ''}" 
+                             onclick="switchToPage('${page.file_name}')">
+                            ${page.display_name}
+                        </div>
+                    `).join('');
+                    
+                    // 显示选项卡
+                    pageTabs.style.display = 'block';
+                    pageTabs.classList.add('show');
+                }
+            } catch (error) {
+                console.error('加载选项卡失败:', error);
+            }
+        }
+
+        // 切换到其他页面
+        function switchToPage(fileName) {
+            if (fileName !== window.location.pathname.split('/').pop()) {
+                window.location.href = fileName;
+            }
+        }
+
+        // ========== 原有代码 ==========
+
+        let currentUser = null;
+        let prizeData = [];
+        let currentMode = 1; // 当前抽奖模式：1单抽，3三连抽，5五连抽
+        let drawPrices = { single: 10, triple: 30, quintuple: 50 }; // 动态价格
+        let isDrawing = false; // 是否正在抽奖
+        let showcaseRestoreTimer = null; // 准备窗口恢复定时器
+
+        // 检查登录状态并加载数据
+        async function initPage() {
+            // 检查并加载选项卡
+            await checkAndLoadTabs();
+            
+            // 直接检查localStorage中的登录状态
+            const isLoggedIn = localStorage.getItem('isLoggedIn');
+            const currentUserData = localStorage.getItem('currentUser');
+            
+            if (isLoggedIn !== 'true' || !currentUserData) {
+                alert('请先登录！');
+                window.location.href = 'auth/login.html';
+                return;
+            }
+            
+            try {
+                currentUser = JSON.parse(currentUserData);
+                console.log('当前用户:', currentUser);
+            } catch (e) {
+                alert('用户信息异常，请重新登录！');
+                window.location.href = 'auth/login.html';
+                return;
+            }
+            
+            await loadUserInfo();
+            await loadPrizes();
+            await loadDrawPrices(); // 加载抽奖价格
+            await initLimitedDrop(); // 初始化限时掉落
+            initSlotMachine();
+            bindEvents();
+            createParticles();
+        }
+
+        // 加载用户信息
+        async function loadUserInfo() {
+            try {
+                const result = await api.getUserProfile();
+                if (result.success) {
+                    const user = result.user;
+                    document.getElementById('userAvatar').src = user.avatar;
+                    document.getElementById('userNickname').textContent = user.nickname;
+                    
+                    const boundCoins = parseFloat(user.bound_coins || 0).toFixed(2);
+                    const unboundCoins = parseFloat(user.unbound_coins || 0).toFixed(2);
+                    const totalBalance = parseFloat(user.balance || 0).toFixed(2);
+                    
+                    document.getElementById('userBalance').innerHTML = `
+                        <span class="total-balance" style="font-size: 1.1em;">总额: ${totalBalance}</span>
+                        <span class="coin-details" style="font-size: 0.9em; opacity: 0.8;">绑定: ${boundCoins} | 非绑定: ${unboundCoins}</span>
+                    `;
+                }
+            } catch (error) {
+                console.error('加载用户信息失败:', error);
+            }
+        }
+
+        // 加载奖品数据
+        async function loadPrizes() {
+            try {
+                // 从URL中获取当前页面参数，或者根据文件名确定页面
+                const urlParams = new URLSearchParams(window.location.search);
+                let currentPage = urlParams.get('page');
+                
+                // 如果URL中没有page参数，尝试从文件名推断
+                if (!currentPage) {
+                    const path = window.location.pathname;
+                    const filename = path.substring(path.lastIndexOf('/') + 1);
+                    currentPage = filename;
+                }
+                
+                // 如果还是没有，默认使用lucky1.html
+                if (!currentPage || currentPage === 'luckytemp.html') {
+                    currentPage = 'lucky1.html';
+                }
+                
+                console.log('当前页面:', currentPage);
+                
+                // 使用修改后的API调用，传入页面参数
+                const result = await api.getPrizes('lucky_drop', currentPage);
+                if (result.success) {
+                    prizeData = result.prizes;
+                    console.log('加载的奖品数据:', prizeData);
+                }
+            } catch (error) {
+                console.error('加载奖品数据失败:', error);
+                // 使用默认数据
+                prizeData = [
+                    { id: 1, name: 'iPhone 15 Pro', icon: '📱', image_url: '/uploads/prizes/iphone15.jpg', value: 8000, rarity: 'legendary', probability: 1 },
+                    { id: 2, name: 'MacBook Air', icon: '💻', image_url: '/uploads/prizes/macbook.jpg', value: 7000, rarity: 'legendary', probability: 1 },
+                    { id: 3, name: 'AirPods Pro', icon: '🎧', image_url: '/uploads/prizes/airpods.jpg', value: 1500, rarity: 'epic', probability: 5 },
+                    { id: 4, name: 'iPad', icon: '📱', image_url: '/uploads/prizes/ipad.jpg', value: 3000, rarity: 'epic', probability: 3 },
+                    { id: 5, name: 'Apple Watch', icon: '⌚', image_url: '/uploads/prizes/watch.jpg', value: 2500, rarity: 'rare', probability: 8 },
+                    { id: 6, name: '蓝牙音响', icon: '🔊', image_url: '/uploads/prizes/speaker.jpg', value: 500, rarity: 'rare', probability: 15 },
+                    { id: 7, name: '充电宝', icon: '🔋', image_url: '/uploads/prizes/powerbank.jpg', value: 100, rarity: 'common', probability: 30 },
+                    { id: 8, name: '数据线', icon: '🔌', image_url: '/uploads/prizes/cable.jpg', value: 50, rarity: 'common', probability: 37 }
+                ];
+            }
+            
+            generatePrizeGrid();
+        }
+
+        // 加载抽奖价格
+        async function loadDrawPrices() {
+            try {
+                // 获取当前页面参数
+                const urlParams = new URLSearchParams(window.location.search);
+                let currentPage = urlParams.get('page');
+                
+                if (!currentPage) {
+                    const path = window.location.pathname;
+                    const filename = path.substring(path.lastIndexOf('/') + 1);
+                    currentPage = filename;
+                }
+                
+                if (!currentPage || currentPage === 'luckytemp.html') {
+                    currentPage = 'lucky1.html';
+                }
+                
+                const response = await fetch(`../../server/api/admin.php?action=get_draw_prices&page=${encodeURIComponent(currentPage)}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    drawPrices = data.prices;
+                    console.log('加载的抽奖价格:', drawPrices);
+                    
+                    // 更新按钮名称
+                    if (data.names) {
+                        const singleBtn = document.querySelector('.mode-btn[data-mode="1"]');
+                        const tripleBtn = document.querySelector('.mode-btn[data-mode="3"]');
+                        const quintupleBtn = document.querySelector('.mode-btn[data-mode="5"]');
+                        
+                        if (singleBtn && data.names.single) {
+                            singleBtn.textContent = data.names.single;
+                        }
+                        if (tripleBtn && data.names.triple) {
+                            tripleBtn.textContent = data.names.triple;
+                        }
+                        if (quintupleBtn && data.names.quintuple) {
+                            quintupleBtn.textContent = data.names.quintuple;
+                        }
+                    }
+                } else {
+                    console.warn('加载价格失败，使用默认价格:', data.error);
+                }
+            } catch (error) {
+                console.error('加载抽奖价格失败:', error);
+            }
+        }
+
+        // 初始化横向滚动老虎机
+        function initSlotMachine() {
+            updateSlotRows();
+        }
+
+        // 更新老虎机行数
+        function updateSlotRows() {
+            const slotRows = document.getElementById('slotRows');
+            slotRows.innerHTML = '';
+            
+            for (let i = 0; i < currentMode; i++) {
+                const row = createSlotRow();
+                slotRows.appendChild(row);
+            }
+            
+            // 更新按钮显示的消耗 - 使用动态价格
+            let cost;
+            if (currentMode === 1) {
+                cost = drawPrices.single;
+            } else if (currentMode === 3) {
+                cost = drawPrices.triple;
+            } else if (currentMode === 5) {
+                cost = drawPrices.quintuple;
+            } else {
+                cost = currentMode * drawPrices.single; // 备用计算方式
+            }
+            
+            document.getElementById('btnCost').textContent = `(消耗: ${cost})`;
+        }
+
+        // 创建一行老虎机
+        function createSlotRow() {
+            const row = document.createElement('div');
+            row.className = 'slot-row';
+            
+            // 创建滚动条
+            const strip = document.createElement('div');
+            strip.className = 'slot-strip';
+            
+            // 创建中心指针
+            const pointer = document.createElement('div');
+            pointer.className = 'slot-pointer';
+            
+            // 计算需要的重复次数，确保在各种屏幕尺寸下都有足够的奖品
+            const isMobile = window.innerWidth <= 768;
+            const isSmallMobile = window.innerWidth <= 480;
+            const itemWidth = isSmallMobile ? 40 : (isMobile ? 50 : 100);
+            const containerWidth = Math.max(window.innerWidth * 0.9, 300);
+            const visibleItems = Math.ceil(containerWidth / itemWidth);
+            
+            // 确保有足够的项目让滚动看起来真实，并且永远不会出现空白
+            const repeatTimes = Math.max(15, visibleItems * 3); // 至少重复15次或3倍可见项目数
+            
+            for (let repeat = 0; repeat < repeatTimes; repeat++) {
+                for (let i = 0; i < prizeData.length; i++) {
+                    const prize = prizeData[i];
+                    const item = createSlotItem(prize);
+                    strip.appendChild(item);
+                }
+            }
+            
+            row.appendChild(strip);
+            row.appendChild(pointer);
+            
+            return row;
+        }
+
+        // 创建老虎机项目
+        function createSlotItem(prize) {
+            const item = document.createElement('div');
+            item.className = 'slot-item';
+            item.dataset.prizeId = prize.id;
+            
+            // 根据屏幕尺寸设置item宽度
+            const isMobile = window.innerWidth <= 768;
+            const isSmallMobile = window.innerWidth <= 480;
+            const itemWidth = isSmallMobile ? 40 : (isMobile ? 50 : 100);
+            item.style.flex = `0 0 ${itemWidth}px`;
+            item.style.minWidth = `${itemWidth}px`;
+            item.style.maxWidth = `${itemWidth}px`;
+            
+            const icon = document.createElement('div');
+            icon.className = 'icon';
+            
+            if (prize.image_url) {
+                const img = document.createElement('img');
+                // 修正图片路径：如果是相对路径，添加../前缀if (prize.image_url) {
+                const img = document.createElement('img');
+                                const imagePath = prize.image_url.startsWith('http') || prize.image_url.startsWith('/') if (prize.image_url) {
+                const img = document.createElement('img');
+                                    ? prize.image_url if (prize.image_url) {
+                const img = document.createElement('img');
+                                    : '../' + prize.image_url;if (prize.image_url) {
+                const img = document.createElement('img');
+                                img.src = imagePath;
+                img.alt = prize.name;
+                
+                // 根据屏幕尺寸调整图片大小
+                const imgSize = isSmallMobile ? '14px' : (isMobile ? '16px' : '32px');
+                img.style.width = imgSize;
+                img.style.height = imgSize;
+                img.style.objectFit = 'cover';
+                img.style.borderRadius = '4px';
+                img.onerror = () => {
+                    img.style.display = 'none';
+                    icon.textContent = prize.icon;
+                };
+                icon.appendChild(img);
+            } else {
+                icon.textContent = prize.icon;
+            }
+            
+            const name = document.createElement('div');
+            name.className = 'name';
+            name.textContent = prize.name;
+            
+            item.appendChild(icon);
+            item.appendChild(name);
+            
+            return item;
+        }
+
+        // 绑定事件
+        function bindEvents() {
+            // 模式选择按钮
+            document.querySelectorAll('.mode-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    // 移除所有活动状态
+                    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+                    // 添加活动状态
+                    e.target.classList.add('active');
+                    // 设置当前模式
+                    currentMode = parseInt(e.target.dataset.mode);
+                    updateSlotRows();
+                });
+            });
+
+            // 抽奖按钮
+            document.getElementById('spinBtn').addEventListener('click', startSpin);
+            
+            // 跳过动画复选框 - 保存用户偏好
+            const skipCheckbox = document.getElementById('skipAnimation');
+            const savedSkipSetting = localStorage.getItem('skipAnimation');
+            if (savedSkipSetting === 'true') {
+                skipCheckbox.checked = true;
+            }
+            
+            skipCheckbox.addEventListener('change', (e) => {
+                localStorage.setItem('skipAnimation', e.target.checked);
+            });
+        }
+
+        // 开始抽奖
+        async function startSpin() {
+            const spinBtn = document.getElementById('spinBtn');
+            const skipAnimation = document.getElementById('skipAnimation').checked;
+            const showcaseArea = document.querySelector('.showcase-area');
+            const slotContainer = document.querySelector('.horizontal-slot-container');
+            
+            // 清除之前的恢复定时器（如果用户连续抽奖）
+            if (showcaseRestoreTimer) {
+                clearTimeout(showcaseRestoreTimer);
+                showcaseRestoreTimer = null;
+            }
+            
+            // 标记正在抽奖
+            isDrawing = true;
+            
+            spinBtn.disabled = true;
+            spinBtn.querySelector('.btn-text').textContent = '抽奖中...';
+            
+            // 先滚动到页面顶部（仅移动端，在锁定滚动之前）
+            const isMobile = window.innerWidth <= 768;
+            if (isMobile) {
+                // 移动端：滚动到页面顶部
+                window.scrollTo({
+                    top: 0,
+                    behavior: 'smooth'
+                });
+                
+                // 等待滚动完成
+                await new Promise(resolve => setTimeout(resolve, 400));
+            }
+            
+            // 仅移动端锁定页面滚动
+            let scrollY = 0;
+            let preventScroll = null;
+            
+            if (isMobile) {
+                // 抽奖时强制锁定页面滚动 - 保存当前滚动位置
+                scrollY = window.scrollY;
+                document.body.style.overflow = 'hidden';
+                document.body.style.position = 'fixed';
+                document.body.style.top = `-${scrollY}px`;
+                document.body.style.width = '100%';
+                document.body.style.left = '0';
+                document.body.style.right = '0';
+                
+                // 阻止触摸滚动事件
+                preventScroll = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return false;
+                };
+                
+                document.addEventListener('touchmove', preventScroll, { passive: false });
+                document.addEventListener('wheel', preventScroll, { passive: false });
+            }
+            
+            // 隐藏展示区，显示抽奖动画
+            showcaseArea.classList.add('hidden');
+            slotContainer.classList.add('active');
+
+            try {
+                // 检查用户信息
+                if (!currentUser || !currentUser.id) {
+                    throw new Error('用户信息无效，请刷新页面重试');
+                }
+                
+                // 获取当前页面参数
+                const urlParams = new URLSearchParams(window.location.search);
+                let currentPage = urlParams.get('page');
+                
+                // 如果URL中没有page参数，尝试从文件名推断
+                if (!currentPage) {
+                    const path = window.location.pathname;
+                    const filename = path.substring(path.lastIndexOf('/') + 1);
+                    currentPage = filename;
+                }
+                
+                // 如果还是没有，默认使用lucky1.html
+                if (!currentPage || currentPage === 'luckytemp.html') {
+                    currentPage = 'lucky1.html';
+                }
+                
+                // 调用后端抽奖API，传递页面参数
+                const drawResult = await api.drawPrizes('lucky_drop', currentMode, currentPage);
+                
+                if (!drawResult.success) {
+                    throw new Error(drawResult.message || drawResult.error || '抽奖失败');
+                }
+                
+                // 执行动画或跳过
+                if (skipAnimation) {
+                    // 直接显示结果，跳过动画
+                    showWinResult(drawResult.prizes || drawResult.results, drawResult.total_value);
+                    finishSpin(spinBtn, showcaseArea, slotContainer, scrollY, preventScroll);
+                } else {
+                    // 播放滚动动画，使用后端返回的结果
+                    await performSpinWithResults(drawResult.prizes || drawResult.results);
+                    
+                    // 显示结果
+                    setTimeout(() => {
+                        showWinResult(drawResult.prizes || drawResult.results, drawResult.total_value);
+                        finishSpin(spinBtn, showcaseArea, slotContainer, scrollY, preventScroll);
+                    }, 4000);
+                }
+                
+            } catch (error) {
+                console.error('抽奖失败:', error);
+                alert(error.message || '抽奖失败，请稍后再试！');
+                
+                finishSpin(spinBtn, showcaseArea, slotContainer, scrollY, preventScroll);
+            }
+        }
+        
+        // 完成抽奖的清理工作
+        function finishSpin(spinBtn, showcaseArea, slotContainer, scrollY, preventScroll) {
+            const isMobile = window.innerWidth <= 768;
+            
+            // 仅移动端需要恢复滚动
+            if (isMobile) {
+                // 移除滚动阻止事件
+                if (preventScroll) {
+                    document.removeEventListener('touchmove', preventScroll);
+                    document.removeEventListener('wheel', preventScroll);
+                }
+                
+                // 恢复页面滚动
+                document.body.style.overflow = '';
+                document.body.style.position = '';
+                document.body.style.top = '';
+                document.body.style.width = '';
+                document.body.style.left = '';
+                document.body.style.right = '';
+                
+                // 恢复滚动位置
+                if (typeof scrollY !== 'undefined') {
+                    window.scrollTo(0, scrollY);
+                }
+            }
+            
+            // 标记抽奖结束
+            isDrawing = false;
+            
+            // 重置按钮
+            spinBtn.disabled = false;
+            spinBtn.querySelector('.btn-text').textContent = '开始抽奖';
+            
+            // 设置3秒后恢复准备窗口的定时器
+            // 如果用户在3秒内再次抽奖，这个定时器会被清除
+            showcaseRestoreTimer = setTimeout(() => {
+                // 只有在没有进行抽奖时才显示准备窗口
+                if (!isDrawing) {
+                    showcaseArea.classList.remove('hidden');
+                    slotContainer.classList.remove('active');
+                }
+            }, 3000);
+            
+            // 更新用户信息
+            loadUserInfo();
+            
+            // 重置所有strip到初始位置，为下次抽奖做准备
+            setTimeout(() => {
+                const allStrips = document.querySelectorAll('.slot-strip');
+                allStrips.forEach(strip => {
+                    strip.style.transition = 'none';
+                    strip.style.transform = 'translate3d(0, 0, 0)';
+                });
+            }, 1000);
+        }
+
+        // 使用后端结果执行抽奖动画
+        async function performSpinWithResults(prizes) {
+            const rows = document.querySelectorAll('.slot-row');
+            
+            // 正常动画流程
+            for (let i = 0; i < rows.length && i < prizes.length; i++) {
+                const row = rows[i];
+                const strip = row.querySelector('.slot-strip');
+                const items = strip.querySelectorAll('.slot-item');
+                const winningPrize = prizes[i];
+                
+                // 强制重置到初始位置
+                strip.style.transition = 'none';
+                strip.style.transform = 'translate3d(0, 0, 0)';
+                
+                // 强制重绘
+                strip.offsetHeight;
+                
+                // 找到目标奖品的索引 - 使用名称和稀有度匹配
+                let targetIndex = -1;
+                for (let j = 0; j < items.length; j++) {
+                    const itemName = items[j].querySelector('.name')?.textContent;
+                    if (itemName === winningPrize.name) {
+                        targetIndex = j;
+                        break;
+                    }
+                }
+                
+                // 如果找不到完全匹配的，寻找相同稀有度的奖品
+                if (targetIndex === -1) {
+                    for (let j = 0; j < items.length; j++) {
+                        const itemId = parseInt(items[j].dataset.prizeId);
+                        const matchingPrize = prizeData.find(p => p.id === itemId);
+                        if (matchingPrize && matchingPrize.rarity === winningPrize.rarity) {
+                            targetIndex = j;
+                            break;
+                        }
+                    }
+                }
+                
+                // 最后备用方案：随机选择一个位置
+                if (targetIndex === -1) {
+                    targetIndex = Math.floor(Math.random() * Math.min(10, items.length));
+                }
+                
+                // 计算滚动参数 - 使用CSS定义的固定宽度
+                const isMobile = window.innerWidth <= 768;
+                const isSmallMobile = window.innerWidth <= 480;
+                
+                // 使用CSS中定义的固定宽度（flex: 0 0 XXpx）
+                let itemWidth;
+                if (isSmallMobile) {
+                    itemWidth = 40; // 对应 @media (max-width: 480px) 中的 flex: 0 0 40px
+                } else if (isMobile) {
+                    itemWidth = 50; // 对应 @media (max-width: 768px) 中的 flex: 0 0 50px
+                } else {
+                    itemWidth = 100; // 桌面版默认 flex: 0 0 100px
+                }
+                
+                const containerWidth = row.offsetWidth;
+                const centerPosition = containerWidth / 2;
+                
+                // 计算目标物品的中心位置
+                const targetItemLeftEdge = targetIndex * itemWidth;
+                const targetItemCenter = targetItemLeftEdge + itemWidth / 2;
+                
+                // 计算需要移动的距离，使目标物品中心对齐容器中心
+                // 注意：由于视觉效果，需要让目标物品停在指针位置// 计算需要移动的距离，使目标物品中心对齐容器中心
+                                // 指针在容器中心，所以目标物品应该停在中心位置// 计算需要移动的距离，使目标物品中心对齐容器中心
+                                const translateAmount = centerPosition - targetItemCenter;
+                
+                // 添加额外滚动距离制造滚动效果
+                const extraDistance = itemWidth * (isSmallMobile ? 10 : (isMobile ? 15 : 20));
+                const finalTranslate = translateAmount - extraDistance;
+                
+                console.log(`Row ${i}: targetIndex=${targetIndex}, itemWidth=${itemWidth}, containerWidth=${containerWidth}, centerPosition=${centerPosition}, targetItemCenter=${targetItemCenter}, translateAmount=${translateAmount}, finalTranslate=${finalTranslate}`);
+                
+                // 使用requestAnimationFrame确保动画在下一帧执行
+                setTimeout(() => {
+                    requestAnimationFrame(() => {
+                        strip.style.transition = 'transform 3s cubic-bezier(0.25, 0.1, 0.25, 1)';
+                        strip.style.transform = `translate3d(${finalTranslate}px, 0, 0)`;
+                        
+                        // 强制触发重绘，确保动画执行
+                        strip.offsetHeight;
+                    });
+                }, 200 + i * 200);
+            }
+        }
+
+        // 根据概率选择奖品
+        function selectPrizeByProbability() {
+            const totalProbability = prizeData.reduce((sum, prize) => sum + prize.probability, 0);
+            const random = Math.random() * totalProbability;
+            
+            let accumulator = 0;
+            for (const prize of prizeData) {
+                accumulator += prize.probability;
+                if (random <= accumulator) {
+                    return prize;
+                }
+            }
+            
+            // 备用返回最后一个奖品
+            return prizeData[prizeData.length - 1];
+        }
+
+        // 显示中奖结果
+        function showWinResult(results, totalValue = null) {
+            const modal = document.getElementById('winModal');
+            const result = document.getElementById('winResult');
+            
+            // 使用后端提供的总价值，如果没有则计算
+            const calculatedValue = totalValue || results.reduce((sum, prize) => sum + parseFloat(prize.value || 0), 0);
+            
+            // 生成奖品卡片 - 紧凑布局
+            const prizeCards = results.map(prize => {
+                // 修正图片路径：如果是相对路径，添加../前缀const prizeCards = results.map(prize => {
+                                const imagePath = prize.image_url && (prize.image_url.startsWith('http') || prize.image_url.startsWith('/'))const prizeCards = results.map(prize => {
+                                    ? prize.image_url const prizeCards = results.map(prize => {
+                                    : (prize.image_url ? '../' + prize.image_url : '');const prizeCards = results.map(prize => {
+                                const prizeCards = results.map(prize => {
+                                const displayIcon = imagePath 
+                    ? `<img src="${prize.image_url}" alt="${prize.name}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 8px;">` 
+                    : `<span style="font-size: 40px;">${prize.icon}</span>`;
+                
+                return `
+                    <div style="display: flex; align-items: center; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; padding: 10px; margin: 8px 0;">
+                        <div style="flex-shrink: 0; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;">
+                            ${displayIcon}
+                        </div>
+                        <div style="flex: 1; margin-left: 12px; text-align: left;">
+                            <div style="color: #4ade80; font-weight: 600; font-size: 14px; margin-bottom: 4px;">${prize.name}</div>
+                            <div style="color: #fbbf24; font-size: 13px;">+${parseFloat(prize.value || 0).toFixed(2)}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            result.innerHTML = `
+                <div style="max-height: 300px; overflow-y: auto; margin: 15px 0;">
+                    ${prizeCards}
+                </div>
+                <div style="margin-top: 20px; padding-top: 15px; border-top: 2px solid rgba(239, 68, 68, 0.3);">
+                    <div style="color: #4ade80; font-size: 16px; margin-bottom: 5px;">恭喜获得总价值</div>
+                    <div style="color: #fbbf24; font-size: 24px; font-weight: bold;">${parseFloat(calculatedValue).toFixed(2)}</div>
+                    <div style="color: #4ade80; font-size: 14px; margin-top: 5px;">的奖品！</div>
+                </div>
+            `;
+            
+            modal.classList.add('show');
+            document.body.classList.add('modal-open');
+        }
+
+        // 生成奖品说明网格
+        function generatePrizeGrid() {
+            const prizeGrid = document.getElementById('prizeGrid');
+            
+            prizeGrid.innerHTML = prizeData.map(prize => {prizeGrid.innerHTML = prizeData.map(prize =>                 // 修正图片路径：如果是相对路径，添加../前缀prizeGrid.innerHTML = prizeData.map(prize =>                 const imagePath = prize.image_url && (prize.image_url.startsWith('http') || prize.image_url.startsWith('/'))prizeGrid.innerHTML = prizeData.map(prize =>                     ? prize.image_url prizeGrid.innerHTML = prizeData.map(prize =>                     : (prize.image_url ? '../' + prize.image_url : '');prizeGrid.innerHTML = prizeData.map(prize =>                 prizeGrid.innerHTML = prizeData.map(prize =>                 return `
+                <div class="prize-item ${prize.rarity}">
+                    <div class="prize-display">
+                        ${prize.image_url ?${prize.image_url ?                            `<img src="${imagePath}" alt="${prize.name}" class="prize-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                             <span class="prize-icon" style="display:none;">${prize.icon}</span>` :
+                            `<span class="prize-icon">${prize.icon}</span>`
+                        }
+                    </div>
+                    <span class="prize-name">${prize.name}</span>
+                    <span class="prize-value">价值: ${prize.value}</span>
+                    <span class="prize-rarity">${getRarityText(prize.rarity)}</span>
+                    <span class="prize-probability">概率: ${prize.probability}%</span>
+                </div>
+            `;
+                    <span class="prize-probability">概率: ${prize.probability}%</span>
+                </div>
+                        }).join('');
+        }
+
+        // 获取稀有度文本
+        function getRarityText(rarity) {
+            const rarityMap = {
+                'common': '普通',
+                'rare': '稀有', 
+                'epic': '史诗',
+                'legendary': '传说'
+            };
+            return rarityMap[rarity] || '普通';
+        }
+
+        // 关闭中奖弹窗
+        function closeWinModal() {
+            document.getElementById('winModal').classList.remove('show');
+            document.body.classList.remove('modal-open');
+            
+            // 关闭弹窗时不做任何处理，准备窗口的显示由finishSpin中的定时器控制
+            
+            // 确保所有strip都重置到初始位置
+            const allStrips = document.querySelectorAll('.slot-strip');
+            allStrips.forEach(strip => {
+                strip.style.transition = 'none';
+                strip.style.transform = 'translate3d(0, 0, 0)';
+            });
+        }
+
+        // 返回主页
+        function goToHome() {
+            window.location.href = './main.html';
+        }
+
+        // 退出登录
+        async function logout() {
+            if (confirm('确定要退出登录吗？')) {
+                try {
+                    await api.logout();
+                    window.location.href = '../pages/auth/login.html';
+                } catch (error) {
+                    console.error('退出登录失败:', error);
+                    window.location.href = '../pages/auth/login.html';
+                }
+            }
+        }
+
+        // 页面加载完成后执行
+        document.addEventListener('DOMContentLoaded', initPage);
+
+        // 监听窗口大小变化，重新初始化老虎机（处理屏幕旋转等情况）
+        let resizeTimer;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(() => {
+                // 重新初始化老虎机以适应新的屏幕尺寸
+                if (prizeData && prizeData.length > 0) {
+                    updateSlotRows();
+                }
+            }, 300); // 防抖，300ms后执行
+        });
+
+        // 监听设备方向变化
+        window.addEventListener('orientationchange', () => {
+            setTimeout(() => {
+                if (prizeData && prizeData.length > 0) {
+                    updateSlotRows();
+                }
+            }, 500); // 等待方向变化完成
+        });
+
+        // 新增功能函数
+
+        // 打开每日签到
+        function openCheckin() {
+            generateCalendar();
+            document.getElementById('checkinModal').classList.add('show');
+            document.body.classList.add('modal-open');
+        }
+
+        // 关闭每日签到弹窗
+        function closeCheckinModal() {
+            document.getElementById('checkinModal').classList.remove('show');
+            document.body.classList.remove('modal-open');
+        }
+
+        // 生成签到日历
+        function generateCalendar() {
+            const calendarGrid = document.getElementById('calendarGrid');
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = now.getMonth();
+            
+            // 获取本月第一天和最后一天
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            const daysInMonth = lastDay.getDate();
+            
+            // 清空日历
+            calendarGrid.innerHTML = '';
+            
+            // 添加星期标题
+            const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
+            weekdays.forEach(day => {
+                const dayHeader = document.createElement('div');
+                dayHeader.className = 'calendar-day-header';
+                dayHeader.textContent = day;
+                dayHeader.style.fontWeight = 'bold';
+                dayHeader.style.color = '#ffd700';
+                calendarGrid.appendChild(dayHeader);
+            });
+            
+            // 添加空白天数（月初）
+            const startDay = firstDay.getDay();
+            for (let i = 0; i < startDay; i++) {
+                const emptyDay = document.createElement('div');
+                emptyDay.className = 'calendar-day empty';
+                calendarGrid.appendChild(emptyDay);
+            }
+            
+            // 添加本月天数
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dayElement = document.createElement('div');
+                dayElement.className = 'calendar-day';
+                dayElement.textContent = day;
+                
+                // 标记今天
+                if (day === now.getDate()) {
+                    dayElement.classList.add('today');
+                }
+                
+                // 模拟签到状态（实际应该从服务器获取）
+                if (Math.random() > 0.7) {
+                    dayElement.classList.add('checked');
+                    dayElement.title = '已签到';
+                }
+                
+                calendarGrid.appendChild(dayElement);
+            }
+        }
+
+        // 执行签到
+        async function performCheckin() {
+            const btn = document.getElementById('checkinBtn');
+            const originalText = btn.textContent;
+            
+            btn.disabled = true;
+            btn.textContent = '签到中...';
+            
+            try {
+                // 模拟签到请求
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // 成功签到
+                btn.textContent = '签到成功！';
+                btn.style.background = 'linear-gradient(45deg, #22c55e, #16a34a)';
+                
+                // 更新用户余额
+                setTimeout(() => {
+                    loadUserInfo();
+                    generateCalendar();
+                }, 1000);
+                
+                // 3秒后恢复按钮
+                setTimeout(() => {
+                    btn.disabled = false;
+                    btn.textContent = originalText;
+                    btn.style.background = 'linear-gradient(45deg, #4ade80, #22c55e)';
+                }, 3000);
+                
+            } catch (error) {
+                console.error('签到失败:', error);
+                btn.disabled = false;
+                btn.textContent = '签到失败';
+                
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                }, 2000);
+            }
+        }
+
+        // 打开仓库
+        function openWarehouse() {
+            loadWarehouseItems();
+            document.getElementById('warehouseModal').classList.add('show');
+            document.body.classList.add('modal-open');
+        }
+
+        // 关闭仓库弹窗
+        function closeWarehouseModal() {
+            document.getElementById('warehouseModal').classList.remove('show');
+            document.body.classList.remove('modal-open');
+        }
+
+        // 加载仓库物品
+        function loadWarehouseItems() {
+            const warehouseItems = document.getElementById('warehouseItems');
+            
+            // 模拟仓库数据
+            const items = [
+                { id: 1, name: 'iPhone 15', icon: '📱', count: 1 },
+                { id: 2, name: 'AirPods', icon: '🎧', count: 2 },
+                { id: 3, name: '充电宝', icon: '🔋', count: 5 },
+                { id: 4, name: '数据线', icon: '🔌', count: 3 },
+                { id: 5, name: '金币', icon: '🪙', count: 150 },
+                { id: 6, name: '钻石', icon: '💎', count: 8 }
+            ];
+            
+            const itemsHtml = items.map(item => `
+                <div class="warehouse-item">
+                    <div class="warehouse-item-icon">${item.icon}</div>
+                    <div class="warehouse-item-name">${item.name}</div>
+                    <div class="warehouse-item-count">x${item.count}</div>
+                </div>
+            `).join('');
+            
+            warehouseItems.innerHTML = itemsHtml;
+        }
+
+        // 仓库标签切换
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('tab-btn')) {
+                // 移除所有活动状态
+                document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+                // 添加当前活动状态
+                e.target.classList.add('active');
+                
+                // 重新加载对应内容
+                loadWarehouseItems();
+            }
+        });
+
+        // 个人中心跳转
+        function goToProfile() {
+            window.location.href = '../user/profile.html';
+        }
+
+        // ==================== 限时掉落功能 ====================
+        let limitedDropConfig = null;
+        let limitedDropPrizes = [];
+        let limitedDropInterval = null;
+        
+        // 动态获取当前页面名称
+        function getCurrentPageName() {
+            const path = window.location.pathname;
+            const filename = path.substring(path.lastIndexOf('/') + 1);
+            const pageName = filename.replace('.html', '');
+            
+            // 如果是模板页面，返回luckytemp，否则返回实际页面名
+            return pageName === 'luckytemp' ? 'luckytemp' : pageName;
+        }
+        
+        const currentPageName = getCurrentPageName(); // 当前页面名称
+        console.log('当前页面名称:', currentPageName);
+
+        // 初始化限时掉落
+        async function initLimitedDrop() {
+            try {
+                console.log('初始化限时掉落功能，页面:', currentPageName);
+                
+                // 获取配置
+                const configResponse = await fetch(`/server/api/limited-drop.php?action=get_config&page=${currentPageName}`);
+                const configResult = await configResponse.json();
+                
+                if (configResult.success && configResult.config) {
+                    limitedDropConfig = configResult.config;
+                    console.log('限时掉落配置:', limitedDropConfig);
+                    
+                    // 如果开启了限时掉落，获取奖品数据并显示
+                    if (limitedDropConfig.is_active) {
+                        await loadLimitedDropPrizes();
+                        showLimitedDropWindow();
+                        
+                        // 设置自动刷新间隔（每30秒更新一次数据）
+                        limitedDropInterval = setInterval(async () => {
+                            await loadLimitedDropPrizes();
+                            updateLimitedDropDisplay();
+                        }, 30000);
+                    } else {
+                        hideLimitedDropWindow();
+                    }
+                } else {
+                    console.log('限时掉落配置获取失败:', configResult);
+                    hideLimitedDropWindow();
+                }
+            } catch (error) {
+                console.error('初始化限时掉落失败:', error);
+                hideLimitedDropWindow();
+            }
+        }
+
+        // 加载限时掉落奖品
+        async function loadLimitedDropPrizes() {
+            try {
+                const response = await fetch(`/server/api/limited-drop.php?action=get_display_data&page=${currentPageName}`);
+                const result = await response.json();
+                
+                if (result.success) {
+                    limitedDropPrizes = result.prizes || [];
+                    console.log('限时掉落奖品加载成功:', result);
+                } else {
+                    console.error('限时掉落奖品加载失败:', result.message);
+                }
+            } catch (error) {
+                console.error('加载限时掉落奖品失败:', error);
+            }
+        }
+
+        // 显示限时掉落窗口
+        function showLimitedDropWindow() {
+            if (!limitedDropConfig?.is_active || limitedDropPrizes.length === 0) {
+                console.log('限时掉落未启用或无奖品数据:', {
+                    config: limitedDropConfig,
+                    prizesCount: limitedDropPrizes.length
+                });
+                hideLimitedDropWindow();
+                return;
+            }
+
+            const window = document.querySelector('.limited-drop-window');
+            
+            if (window) {
+                // 更新窗口标题
+                const titleElement = document.getElementById('limitedDropTitle');
+                if (titleElement && limitedDropConfig.window_title) {
+                    titleElement.textContent = limitedDropConfig.window_title;
+                }
+                
+                // 显示窗口
+                window.classList.add('show');
+                window.classList.remove('collapsed');
+                updateLimitedDropDisplay();
+                
+                // 3秒后自动收回到顶部
+                setTimeout(() => {
+                    window.classList.add('collapsed');
+                }, 3000);
+                
+                console.log('限时掉落窗口已显示，3秒后将自动收回');
+            }
+        }
+        
+        // 隐藏限时掉落窗口
+        function hideLimitedDropWindow() {
+            const window = document.querySelector('.limited-drop-window');
+            
+            if (window) {
+                window.classList.remove('show');
+                console.log('限时掉落窗口已隐藏');
+            }
+        }
+
+        // 更新限时掉落显示内容
+        function updateLimitedDropDisplay() {
+            const container = document.querySelector('.limited-drop-prizes');
+            if (!container) return;
+
+            container.innerHTML = '';
+
+            // 检查是否所有传说物品数量都为0
+            const allLegendaryEmpty = limitedDropPrizes.every(prize => {
+                return prize.rarity !== 'legendary' || prize.quantity <= 0;
+            });
+            
+            // 如果所有传说物品都没了，自动关闭限时掉落
+            if (allLegendaryEmpty && limitedDropPrizes.some(p => p.rarity === 'legendary')) {
+                console.log('所有传说物品已被抽完，自动关闭限时掉落');
+                closeLimitedDropAutomatically();
+                return;
+            }
+
+            limitedDropPrizes.forEach(prize => {
+                const prizeElement = createLimitedDropPrizeElement(prize);
+                container.appendChild(prizeElement);
+            });
+        }
+        
+        // 自动关闭限时掉落
+        async function closeLimitedDropAutomatically() {
+            try {
+                // 调用后端API关闭限时掉落
+                const response = await fetch('/server/api/limited-drop.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        action: 'toggle_limited_drop',
+                        page: currentPageName,
+                        is_active: false
+                    })
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    console.log('限时掉落已自动关闭');
+                    hideLimitedDropWindow();
+                    
+                    // 清除定时器
+                    if (limitedDropInterval) {
+                        clearInterval(limitedDropInterval);
+                        limitedDropInterval = null;
+                    }
+                }
+            } catch (error) {
+                console.error('自动关闭限时掉落失败:', error);
+            }
+        }
+
+        // 创建限时掉落奖品元素
+        function createLimitedDropPrizeElement(prize) {
+            const div = document.createElement('div');
+            div.className = 'limited-drop-prize';
+            
+            // 使用从服务器获取的爆率数据
+            const originalRate = prize.original_rate || '0.001';
+            const boostedRate = prize.boosted_rate || '0.005';
+            
+            // 数量警告样式
+            const quantityClass = prize.quantity <= 5 ? 'quantity-warning' : '';
+            
+            // 修正图片路径：如果是相对路径，添加../前缀// 优先使用图片URL，如果没有则使用emoji图标
+            const prizeImageHtml = prize.image_url 
+                ?            const imagePath = prize.image_url && (prize.image_url.startsWith('http') || prize.image_url.startsWith('/'))// 优先使用图片URL，如果没有则使用emoji图标
+            const prizeImageHtml = prize.image_url 
+                ?                ? prize.image_url // 优先使用图片URL，如果没有则使用emoji图标
+            const prizeImageHtml = prize.image_url 
+                ?                : (prize.image_url ? '../' + prize.image_url : '');// 优先使用图片URL，如果没有则使用emoji图标
+            const prizeImageHtml = prize.image_url 
+                ?            // 优先使用图片URL，如果没有则使用emoji图标
+            const prizeImageHtml = prize.image_url 
+                ?            // 优先使用图片URL，如果没有则使用emoji图标// 优先使用图片URL，如果没有则使用emoji图标
+            const prizeImageHtml = prize.image_url 
+                ?            const prizeImageHtml = imagePath // 优先使用图片URL，如果没有则使用emoji图标
+            const prizeImageHtml = prize.image_url 
+                ?                ? `<img src="${prize.image_url}" alt="${prize.name}" class="prize-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                   <div class="prize-icon" style="display:none;">${prize.icon || '🎁'}</div>`
+                : `<div class="prize-icon">${prize.icon || '🎁'}</div>`;
+            
+            div.innerHTML = `
+                ${prizeImageHtml}
+                <div class="prize-name">${prize.name}</div>
+                <div class="prize-price">💰 ${prize.value || prize.price || '0'}</div>
+                <div class="prize-quantity ${quantityClass}">
+                    剩余: ${prize.quantity}
+                </div>
+                <div class="prize-boost">
+                    爆率: ${originalRate}% → ${boostedRate}%
+                </div>
+            `;
+            
+            // 添加点击效果
+            div.addEventListener('click', () => {
+                console.log('点击了奖品:', prize.name);
+                showPrizeDetailEffect(div);
+            });
+            
+            return div;
+        }
+
+        // 奖品点击特效
+        function showPrizeDetailEffect(element) {
+            element.style.transform = 'translateY(-8px) scale(1.05)';
+            element.style.boxShadow = '0 20px 40px rgba(255, 215, 0, 0.6)';
+            
+            setTimeout(() => {
+                element.style.transform = '';
+                element.style.boxShadow = '';
+            }, 300);
+        }
+
+        // 关闭限时掉落窗口（保留函数但不执行关闭操作）
+        function closeLimitedDropWindow() {
+            console.log('限时掉落窗口不可关闭');
+        }
+
+        // 手动切换限时掉落窗口（仅用于调试）
+        function toggleLimitedDropWindow() {
+            const window = document.querySelector('.limited-drop-window');
+            if (window) {
+                if (window.classList.contains('show')) {
+                    hideLimitedDropWindow();
+                } else {
+                    if (limitedDropConfig?.is_active && limitedDropPrizes.length > 0) {
+                        showLimitedDropWindow();
+                    } else {
+                        console.log('限时掉落功能未启用或无奖品数据');
+                    }
+                }
+            }
+        }
+
+        // 清理定时器
+        window.addEventListener('beforeunload', () => {
+            if (limitedDropInterval) {
+                clearInterval(limitedDropInterval);
+            }
+        });
+
+        // 添加键盘快捷键控制（F2切换限时掉落窗口）
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'F2') {
+                e.preventDefault();
+                toggleLimitedDropWindow();
+            }
+        });
+    </script>
+</body>
+</html>

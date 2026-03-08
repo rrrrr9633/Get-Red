@@ -11,19 +11,6 @@ uploads/avatars/*
 !uploads/avatars/README.md
 
 # 图片文件
-images/*.png
-images/*.jpg
-images/*.jpeg
-images/*.gif
-!images/README.md
-
-images/shop/*
-!images/shop/.htaccess
-!images/shop/README.md
-
-images/thumbs/*
-!images/thumbs/.htaccess
-!images/thumbs/README.md
 
 # 系统文件
 .DS_Store

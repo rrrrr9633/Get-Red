@@ -1,3 +1,6 @@
+// 默认头像路径
+const DEFAULT_AVATAR = '../images/default-avatar.gif';
+
 // API客户端类
 class APIClient {
     constructor() {
@@ -523,6 +526,17 @@ class APIClient {
             this.activityTimer = null;
         }
     }
+}
+
+// 辅助函数：获取头像路径
+function getAvatarPath(avatar, relativePath = '../') {
+    if (!avatar) {
+        return relativePath + 'images/default-avatar.gif';
+    }
+    if (avatar.startsWith('data:') || avatar.startsWith('http')) {
+        return avatar;
+    }
+    return relativePath + avatar;
 }
 
 // 创建全局API客户端实例

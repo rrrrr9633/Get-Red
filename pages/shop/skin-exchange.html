@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>牛皮俱乐部</title>
+    <title>无敌俱乐部</title>
     <link rel="stylesheet" href="../../css/style.css">
     <link rel="stylesheet" href="../../css/neon.css">
 </head>
@@ -12,7 +12,7 @@
     
     <nav class="navbar">
         <div class="nav-brand">
-            <h1 class="neon-text gold" onclick="goToHome()" style="cursor: pointer;">牛皮俱乐部</h1>
+            <h1 class="neon-text gold" onclick="goToHome()" style="cursor: pointer;">无敌俱乐部</h1>
         </div>
         
         <div class="nav-user">
@@ -73,9 +73,26 @@
             margin: 0;
             padding: 0;
             min-height: 100vh;
-            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
             color: #fff;
             font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+        }
+        
+        /* 电脑端使用背景图片 */
+        @media (min-width: 769px) {
+            body {
+                background-image: url('../../images/5.png');
+            }
+        }
+        
+        /* 手机端使用渐变背景 */
+        @media (max-width: 768px) {
+            body {
+                background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
+            }
         }
 
         .navbar {

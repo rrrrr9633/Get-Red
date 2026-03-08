@@ -5,7 +5,7 @@
 
 /* 全局背景 */
 body {
-    background: linear-gradient(135deg, #1a1b2e 0%, #16213e 50%, #0f1419 100%);
+    background: transparent !important;
     background-attachment: fixed;
 }
 

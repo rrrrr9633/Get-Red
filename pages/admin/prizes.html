@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>牛皮俱乐部</title>
+    <title>无敌俱乐部</title>
     <script src="../../js/api-client.js"></script>
     <script>
         // 超级管理员权限验证 - 简化版本
@@ -678,8 +678,23 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="prizeImageUrl">奖品图片URL</label>
-                    <input type="url" id="prizeImageUrl" placeholder="https://example.com/image.jpg">
+                    <label for="prizeImageUrl">奖品图片</label>
+                    <div style="margin-bottom: 10px;">
+                        <label style="display: inline-flex; align-items: center; margin-right: 20px; cursor: pointer;">
+                            <input type="radio" name="imageInputType" value="url" checked style="margin-right: 5px;">
+                            <span>URL地址</span>
+                        </label>
+                        <label style="display: inline-flex; align-items: center; cursor: pointer;">
+                            <input type="radio" name="imageInputType" value="file" style="margin-right: 5px;">
+                            <span>本地上传</span>
+                        </label>
+                    </div>
+                    <div id="urlInputGroup">
+                        <input type="url" id="prizeImageUrl" placeholder="https://example.com/image.jpg">
+                    </div>
+                    <div id="fileInputGroup" style="display: none;">
+                        <input type="file" id="prizeImageFile" accept="image/*" style="margin-bottom: 10px;">
+                    </div>
                     <div class="image-preview" id="imagePreview"></div>
                 </div>
 
@@ -816,6 +831,31 @@
 
         // 设置事件监听器
         function setupEventListeners() {
+            // 图片输入方式切换
+            document.querySelectorAll('input[name="imageInputType"]').forEach(radio => {
+                radio.addEventListener('change', function() {
+                    const urlGroup = document.getElementById('urlInputGroup');
+                    const fileGroup = document.getElementById('fileInputGroup');
+                    const urlInput = document.getElementById('prizeImageUrl');
+                    const fileInput = document.getElementById('prizeImageFile');
+                    
+                    if (this.value === 'url') {
+                        urlGroup.style.display = 'block';
+                        fileGroup.style.display = 'none';
+                        fileInput.value = '';
+                        // 启用URL输入框
+                        urlInput.disabled = false;
+                        // 不清空预览，保持当前显示的图片
+                    } else {
+                        urlGroup.style.display = 'none';
+                        fileGroup.style.display = 'block';
+                        // 禁用URL输入框，避免HTML5验证
+                        urlInput.disabled = true;
+                        // 切换到文件上传时，不清空URL和预览，让用户可以看到当前图片
+                    }
+                });
+            });
+            
             // 图片URL预览
             document.getElementById('prizeImageUrl').addEventListener('input', function() {
                 const url = this.value;
@@ -823,6 +863,22 @@
                 
                 if (url) {
                     preview.innerHTML = `<img src="${url}" alt="预览" class="preview-image" onerror="this.style.display='none'">`;
+                } else {
+                    preview.innerHTML = '';
+                }
+            });
+            
+            // 文件上传预览
+            document.getElementById('prizeImageFile').addEventListener('change', function() {
+                const file = this.files[0];
+                const preview = document.getElementById('imagePreview');
+                
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        preview.innerHTML = `<img src="${e.target.result}" alt="预览" class="preview-image">`;
+                    };
+                    reader.readAsDataURL(file);
                 } else {
                     preview.innerHTML = '';
                 }
@@ -868,7 +924,7 @@
                 <div class="prize-card">
                     <div class="prize-image-container">
                         ${prize.image_url ? 
-                            `<img src="${prize.image_url}" alt="${prize.name}" class="prize-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                            `<img src="../../${prize.image_url}" alt="${prize.name}" class="prize-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
                              <span class="prize-icon" style="display:none;">${prize.icon}</span>` :
                             `<span class="prize-icon">${prize.icon}</span>`
                         }
@@ -1123,8 +1179,13 @@
             // 显示图片预览
             if (prize.image_url) {
                 document.getElementById('imagePreview').innerHTML = 
-                    `<img src="${prize.image_url}" alt="预览" class="preview-image">`;
+                    `<img src="../../${prize.image_url}" alt="预览" class="preview-image">`;
             }
+            
+            // 重置图片输入方式为URL模式
+            document.querySelector('input[name="imageInputType"][value="url"]').checked = true;
+            document.getElementById('urlInputGroup').style.display = 'block';
+            document.getElementById('fileInputGroup').style.display = 'none';
 
             document.getElementById('prizeModal').classList.add('show');
         }
@@ -1145,6 +1206,15 @@
         function closePrizeModal() {
             document.getElementById('prizeModal').classList.remove('show');
             
+            // 重置表单
+            document.getElementById('prizeForm').reset();
+            document.getElementById('imagePreview').innerHTML = '';
+            
+            // 重置图片输入方式为URL
+            document.querySelector('input[name="imageInputType"][value="url"]').checked = true;
+            document.getElementById('urlInputGroup').style.display = 'block';
+            document.getElementById('fileInputGroup').style.display = 'none';
+            
             // 重置概率恢复相关元素
             document.getElementById('restoreProbabilityBtn').style.display = 'none';
             document.getElementById('probabilityHint').style.display = 'none';
@@ -1153,65 +1223,132 @@
 
         // 保存奖品
         async function savePrize() {
-            const formData = {
-                id: document.getElementById('prizeId').value,
-                name: document.getElementById('prizeName').value,
-                icon: document.getElementById('prizeIcon').value,
-                image_url: document.getElementById('prizeImageUrl').value,
-                value: parseFloat(document.getElementById('prizeValue').value),
-                probability: parseFloat(document.getElementById('prizeProbability').value),
-                rarity: document.getElementById('prizeRarity').value,
-                active: parseInt(document.getElementById('prizeActive').value)
-            };
+            const imageInputType = document.querySelector('input[name="imageInputType"]:checked').value;
+            const imageFile = document.getElementById('prizeImageFile').files[0];
+            const imageUrl = document.getElementById('prizeImageUrl').value;
             
-            // 如果是传说物品，添加数量字段
-            if (formData.rarity === 'legendary') {
-                const quantity = document.getElementById('prizeQuantity').value;
-                if (!quantity || quantity < 1) {
-                    showError('传说物品必须设置数量，且数量必须大于0');
-                    return;
-                }
-                formData.quantity = parseInt(quantity);
-            }
-
-            // 验证概率
-            if (formData.active) {
-                const otherActivePrizes = prizes.filter(prize => 
-                    prize.active && prize.id != formData.id
-                );
-                const otherProbabilitySum = otherActivePrizes.reduce((sum, prize) => 
-                    sum + parseFloat(prize.probability), 0
-                );
-                const totalProbability = otherProbabilitySum + formData.probability;
-
-                if (totalProbability > 100) {
-                    showError(`概率超过100%！当前其他奖品概率总和为${otherProbabilitySum.toFixed(2)}%，最多只能设置${(100 - otherProbabilitySum).toFixed(2)}%`);
-                    return;
-                }
-            }
-
-            try {
-                const action = editingPrizeId ? 'update_prize' : 'add_prize';
-                const response = await fetch(`../../server/api/admin.php?action=${action}&page=${encodeURIComponent(window.currentLuckyPage)}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(formData)
-                });
-
-                const data = await response.json();
+            // 如果选择了文件上传且有文件，使用FormData
+            if (imageInputType === 'file' && imageFile) {
+                const formData = new FormData();
+                formData.append('id', document.getElementById('prizeId').value);
+                formData.append('name', document.getElementById('prizeName').value);
+                formData.append('icon', document.getElementById('prizeIcon').value);
+                formData.append('image_file', imageFile);
+                formData.append('value', document.getElementById('prizeValue').value);
+                formData.append('probability', document.getElementById('prizeProbability').value);
+                formData.append('rarity', document.getElementById('prizeRarity').value);
+                formData.append('active', document.getElementById('prizeActive').value);
                 
-                if (data.success) {
-                    showSuccess(editingPrizeId ? '奖品更新成功！' : '奖品添加成功！');
-                    closePrizeModal();
-                    loadPrizes();
-                } else {
-                    showError('保存失败: ' + data.error);
+                // 如果是传说物品，添加数量字段
+                if (document.getElementById('prizeRarity').value === 'legendary') {
+                    const quantity = document.getElementById('prizeQuantity').value;
+                    if (!quantity || quantity < 1) {
+                        showError('传说物品必须设置数量，且数量必须大于0');
+                        return;
+                    }
+                    formData.append('quantity', quantity);
                 }
-            } catch (error) {
-                console.error('保存奖品失败:', error);
-                showError('网络错误，请稍后重试');
+                
+                // 验证概率
+                const probability = parseFloat(document.getElementById('prizeProbability').value);
+                const active = parseInt(document.getElementById('prizeActive').value);
+                if (active) {
+                    const otherActivePrizes = prizes.filter(prize => 
+                        prize.active && prize.id != document.getElementById('prizeId').value
+                    );
+                    const otherProbabilitySum = otherActivePrizes.reduce((sum, prize) => 
+                        sum + parseFloat(prize.probability), 0
+                    );
+                    const totalProbability = otherProbabilitySum + probability;
+
+                    if (totalProbability > 100) {
+                        showError(`概率超过100%！当前其他奖品概率总和为${otherProbabilitySum.toFixed(2)}%，最多只能设置${(100 - otherProbabilitySum).toFixed(2)}%`);
+                        return;
+                    }
+                }
+                
+                try {
+                    const action = editingPrizeId ? 'update_prize' : 'add_prize';
+                    const response = await fetch(`../../server/api/admin.php?action=${action}&page=${encodeURIComponent(window.currentLuckyPage)}`, {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        showSuccess(editingPrizeId ? '奖品更新成功！' : '奖品添加成功！');
+                        closePrizeModal();
+                        loadPrizes();
+                    } else {
+                        showError('保存失败: ' + data.error);
+                    }
+                } catch (error) {
+                    console.error('保存奖品失败:', error);
+                    showError('网络错误，请稍后重试');
+                }
+            } else {
+                // 使用URL方式或编辑时不更换图片，保持原有的JSON格式
+                const formData = {
+                    id: document.getElementById('prizeId').value,
+                    name: document.getElementById('prizeName').value,
+                    icon: document.getElementById('prizeIcon').value,
+                    image_url: imageUrl,
+                    value: parseFloat(document.getElementById('prizeValue').value),
+                    probability: parseFloat(document.getElementById('prizeProbability').value),
+                    rarity: document.getElementById('prizeRarity').value,
+                    active: parseInt(document.getElementById('prizeActive').value)
+                };
+                
+                // 如果是传说物品，添加数量字段
+                if (formData.rarity === 'legendary') {
+                    const quantity = document.getElementById('prizeQuantity').value;
+                    if (!quantity || quantity < 1) {
+                        showError('传说物品必须设置数量，且数量必须大于0');
+                        return;
+                    }
+                    formData.quantity = parseInt(quantity);
+                }
+
+                // 验证概率
+                if (formData.active) {
+                    const otherActivePrizes = prizes.filter(prize => 
+                        prize.active && prize.id != formData.id
+                    );
+                    const otherProbabilitySum = otherActivePrizes.reduce((sum, prize) => 
+                        sum + parseFloat(prize.probability), 0
+                    );
+                    const totalProbability = otherProbabilitySum + formData.probability;
+
+                    if (totalProbability > 100) {
+                        showError(`概率超过100%！当前其他奖品概率总和为${otherProbabilitySum.toFixed(2)}%，最多只能设置${(100 - otherProbabilitySum).toFixed(2)}%`);
+                        return;
+                    }
+                }
+
+                try {
+                    const action = editingPrizeId ? 'update_prize' : 'add_prize';
+                    const response = await fetch(`../../server/api/admin.php?action=${action}&page=${encodeURIComponent(window.currentLuckyPage)}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(formData)
+                    });
+
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        showSuccess(editingPrizeId ? '奖品更新成功！' : '奖品添加成功！');
+                        closePrizeModal();
+                        loadPrizes();
+                    } else {
+                        showError('保存失败: ' + data.error);
+                    }
+                } catch (error) {
+                    console.error('保存奖品失败:', error);
+                    showError('网络错误，请稍后重试');
+                }
             }
         }
 

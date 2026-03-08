@@ -1,15 +1,54 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>牛皮俱乐部</title>
+    <title>无敌俱乐部</title>
     <link rel="stylesheet" href="../css/style.css">
     <link rel="stylesheet" href="../css/neon.css">
     <link rel="stylesheet" href="../css/lucky-page.css">
 <style>
 .showcase-icon img {
     animation: float 3s ease-in-out infinite;
+}
+/* 完全移除所有黑色背景，让背景图片完全可见 */
+body {
+    background: transparent !important;
+}
+body::before,
+body::after {
+    display: none !important;
+}
+.particles {
+    display: none !important;
+}
+.game-container {
+    background: transparent !important;
+}
+.showcase-area {
+    background: transparent !important;
+}
+.showcase-item {
+    background: transparent !important;
+    border: 2px solid rgba(239, 68, 68, 0.8) !important;
+}
+.slot-row {
+    background: rgba(0, 0, 0, 0.3) !important;
+}
+.prize-info {
+    background: rgba(26, 27, 46, 0.6) !important;
+}
+.navbar {
+    background: rgba(26, 27, 46, 0.85) !important;
+}
+.limited-drop-window {
+    background: rgba(26, 27, 46, 0.85) !important;
+}
+.horizontal-slot-container {
+    background: transparent !important;
+}
+.slot-rows {
+    background: transparent !important;
 }
 </style>
 </head>
@@ -19,7 +58,7 @@
     <!-- 导航栏 -->
     <nav class="navbar">
         <div class="nav-brand">
-            <h1 class="neon-text gold" onclick="goToHome()" style="cursor: pointer;" title="返回主页">牛皮俱乐部</h1>
+            <h1 class="neon-text gold" onclick="goToHome()" style="cursor: pointer;" title="返回主页">无敌俱乐部</h1>
         </div>
         
         <div class="nav-user">
@@ -51,6 +90,13 @@
             </div>
         </div>
     </nav>
+
+    <!-- 页面选项卡（仅在合并页面时显示） -->
+    <div id="pageTabs" class="page-tabs" style="display:none;">
+        <div class="tabs-container">
+            <!-- 动态生成选项卡 -->
+        </div>
+    </div>
 
     <!-- 限时掉落窗口 -->
     <div id="limitedDropWindow" class="limited-drop-window">
@@ -202,6 +248,126 @@
     </div>
 
     <style>
+        /* 页面选项卡样式 - 垂直堆叠设计 */
+        .page-tabs {
+            position: fixed;
+            top: 90px;
+            left: 20px;
+            z-index: 999;
+            display: none; /* 默认隐藏，不占用空间 */
+        }
+
+        .page-tabs.show {
+            display: block; /* 显示时才出现 */
+        }
+
+        .tabs-container {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            align-items: flex-start;
+        }
+
+        .tab-item {
+            padding: 12px 24px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 0 12px 12px 0;
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+            font-weight: 600;
+            font-size: 14px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            position: relative;
+        }
+
+        /* 右对齐缩进 - 红绿蓝三色交替 */
+        .tab-item:nth-child(1) {
+            margin-right: 0;
+            z-index: 10;
+            background: rgba(239, 68, 68, 0.9); /* 红色 */
+        }
+
+        .tab-item:nth-child(2) {
+            margin-right: 15px;
+            z-index: 9;
+            background: rgba(74, 222, 128, 0.9); /* 绿色 */
+        }
+
+        .tab-item:nth-child(3) {
+            margin-right: 30px;
+            z-index: 8;
+            background: rgba(59, 130, 246, 0.9); /* 蓝色 */
+        }
+
+        .tab-item:nth-child(4) {
+            margin-right: 45px;
+            z-index: 7;
+            background: rgba(239, 68, 68, 0.9); /* 红色 */
+        }
+
+        .tab-item:nth-child(5) {
+            margin-right: 60px;
+            z-index: 6;
+            background: rgba(74, 222, 128, 0.9); /* 绿色 */
+        }
+
+        .tab-item:nth-child(6) {
+            margin-right: 75px;
+            z-index: 5;
+            background: rgba(59, 130, 246, 0.9); /* 蓝色 */
+        }
+
+        .tab-item:hover {
+            border-color: rgba(255, 255, 255, 0.5);
+            transform: translateX(10px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+            filter: brightness(1.2);
+        }
+
+        .tab-item.active {
+            border-color: rgba(255, 255, 255, 0.6);
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.4);
+            transform: translateX(15px);
+            z-index: 15 !important;
+            filter: brightness(1.3);
+        }
+
+        /* 移动端适配 */
+        @media (max-width: 768px) {
+            .page-tabs {
+                top: 70px;
+                left: 10px;
+            }
+            
+            .tab-item {
+                padding: 10px 18px;
+                font-size: 12px;
+            }
+
+            .tab-item:nth-child(2) {
+                margin-right: 10px;
+            }
+
+            .tab-item:nth-child(3) {
+                margin-right: 20px;
+            }
+
+            .tab-item:nth-child(4) {
+                margin-right: 30px;
+            }
+
+            .tab-item:nth-child(5) {
+                margin-right: 40px;
+            }
+
+            .tab-item:nth-child(6) {
+                margin-right: 50px;
+            }
+        }
+
         /* 防止页面被挤压 */
         html, body {
             overflow-x: hidden;
@@ -1707,6 +1873,79 @@
     <script src="../js/api-client.js"></script>
     <script src="../js/effects.js"></script>
     <script>
+        // ========== 页面选项卡功能 ==========
+
+        // 在页面加载时检查是否属于合并组
+        async function checkAndLoadTabs() {
+            try {
+                // 获取当前页面文件名
+                const currentPage = window.location.pathname.split('/').pop();
+                
+                // 查询该页面是否属于合并组
+                const response = await fetch(`../server/api/admin.php?action=get_page_merge_info&page=${currentPage}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    // 如果有thumbs图片，设置中心展示图片
+                    if (data.thumbImage) {
+                        setShowcaseImage(data.thumbImage);
+                    }
+                    
+                    // 如果属于合并组，加载选项卡
+                    if (data.mergeGroupId) {
+                        await loadPageTabs(data.mergeGroupId, currentPage);
+                    }
+                }
+            } catch (error) {
+                console.error('检查页面合并状态失败:', error);
+            }
+        }
+        
+        // 设置中心展示区域的图片
+        function setShowcaseImage(imagePath) {
+            const showcaseIcon = document.querySelector('.showcase-icon');
+            if (showcaseIcon && imagePath) {
+                // 将emoji替换为图片
+                showcaseIcon.innerHTML = `<img src="../${imagePath}" alt="展示图片" style="max-width: 100%; max-height: 100%; object-fit: contain;">`;
+            }
+        }
+
+        // 加载选项卡
+        async function loadPageTabs(groupId, currentPage) {
+            try {
+                const response = await fetch(`../server/api/admin.php?action=get_group_pages&groupId=${groupId}`);
+                const data = await response.json();
+                
+                if (data.success && data.pages && data.pages.length > 1) {
+                    const tabsContainer = document.querySelector('.tabs-container');
+                    const pageTabs = document.getElementById('pageTabs');
+                    
+                    // 生成选项卡
+                    tabsContainer.innerHTML = data.pages.map(page => `
+                        <div class="tab-item ${page.file_name === currentPage ? 'active' : ''}" 
+                             onclick="switchToPage('${page.file_name}')">
+                            ${page.display_name}
+                        </div>
+                    `).join('');
+                    
+                    // 显示选项卡
+                    pageTabs.style.display = 'block';
+                    pageTabs.classList.add('show');
+                }
+            } catch (error) {
+                console.error('加载选项卡失败:', error);
+            }
+        }
+
+        // 切换到其他页面
+        function switchToPage(fileName) {
+            if (fileName !== window.location.pathname.split('/').pop()) {
+                window.location.href = fileName;
+            }
+        }
+
+        // ========== 原有代码 ==========
+
         let currentUser = null;
         let prizeData = [];
         let currentMode = 1; // 当前抽奖模式：1单抽，3三连抽，5五连抽
@@ -1716,6 +1955,9 @@
 
         // 检查登录状态并加载数据
         async function initPage() {
+            // 检查并加载选项卡
+            await checkAndLoadTabs();
+            
             // 直接检查localStorage中的登录状态
             const isLoggedIn = localStorage.getItem('isLoggedIn');
             const currentUserData = localStorage.getItem('currentUser');
@@ -1946,7 +2188,15 @@
             
             if (prize.image_url) {
                 const img = document.createElement('img');
-                img.src = prize.image_url;
+                // 修正图片路径：如果是相对路径，添加../前缀if (prize.image_url) {
+                const img = document.createElement('img');
+                                const imagePath = prize.image_url.startsWith('http') || prize.image_url.startsWith('/') if (prize.image_url) {
+                const img = document.createElement('img');
+                                    ? prize.image_url if (prize.image_url) {
+                const img = document.createElement('img');
+                                    : '../' + prize.image_url;if (prize.image_url) {
+                const img = document.createElement('img');
+                                img.src = imagePath;
                 img.alt = prize.name;
                 
                 // 根据屏幕尺寸调整图片大小
@@ -2241,20 +2491,15 @@
                 const targetItemCenter = targetItemLeftEdge + itemWidth / 2;
                 
                 // 计算需要移动的距离，使目标物品中心对齐容器中心
-                // 移动端需要额外补偿，因为指针可能不在正中心
-                let pointerOffset = 0;
-                if (isMobile) {
-                    // 移动端指针偏移补偿：向前移动2个格子的距离
-                    pointerOffset = itemWidth * 2;
-                }
-                
-                const translateAmount = centerPosition - targetItemCenter + pointerOffset;
+                // 注意：由于视觉效果，需要让目标物品停在指针位置// 计算需要移动的距离，使目标物品中心对齐容器中心
+                                // 指针在容器中心，所以目标物品应该停在中心位置// 计算需要移动的距离，使目标物品中心对齐容器中心
+                                const translateAmount = centerPosition - targetItemCenter;
                 
                 // 添加额外滚动距离制造滚动效果
                 const extraDistance = itemWidth * (isSmallMobile ? 10 : (isMobile ? 15 : 20));
                 const finalTranslate = translateAmount - extraDistance;
                 
-                console.log(`Row ${i}: targetIndex=${targetIndex}, itemWidth=${itemWidth}, containerWidth=${containerWidth}, centerPosition=${centerPosition}, targetItemCenter=${targetItemCenter}, pointerOffset=${pointerOffset}, translateAmount=${translateAmount}, finalTranslate=${finalTranslate}`);
+                console.log(`Row ${i}: targetIndex=${targetIndex}, itemWidth=${itemWidth}, containerWidth=${containerWidth}, centerPosition=${centerPosition}, targetItemCenter=${targetItemCenter}, translateAmount=${translateAmount}, finalTranslate=${finalTranslate}`);
                 
                 // 使用requestAnimationFrame确保动画在下一帧执行
                 setTimeout(() => {
@@ -2293,21 +2538,39 @@
             
             // 使用后端提供的总价值，如果没有则计算
             const calculatedValue = totalValue || results.reduce((sum, prize) => sum + parseFloat(prize.value || 0), 0);
-            const prizeNames = results.map(p => p.name).join('、');
             
-            const prizeDisplay = results.map(prize => {
-                if (prize.image_url) {
-                    return `<img src="${prize.image_url}" alt="${prize.name}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 10px; margin: 0 5px;">`;
-                } else {
-                    return `<span style="font-size: 60px; margin: 0 5px;">${prize.icon}</span>`;
-                }
+            // 生成奖品卡片 - 紧凑布局
+            const prizeCards = results.map(prize => {
+                // 修正图片路径：如果是相对路径，添加../前缀const prizeCards = results.map(prize => {
+                                const imagePath = prize.image_url && (prize.image_url.startsWith('http') || prize.image_url.startsWith('/'))const prizeCards = results.map(prize => {
+                                    ? prize.image_url const prizeCards = results.map(prize => {
+                                    : (prize.image_url ? '../' + prize.image_url : '');const prizeCards = results.map(prize => {
+                                const prizeCards = results.map(prize => {
+                                const displayIcon = imagePath 
+                    ? `<img src="${prize.image_url}" alt="${prize.name}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 8px;">` 
+                    : `<span style="font-size: 40px;">${prize.icon}</span>`;
+                
+                return `
+                    <div style="display: flex; align-items: center; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; padding: 10px; margin: 8px 0;">
+                        <div style="flex-shrink: 0; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;">
+                            ${displayIcon}
+                        </div>
+                        <div style="flex: 1; margin-left: 12px; text-align: left;">
+                            <div style="color: #4ade80; font-weight: 600; font-size: 14px; margin-bottom: 4px;">${prize.name}</div>
+                            <div style="color: #fbbf24; font-size: 13px;">+${parseFloat(prize.value || 0).toFixed(2)}</div>
+                        </div>
+                    </div>
+                `;
             }).join('');
             
             result.innerHTML = `
-                <div style="margin: 20px 0;">${prizeDisplay}</div>
-                <div class="neon-text gold" style="font-size: 24px; margin: 10px 0;">${prizeNames}</div>
-                <div class="neon-text green" style="font-size: 20px;">
-                    恭喜获得总价值: ${parseFloat(calculatedValue).toFixed(2)} 的奖品！
+                <div style="max-height: 300px; overflow-y: auto; margin: 15px 0;">
+                    ${prizeCards}
+                </div>
+                <div style="margin-top: 20px; padding-top: 15px; border-top: 2px solid rgba(239, 68, 68, 0.3);">
+                    <div style="color: #4ade80; font-size: 16px; margin-bottom: 5px;">恭喜获得总价值</div>
+                    <div style="color: #fbbf24; font-size: 24px; font-weight: bold;">${parseFloat(calculatedValue).toFixed(2)}</div>
+                    <div style="color: #4ade80; font-size: 14px; margin-top: 5px;">的奖品！</div>
                 </div>
             `;
             
@@ -2319,11 +2582,10 @@
         function generatePrizeGrid() {
             const prizeGrid = document.getElementById('prizeGrid');
             
-            prizeGrid.innerHTML = prizeData.map(prize => `
+            prizeGrid.innerHTML = prizeData.map(prize => {prizeGrid.innerHTML = prizeData.map(prize =>                 // 修正图片路径：如果是相对路径，添加../前缀prizeGrid.innerHTML = prizeData.map(prize =>                 const imagePath = prize.image_url && (prize.image_url.startsWith('http') || prize.image_url.startsWith('/'))prizeGrid.innerHTML = prizeData.map(prize =>                     ? prize.image_url prizeGrid.innerHTML = prizeData.map(prize =>                     : (prize.image_url ? '../' + prize.image_url : '');prizeGrid.innerHTML = prizeData.map(prize =>                 prizeGrid.innerHTML = prizeData.map(prize =>                 return `
                 <div class="prize-item ${prize.rarity}">
                     <div class="prize-display">
-                        ${prize.image_url ? 
-                            `<img src="${prize.image_url}" alt="${prize.name}" class="prize-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                        ${prize.image_url ?${prize.image_url ?                            `<img src="${imagePath}" alt="${prize.name}" class="prize-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
                              <span class="prize-icon" style="display:none;">${prize.icon}</span>` :
                             `<span class="prize-icon">${prize.icon}</span>`
                         }
@@ -2333,7 +2595,10 @@
                     <span class="prize-rarity">${getRarityText(prize.rarity)}</span>
                     <span class="prize-probability">概率: ${prize.probability}%</span>
                 </div>
-            `).join('');
+            `;
+                    <span class="prize-probability">概率: ${prize.probability}%</span>
+                </div>
+                        }).join('');
         }
 
         // 获取稀有度文本
@@ -2754,9 +3019,21 @@
             // 数量警告样式
             const quantityClass = prize.quantity <= 5 ? 'quantity-warning' : '';
             
-            // 优先使用图片URL，如果没有则使用emoji图标
+            // 修正图片路径：如果是相对路径，添加../前缀// 优先使用图片URL，如果没有则使用emoji图标
             const prizeImageHtml = prize.image_url 
-                ? `<img src="${prize.image_url}" alt="${prize.name}" class="prize-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                ?            const imagePath = prize.image_url && (prize.image_url.startsWith('http') || prize.image_url.startsWith('/'))// 优先使用图片URL，如果没有则使用emoji图标
+            const prizeImageHtml = prize.image_url 
+                ?                ? prize.image_url // 优先使用图片URL，如果没有则使用emoji图标
+            const prizeImageHtml = prize.image_url 
+                ?                : (prize.image_url ? '../' + prize.image_url : '');// 优先使用图片URL，如果没有则使用emoji图标
+            const prizeImageHtml = prize.image_url 
+                ?            // 优先使用图片URL，如果没有则使用emoji图标
+            const prizeImageHtml = prize.image_url 
+                ?            // 优先使用图片URL，如果没有则使用emoji图标// 优先使用图片URL，如果没有则使用emoji图标
+            const prizeImageHtml = prize.image_url 
+                ?            const prizeImageHtml = imagePath // 优先使用图片URL，如果没有则使用emoji图标
+            const prizeImageHtml = prize.image_url 
+                ?                ? `<img src="${prize.image_url}" alt="${prize.name}" class="prize-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
                    <div class="prize-icon" style="display:none;">${prize.icon || '🎁'}</div>`
                 : `<div class="prize-icon">${prize.icon || '🎁'}</div>`;
             

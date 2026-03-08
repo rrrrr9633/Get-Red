@@ -587,3 +587,45 @@ INSERT INTO shop_icon_config (icon_key, icon_name, icon_url, fallback_icon, desc
 ON DUPLICATE KEY UPDATE icon_key=icon_key;
 
 SELECT '商店图标配置表创建完成！' AS message;
+
+
+-- ============================================
+-- Lucky页面合并功能相关表
+-- ============================================
+
+-- 创建合并组表
+CREATE TABLE IF NOT EXISTS lucky_merge_groups (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    group_name VARCHAR(100) NOT NULL COMMENT '合并组名称',
+    group_icon VARCHAR(50) DEFAULT '🎰' COMMENT '合并组图标',
+    group_thumb VARCHAR(255) DEFAULT NULL COMMENT '合并组缩略图路径',
+    description TEXT COMMENT '合并组描述',
+    is_active TINYINT(1) DEFAULT 1 COMMENT '是否启用',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Lucky页面合并组';
+
+-- 创建页面元数据表
+CREATE TABLE IF NOT EXISTS lucky_pages_meta (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    file_name VARCHAR(100) NOT NULL UNIQUE COMMENT '页面文件名',
+    display_name VARCHAR(100) NOT NULL COMMENT '显示名称',
+    description TEXT COMMENT '页面描述',
+    thumb_image VARCHAR(255) DEFAULT NULL COMMENT '缩略图路径',
+    merge_group_id INT DEFAULT NULL COMMENT '所属合并组ID',
+    merge_order INT DEFAULT 0 COMMENT '在合并组中的排序',
+    is_active TINYINT(1) DEFAULT 1 COMMENT '是否启用',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (merge_group_id) REFERENCES lucky_merge_groups(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Lucky页面元数据';
+
+-- 创建索引
+CREATE INDEX idx_merge_group ON lucky_pages_meta(merge_group_id);
+CREATE INDEX idx_merge_order ON lucky_pages_meta(merge_order);
+
+-- 初始化现有页面的元数据
+INSERT IGNORE INTO lucky_pages_meta (file_name, display_name, description) VALUES
+('lucky1.html', '零号大坝(普通)', '零号大坝危机四伏'),
+('lucky2.html', '大红行动2', '抽取心爱的大红'),
+('lucky3.html', '大红行动3', '抽取心爱的大红');
