@@ -480,12 +480,15 @@ function addPrize() {
         $pageProbability = isset($data['page_probability']) && $data['page_probability'] !== '' 
             ? $data['page_probability'] 
             : null;  // 页面特定概率（NULL表示使用默认概率）
+        $pageQuantity = isset($data['page_quantity']) && $data['page_quantity'] !== '' 
+            ? intval($data['page_quantity']) 
+            : null;  // 页面特定数量（NULL表示使用默认数量）
         
         $stmt = $db->prepare("
-            INSERT INTO prize_lucky_pages (prize_id, lucky_page, enabled, page_probability)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO prize_lucky_pages (prize_id, lucky_page, enabled, page_probability, page_quantity)
+            VALUES (?, ?, ?, ?, ?)
         ");
-        $stmt->execute([$prizeId, $luckyPage, $pageEnabled, $pageProbability]);
+        $stmt->execute([$prizeId, $luckyPage, $pageEnabled, $pageProbability, $pageQuantity]);
         
         $db->commit();
         
@@ -646,22 +649,25 @@ function updatePrize() {
         $pageProbability = isset($data['page_probability']) && $data['page_probability'] !== '' 
             ? $data['page_probability'] 
             : null;
+        $pageQuantity = isset($data['page_quantity']) && $data['page_quantity'] !== '' 
+            ? intval($data['page_quantity']) 
+            : null;
         
         if ($exists) {
             // 更新现有关联
             $stmt = $db->prepare("
                 UPDATE prize_lucky_pages 
-                SET enabled = ?, page_probability = ?
+                SET enabled = ?, page_probability = ?, page_quantity = ?
                 WHERE prize_id = ? AND lucky_page = ?
             ");
-            $stmt->execute([$pageEnabled, $pageProbability, $data['id'], $luckyPage]);
+            $stmt->execute([$pageEnabled, $pageProbability, $pageQuantity, $data['id'], $luckyPage]);
         } else {
             // 创建新关联
             $stmt = $db->prepare("
-                INSERT INTO prize_lucky_pages (prize_id, lucky_page, enabled, page_probability)
-                VALUES (?, ?, ?, ?)
+                INSERT INTO prize_lucky_pages (prize_id, lucky_page, enabled, page_probability, page_quantity)
+                VALUES (?, ?, ?, ?, ?)
             ");
-            $stmt->execute([$data['id'], $luckyPage, $pageEnabled, $pageProbability]);
+            $stmt->execute([$data['id'], $luckyPage, $pageEnabled, $pageProbability, $pageQuantity]);
         }
         
         $db->commit();

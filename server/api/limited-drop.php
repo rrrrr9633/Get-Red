@@ -119,40 +119,35 @@ function getLegendaryPrizes($page) {
     global $pdo;
     
     try {
-        // 动态确定奖品表名
-        $tableName = 'prizes'; // 默认表名
-        if ($page !== 'luckytemp') {
-            // 对于非模板页面，使用页面名_prizes格式
-            $tableName = $page . '_prizes';
-        }
+        // 使用统一的prizes表，通过prize_lucky_pages关联
+        $luckyPage = str_replace('.html', '', $page);
         
-        // 首先检查表是否存在
-        $stmt = $pdo->prepare("SHOW TABLES LIKE ?");
-        $stmt->execute([$tableName]);
-        $tableExists = $stmt->fetch();
-        
-        if (!$tableExists) {
-            return [
-                'success' => false,
-                'message' => "奖品表 {$tableName} 不存在，请先创建该页面"
-            ];
-        }
-        
-        // 获取传说级奖品
+        // 获取该页面启用的传说级奖品
         $sql = "
-            SELECT id, name, icon, image_url, value, quantity, rarity, probability 
-            FROM `{$tableName}` 
-            WHERE rarity = 'legendary' AND active = 1 
-            ORDER BY name ASC
+            SELECT 
+                p.id, 
+                p.name, 
+                p.icon, 
+                p.image_url, 
+                p.value, 
+                COALESCE(plp.page_quantity, p.quantity) as quantity,
+                p.rarity, 
+                COALESCE(plp.page_probability, p.probability) as probability
+            FROM prizes p
+            LEFT JOIN prize_lucky_pages plp ON p.id = plp.prize_id AND plp.lucky_page = ?
+            WHERE p.rarity = 'legendary' 
+                AND p.active = 1 
+                AND (plp.enabled = 1 OR plp.enabled IS NULL)
+            ORDER BY p.name ASC
         ";
         
         $stmt = $pdo->prepare($sql);
-        $stmt->execute();
+        $stmt->execute([$luckyPage]);
         $prizes = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         return [
             'success' => true,
-            'table_name' => $tableName,
+            'table_name' => 'prizes (unified)',
             'prizes' => $prizes
         ];
     } catch (Exception $e) {
@@ -196,39 +191,36 @@ function getDisplayData($page) {
             ];
         }
         
-        // 动态确定奖品表名
-        $tableName = 'prizes'; // 默认表名
-        if ($page !== 'luckytemp') {
-            $tableName = $page . '_prizes';
-        }
-        
-        // 检查表是否存在
-        $stmt = $pdo->prepare("SHOW TABLES LIKE ?");
-        $stmt->execute([$tableName]);
-        $tableExists = $stmt->fetch();
-        
-        if (!$tableExists) {
-            return [
-                'success' => false,
-                'message' => "奖品表 {$tableName} 不存在"
-            ];
-        }
+        // 使用统一的prizes表
+        $luckyPage = str_replace('.html', '', $page);
         
         // 构建查询
         $placeholders = str_repeat('?,', count($selectedPrizeIds) - 1) . '?';
         $orderPlaceholders = str_repeat('?,', count($selectedPrizeIds) - 1) . '?';
         
         $sql = "
-            SELECT id, name, icon, image_url, value, quantity, rarity, probability 
-            FROM `{$tableName}` 
-            WHERE id IN ({$placeholders}) AND rarity = 'legendary' AND active = 1 
-            ORDER BY FIELD(id, {$orderPlaceholders})
+            SELECT 
+                p.id, 
+                p.name, 
+                p.icon, 
+                p.image_url, 
+                p.value, 
+                COALESCE(plp.page_quantity, p.quantity) as quantity,
+                p.rarity, 
+                COALESCE(plp.page_probability, p.probability) as probability
+            FROM prizes p
+            LEFT JOIN prize_lucky_pages plp ON p.id = plp.prize_id AND plp.lucky_page = ?
+            WHERE p.id IN ({$placeholders}) 
+                AND p.rarity = 'legendary' 
+                AND p.active = 1 
+                AND (plp.enabled = 1 OR plp.enabled IS NULL)
+            ORDER BY FIELD(p.id, {$orderPlaceholders})
         ";
         
         $stmt = $pdo->prepare($sql);
         
-        // 执行查询，参数需要重复一次用于ORDER BY
-        $params = array_merge($selectedPrizeIds, $selectedPrizeIds);
+        // 执行查询，参数：luckyPage + selectedPrizeIds + selectedPrizeIds(for ORDER BY)
+        $params = array_merge([$luckyPage], $selectedPrizeIds, $selectedPrizeIds);
         $stmt->execute($params);
         $prizes = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
@@ -237,14 +229,14 @@ function getDisplayData($page) {
             // 使用配置的爆率显示值
             $prize['original_rate'] = number_format($config['rate_boost_from'], 3);
             $prize['boosted_rate'] = number_format($config['rate_boost_to'], 3);
-            $prize['table_name'] = $tableName; // 添加表名信息用于调试
+            $prize['table_name'] = 'prizes (unified)'; // 添加表名信息用于调试
         }
         
         return [
             'success' => true,
             'is_active' => true,
             'window_title' => $config['window_title'],
-            'table_name' => $tableName,
+            'table_name' => 'prizes (unified)',
             'prizes' => $prizes
         ];
     } catch (Exception $e) {

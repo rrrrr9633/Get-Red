@@ -2605,6 +2605,9 @@ body::after {
         function generatePrizeGrid() {
             const prizeGrid = document.getElementById('prizeGrid');
             
+            // 按价值从高到低排序
+            prizeData.sort((a, b) => b.value - a.value);
+            
             prizeGrid.innerHTML = prizeData.map(prize => {
                 // 修正图片路径：如果是相对路径，添加../前缀
                 const imagePath = prize.image_url && (prize.image_url.startsWith('http') || prize.image_url.startsWith('/'))

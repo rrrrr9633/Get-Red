@@ -409,6 +409,109 @@
             margin: 20px 0;
         }
 
+        /* 分页样式 */
+        .pagination-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 30px 0;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            border: 1px solid rgba(255, 215, 0, 0.2);
+        }
+
+        .pagination-info {
+            color: #ccc;
+            font-size: 14px;
+        }
+
+        .pagination-info span {
+            color: #ffd700;
+            font-weight: bold;
+        }
+
+        .pagination-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .pagination-btn {
+            padding: 8px 16px;
+            background: rgba(255, 215, 0, 0.1);
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            color: #ffd700;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 14px;
+        }
+
+        .pagination-btn:hover:not(:disabled) {
+            background: rgba(255, 215, 0, 0.2);
+            border-color: #ffd700;
+            transform: translateY(-2px);
+        }
+
+        .pagination-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .pagination-pages {
+            display: flex;
+            gap: 5px;
+        }
+
+        .pagination-page {
+            padding: 8px 12px;
+            background: rgba(255, 215, 0, 0.1);
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            color: #ffd700;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 14px;
+            min-width: 40px;
+            text-align: center;
+        }
+
+        .pagination-page:hover {
+            background: rgba(255, 215, 0, 0.2);
+            border-color: #ffd700;
+        }
+
+        .pagination-page.active {
+            background: #ffd700;
+            color: #000;
+            font-weight: bold;
+            border-color: #ffd700;
+        }
+
+        .pagination-size {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #ccc;
+            font-size: 14px;
+        }
+
+        .pagination-size select {
+            padding: 6px 12px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            color: #ffd700;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .pagination-size select:focus {
+            outline: none;
+            border-color: #ffd700;
+        }
+
         @media (max-width: 768px) {
             .prizes-grid {
                 grid-template-columns: 1fr;
@@ -422,6 +525,129 @@
             .modal-content {
                 margin: 20px;
                 width: calc(100% - 40px);
+            }
+
+            .pagination-container {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .pagination-controls {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+        }
+
+        /* 筛选控件样式 */
+        .filter-container {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .filter-section {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .filter-label {
+            color: #ffd700;
+            font-weight: bold;
+            font-size: 14px;
+            white-space: nowrap;
+        }
+
+        .filter-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #ccc;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 13px;
+            white-space: nowrap;
+        }
+
+        .filter-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .filter-btn.active {
+            background: linear-gradient(45deg, #ffd700, #ffed4e);
+            color: #000;
+            border-color: #ffd700;
+            font-weight: bold;
+        }
+
+        /* 品质按钮特殊颜色 */
+        .filter-btn.rarity-common.active {
+            background: linear-gradient(45deg, #9ca3af, #d1d5db);
+        }
+
+        .filter-btn.rarity-rare.active {
+            background: linear-gradient(45deg, #3b82f6, #60a5fa);
+        }
+
+        .filter-btn.rarity-epic.active {
+            background: linear-gradient(45deg, #a855f7, #c084fc);
+        }
+
+        .filter-btn.rarity-legendary.active {
+            background: linear-gradient(45deg, #f59e0b, #fbbf24);
+        }
+
+        .filter-reset-btn {
+            padding: 8px 20px;
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid rgba(239, 68, 68, 0.5);
+            color: #ef4444;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 13px;
+            font-weight: bold;
+        }
+
+        .filter-reset-btn:hover {
+            background: rgba(239, 68, 68, 0.3);
+            border-color: #ef4444;
+            transform: translateY(-2px);
+        }
+
+        @media (max-width: 768px) {
+            .filter-container {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .filter-section {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .filter-buttons {
+                width: 100%;
+            }
+
+            .filter-btn {
+                flex: 1;
+                min-width: 70px;
             }
         }
 
@@ -647,8 +873,57 @@
             </div>
         </div>
 
+        <!-- 筛选控件 -->
+        <div class="filter-container">
+            <div class="filter-section">
+                <span class="filter-label">启用状态：</span>
+                <div class="filter-buttons">
+                    <button class="filter-btn active" data-status="all" onclick="filterByStatus('all')">全部</button>
+                    <button class="filter-btn" data-status="enabled" onclick="filterByStatus('enabled')">已启用</button>
+                    <button class="filter-btn" data-status="disabled" onclick="filterByStatus('disabled')">未启用</button>
+                </div>
+            </div>
+            <div class="filter-section">
+                <span class="filter-label">品质筛选：</span>
+                <div class="filter-buttons">
+                    <button class="filter-btn rarity-all active" data-rarity="all" onclick="filterByRarity('all')">全部</button>
+                    <button class="filter-btn rarity-common" data-rarity="common" onclick="filterByRarity('common')">普通</button>
+                    <button class="filter-btn rarity-rare" data-rarity="rare" onclick="filterByRarity('rare')">稀有</button>
+                    <button class="filter-btn rarity-epic" data-rarity="epic" onclick="filterByRarity('epic')">史诗</button>
+                    <button class="filter-btn rarity-legendary" data-rarity="legendary" onclick="filterByRarity('legendary')">传说</button>
+                </div>
+            </div>
+            <div class="filter-section">
+                <button class="filter-reset-btn" onclick="resetFilters()">重置筛选</button>
+            </div>
+        </div>
+
         <div id="prizesContainer" class="prizes-grid">
             <div class="loading">加载中...</div>
+        </div>
+
+        <!-- 分页控件 -->
+        <div id="paginationContainer" class="pagination-container" style="display: none;">
+            <div class="pagination-info">
+                显示 <span id="pageRangeStart">0</span>-<span id="pageRangeEnd">0</span> 
+                / 共 <span id="totalPrizes">0</span> 个奖品
+            </div>
+            <div class="pagination-controls">
+                <button class="pagination-btn" id="firstPageBtn" onclick="goToPage(1)">首页</button>
+                <button class="pagination-btn" id="prevPageBtn" onclick="goToPage(currentPage - 1)">上一页</button>
+                <div class="pagination-pages" id="paginationPages"></div>
+                <button class="pagination-btn" id="nextPageBtn" onclick="goToPage(currentPage + 1)">下一页</button>
+                <button class="pagination-btn" id="lastPageBtn" onclick="goToPage(totalPages)">末页</button>
+            </div>
+            <div class="pagination-size">
+                每页显示：
+                <select id="pageSizeSelect" onchange="changePageSize(this.value)">
+                    <option value="10">10</option>
+                    <option value="20" selected>20</option>
+                    <option value="30">30</option>
+                    <option value="50">50</option>
+                </select>
+            </div>
         </div>
 
         <button class="add-prize-btn" onclick="showAddPrizeModal()" title="添加新奖品">+</button>
@@ -739,9 +1014,20 @@
                 </div>
 
                 <div class="form-group" id="quantityGroup" style="display: none;">
-                    <label for="prizeQuantity">数量限制</label>
+                    <label for="prizeQuantity">默认数量限制</label>
                     <input type="number" id="prizeQuantity" min="1" placeholder="输入传说物品数量">
                     <small style="color: #ccc; font-size: 12px;">仅传说物品需要设置数量限制</small>
+                </div>
+
+                <div class="form-group" id="pageQuantityGroup" style="display: none;">
+                    <label for="prizePageQuantity">
+                        当前页面特定数量
+                        <small style="color: #888; font-weight: normal;">（可选，留空则使用默认数量）</small>
+                    </label>
+                    <input type="number" id="prizePageQuantity" min="0" placeholder="留空使用默认数量">
+                    <small style="color: #4ade80; font-size: 12px; display: block; margin-top: 5px;">
+                        💡 设置后，该奖品在当前页面(<span id="currentPageInFormQuantity" style="color: #ffd700;"></span>)将使用此数量
+                    </small>
                 </div>
 
                 <div class="form-group">
@@ -823,6 +1109,15 @@
     <script>
         let prizes = [];
         let editingPrizeId = null;
+        
+        // 分页变量
+        let currentPage = 1;
+        let pageSize = 20;
+        let totalPages = 1;
+        
+        // 筛选变量
+        let currentStatusFilter = 'all'; // all, enabled, disabled
+        let currentRarityFilter = 'all'; // all, common, rare, epic, legendary
 
         // 获取URL参数
         function getQueryParam(name) {
@@ -930,11 +1225,34 @@
             
             if (prizes.length === 0) {
                 container.innerHTML = '<div class="loading">暂无奖品数据</div>';
+                document.getElementById('paginationContainer').style.display = 'none';
+                return;
+            }
+
+            // 应用筛选
+            let filteredPrizes = [...prizes];
+            
+            // 按启用状态筛选
+            if (currentStatusFilter === 'enabled') {
+                filteredPrizes = filteredPrizes.filter(prize => prize.active === 1);
+            } else if (currentStatusFilter === 'disabled') {
+                filteredPrizes = filteredPrizes.filter(prize => prize.active === 0);
+            }
+            
+            // 按品质筛选
+            if (currentRarityFilter !== 'all') {
+                filteredPrizes = filteredPrizes.filter(prize => prize.rarity === currentRarityFilter);
+            }
+
+            // 如果筛选后没有结果
+            if (filteredPrizes.length === 0) {
+                container.innerHTML = '<div class="loading">没有符合条件的奖品</div>';
+                document.getElementById('paginationContainer').style.display = 'none';
                 return;
             }
 
             // 排序：启用的在前，禁用的在后；同状态按概率降序
-            const sortedPrizes = [...prizes].sort((a, b) => {
+            const sortedPrizes = filteredPrizes.sort((a, b) => {
                 // 首先按启用状态排序（启用=1在前，禁用=0在后）
                 if (a.active !== b.active) {
                     return b.active - a.active;
@@ -946,7 +1264,16 @@
                 return parseFloat(probB) - parseFloat(probA);
             });
 
-            container.innerHTML = sortedPrizes.map(prize => {
+            // 计算分页
+            totalPages = Math.ceil(sortedPrizes.length / pageSize);
+            if (currentPage > totalPages) currentPage = totalPages;
+            if (currentPage < 1) currentPage = 1;
+            
+            const startIndex = (currentPage - 1) * pageSize;
+            const endIndex = Math.min(startIndex + pageSize, sortedPrizes.length);
+            const paginatedPrizes = sortedPrizes.slice(startIndex, endIndex);
+
+            container.innerHTML = paginatedPrizes.map(prize => {
                 // 判断是否使用页面特定概率
                 const usingPageProbability = prize.page_probability !== null && prize.page_probability !== undefined;
                 const displayProbability = usingPageProbability ? prize.page_probability : prize.probability;
@@ -1022,6 +1349,9 @@
                 </div>
             `;
             }).join('');
+            
+            // 更新分页控件
+            updatePagination(sortedPrizes.length, startIndex, endIndex);
         }
 
         // 获取稀有度文本
@@ -1033,6 +1363,132 @@
                 'legendary': '传说'
             };
             return rarityMap[rarity] || '普通';
+        }
+
+        // 更新分页控件
+        function updatePagination(total, startIndex, endIndex) {
+            const paginationContainer = document.getElementById('paginationContainer');
+            
+            if (total <= pageSize) {
+                paginationContainer.style.display = 'none';
+                return;
+            }
+            
+            paginationContainer.style.display = 'flex';
+            
+            // 更新信息显示
+            document.getElementById('totalPrizes').textContent = total;
+            document.getElementById('pageRangeStart').textContent = startIndex + 1;
+            document.getElementById('pageRangeEnd').textContent = endIndex;
+            
+            // 更新按钮状态
+            document.getElementById('firstPageBtn').disabled = currentPage === 1;
+            document.getElementById('prevPageBtn').disabled = currentPage === 1;
+            document.getElementById('nextPageBtn').disabled = currentPage === totalPages;
+            document.getElementById('lastPageBtn').disabled = currentPage === totalPages;
+            
+            // 生成页码按钮
+            const pagesContainer = document.getElementById('paginationPages');
+            pagesContainer.innerHTML = '';
+            
+            // 计算显示的页码范围
+            let startPage = Math.max(1, currentPage - 2);
+            let endPage = Math.min(totalPages, currentPage + 2);
+            
+            // 确保至少显示5个页码（如果总页数>=5）
+            if (endPage - startPage < 4) {
+                if (startPage === 1) {
+                    endPage = Math.min(totalPages, startPage + 4);
+                } else if (endPage === totalPages) {
+                    startPage = Math.max(1, endPage - 4);
+                }
+            }
+            
+            // 添加第一页和省略号
+            if (startPage > 1) {
+                pagesContainer.innerHTML += `<div class="pagination-page" onclick="goToPage(1)">1</div>`;
+                if (startPage > 2) {
+                    pagesContainer.innerHTML += `<div class="pagination-page" style="cursor: default; border: none; background: transparent;">...</div>`;
+                }
+            }
+            
+            // 添加页码按钮
+            for (let i = startPage; i <= endPage; i++) {
+                const activeClass = i === currentPage ? 'active' : '';
+                pagesContainer.innerHTML += `<div class="pagination-page ${activeClass}" onclick="goToPage(${i})">${i}</div>`;
+            }
+            
+            // 添加省略号和最后一页
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) {
+                    pagesContainer.innerHTML += `<div class="pagination-page" style="cursor: default; border: none; background: transparent;">...</div>`;
+                }
+                pagesContainer.innerHTML += `<div class="pagination-page" onclick="goToPage(${totalPages})">${totalPages}</div>`;
+            }
+        }
+
+        // 跳转到指定页
+        function goToPage(page) {
+            if (page < 1 || page > totalPages || page === currentPage) return;
+            currentPage = page;
+            renderPrizes();
+            // 滚动到顶部
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // 改变每页显示数量
+        function changePageSize(newSize) {
+            pageSize = parseInt(newSize);
+            currentPage = 1; // 重置到第一页
+            renderPrizes();
+        }
+
+        // 按启用状态筛选
+        function filterByStatus(status) {
+            currentStatusFilter = status;
+            currentPage = 1; // 重置到第一页
+            
+            // 更新按钮状态
+            document.querySelectorAll('[data-status]').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector(`[data-status="${status}"]`).classList.add('active');
+            
+            renderPrizes();
+        }
+
+        // 按品质筛选
+        function filterByRarity(rarity) {
+            currentRarityFilter = rarity;
+            currentPage = 1; // 重置到第一页
+            
+            // 更新按钮状态
+            document.querySelectorAll('[data-rarity]').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector(`[data-rarity="${rarity}"]`).classList.add('active');
+            
+            renderPrizes();
+        }
+
+        // 重置筛选
+        function resetFilters() {
+            currentStatusFilter = 'all';
+            currentRarityFilter = 'all';
+            currentPage = 1;
+            
+            // 重置所有按钮状态
+            document.querySelectorAll('[data-status]').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector('[data-status="all"]').classList.add('active');
+            
+            document.querySelectorAll('[data-rarity]').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector('[data-rarity="all"]').classList.add('active');
+            
+            renderPrizes();
         }
 
         // 更新概率统计
@@ -1130,11 +1586,13 @@
         function handleRarityChange() {
             const rarity = document.getElementById('prizeRarity').value;
             const quantityGroup = document.getElementById('quantityGroup');
+            const pageQuantityGroup = document.getElementById('pageQuantityGroup');
             const restoreBtn = document.getElementById('restoreProbabilityBtn');
             const probabilityHint = document.getElementById('probabilityHint');
             
             if (rarity === 'legendary') {
                 quantityGroup.style.display = 'block';
+                pageQuantityGroup.style.display = 'block';
                 document.getElementById('prizeQuantity').required = true;
                 
                 // 如果是编辑模式且有原始概率，显示恢复选项
@@ -1152,8 +1610,10 @@
                 }
             } else {
                 quantityGroup.style.display = 'none';
+                pageQuantityGroup.style.display = 'none';
                 document.getElementById('prizeQuantity').required = false;
                 document.getElementById('prizeQuantity').value = '';
+                document.getElementById('prizePageQuantity').value = '';
                 
                 // 非传说物品隐藏概率恢复功能
                 restoreBtn.style.display = 'none';
@@ -1171,6 +1631,7 @@
             
             // 显示当前页面
             document.getElementById('currentPageInForm').textContent = window.currentLuckyPage;
+            document.getElementById('currentPageInFormQuantity').textContent = window.currentLuckyPage;
             
             // 隐藏概率恢复相关元素
             document.getElementById('restoreProbabilityBtn').style.display = 'none';
@@ -1205,6 +1666,7 @@
             
             // 显示当前页面
             document.getElementById('currentPageInForm').textContent = window.currentLuckyPage;
+            document.getElementById('currentPageInFormQuantity').textContent = window.currentLuckyPage;
             
             document.getElementById('prizeRarity').value = prize.rarity;
             document.getElementById('prizeActive').value = prize.active;
@@ -1241,11 +1703,22 @@
             // 处理数量字段
             if (prize.rarity === 'legendary') {
                 document.getElementById('quantityGroup').style.display = 'block';
-                document.getElementById('prizeQuantity').value = prize.quantity || '';
+                document.getElementById('pageQuantityGroup').style.display = 'block';
+                document.getElementById('prizeQuantity').value = prize.global_quantity || prize.quantity || '';
                 document.getElementById('prizeQuantity').required = true;
+                
+                // 设置页面特定数量（如果有）
+                const pageQuantityInput = document.getElementById('prizePageQuantity');
+                if (prize.page_quantity !== null && prize.page_quantity !== undefined) {
+                    pageQuantityInput.value = prize.page_quantity;
+                } else {
+                    pageQuantityInput.value = '';
+                }
             } else {
                 document.getElementById('quantityGroup').style.display = 'none';
+                document.getElementById('pageQuantityGroup').style.display = 'none';
                 document.getElementById('prizeQuantity').value = '';
+                document.getElementById('prizePageQuantity').value = '';
                 document.getElementById('prizeQuantity').required = false;
             }
 
@@ -1326,6 +1799,12 @@
                         return;
                     }
                     formData.append('quantity', quantity);
+                    
+                    // 添加页面特定数量（如果设置了）
+                    const pageQuantity = document.getElementById('prizePageQuantity').value;
+                    if (pageQuantity !== '' && pageQuantity !== null) {
+                        formData.append('page_quantity', pageQuantity);
+                    }
                 }
                 
                 // 验证概率 - 使用实际概率（页面特定或默认）
@@ -1402,6 +1881,12 @@
                         return;
                     }
                     formData.quantity = parseInt(quantity);
+                    
+                    // 添加页面特定数量（如果设置了）
+                    const pageQuantity = document.getElementById('prizePageQuantity').value;
+                    if (pageQuantity !== '' && pageQuantity !== null) {
+                        formData.page_quantity = parseInt(pageQuantity);
+                    }
                 }
 
                 // 验证概率 - 使用实际概率（页面特定或默认）
@@ -1930,7 +2415,7 @@
     <script>
         let limitedDropConfig = null;
         let legendaryPrizes = [];
-        let currentPage = 'luckytemp'; // 当前选择的页面
+        let limitedDropCurrentPage = 'luckytemp'; // 当前选择的页面
 
         // 从URL参数获取当前管理的页面名称
         function getCurrentPageFromUrl() {
@@ -1943,8 +2428,8 @@
         async function showLimitedDropConfig() {
             try {
                 // 从URL参数获取当前页面
-                currentPage = getCurrentPageFromUrl();
-                console.log('当前管理页面:', currentPage);
+                limitedDropCurrentPage = getCurrentPageFromUrl();
+                console.log('当前管理页面:', limitedDropCurrentPage);
                 
                 // 获取当前配置
                 await loadLimitedDropConfig();
@@ -1963,7 +2448,7 @@
         // 加载中奖用户列表
         async function loadWinnersList() {
             try {
-                const response = await fetch(`../../server/api/limited-drop.php?action=get_winners&page=${currentPage}`);
+                const response = await fetch(`../../server/api/limited-drop.php?action=get_winners&page=${limitedDropCurrentPage}`);
                 const data = await response.json();
                 
                 const container = document.getElementById('winnersList');
@@ -1994,7 +2479,7 @@
         // 加载限时掉落配置
         async function loadLimitedDropConfig() {
             try {
-                const response = await fetch(`../../server/api/limited-drop.php?action=get_config&page=${currentPage}`);
+                const response = await fetch(`../../server/api/limited-drop.php?action=get_config&page=${limitedDropCurrentPage}`);
                 const data = await response.json();
                 
                 if (data.success) {
@@ -2011,7 +2496,7 @@
                     enabledCheckbox.checked = limitedDropConfig.is_active == 1;
                     statusText.textContent = enabledCheckbox.checked ? '开启' : '关闭';
                     windowTitleInput.value = limitedDropConfig.window_title || '限时掉落，爆率提升';
-                    currentPageDisplay.textContent = `${currentPage} 页面`;
+                    currentPageDisplay.textContent = `${limitedDropCurrentPage} 页面`;
                     rateBoostFromInput.value = limitedDropConfig.rate_boost_from || '0.1';
                     rateBoostToInput.value = limitedDropConfig.rate_boost_to || '2.5';
                     
@@ -2031,7 +2516,7 @@
         // 加载传说级奖品
         async function loadLegendaryPrizes() {
             try {
-                const response = await fetch(`../../server/api/limited-drop.php?action=get_legendary_prizes&page=${currentPage}`);
+                const response = await fetch(`../../server/api/limited-drop.php?action=get_legendary_prizes&page=${limitedDropCurrentPage}`);
                 const data = await response.json();
                 
                 if (data.success) {
@@ -2042,7 +2527,7 @@
                     const infoText = data.table_name ? `(使用表: ${data.table_name})` : '';
                     const currentPageDisplay = document.getElementById('currentPageDisplay');
                     if (currentPageDisplay) {
-                        currentPageDisplay.innerHTML = `${currentPage} 页面 <small style="color: #aaa;">${infoText}</small>`;
+                        currentPageDisplay.innerHTML = `${limitedDropCurrentPage} 页面 <small style="color: #aaa;">${infoText}</small>`;
                     }
                 } else {
                     throw new Error(data.message);
@@ -2098,7 +2583,7 @@
             try {
                 const configData = {
                     action: 'update_config', // 添加 action 字段
-                    page: currentPage, // 添加页面参数
+                    page: limitedDropCurrentPage, // 添加页面参数
                     is_active: document.getElementById('limitedDropEnabled').checked ? 1 : 0,
                     window_title: document.getElementById('windowTitle').value || '限时掉落，爆率提升',
                     rate_boost_from: parseFloat(document.getElementById('rateBoostFrom').value) || 0.1,
@@ -2117,7 +2602,7 @@
                 const data = await response.json();
                 
                 if (data.success) {
-                    alert(`${currentPage} 页面配置保存成功！`);
+                    alert(`${limitedDropCurrentPage} 页面配置保存成功！`);
                     closeLimitedDropModal();
                 } else {
                     throw new Error(data.message);
