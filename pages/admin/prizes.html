@@ -704,7 +704,7 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="prizeProbability">中奖概率 (%)</label>
+                    <label for="prizeProbability">默认中奖概率 (%)</label>
                     <div style="display: flex; align-items: center; gap: 10px;">
                         <input type="number" id="prizeProbability" min="0" max="100" step="0.01" required style="flex: 1;">
                         <button type="button" id="restoreProbabilityBtn" onclick="restoreOriginalProbability()" 
@@ -712,7 +712,20 @@
                             恢复上次概率
                         </button>
                     </div>
+                    <small style="color: #888; display: block; margin-top: 5px;">此为奖品的默认概率，适用于所有未设置页面特定概率的页面</small>
                     <small id="probabilityHint" style="color: #888; display: none; margin-top: 5px;"></small>
+                </div>
+
+                <div class="form-group">
+                    <label for="prizePageProbability">
+                        当前页面特定概率 (%)
+                        <small style="color: #888; font-weight: normal;">（可选，留空则使用默认概率）</small>
+                    </label>
+                    <input type="number" id="prizePageProbability" min="0" max="100" step="0.01" 
+                           placeholder="留空使用默认概率">
+                    <small style="color: #4ade80; font-size: 12px; display: block; margin-top: 5px;">
+                        💡 设置后，该奖品在当前页面(<span id="currentPageInForm" style="color: #ffd700;"></span>)将使用此概率
+                    </small>
                 </div>
 
                 <div class="form-group">
@@ -920,7 +933,25 @@
                 return;
             }
 
-            container.innerHTML = prizes.map(prize => `
+            // 排序：启用的在前，禁用的在后；同状态按概率降序
+            const sortedPrizes = [...prizes].sort((a, b) => {
+                // 首先按启用状态排序（启用=1在前，禁用=0在后）
+                if (a.active !== b.active) {
+                    return b.active - a.active;
+                }
+                
+                // 同状态下，按概率降序排序
+                const probA = a.page_probability !== null && a.page_probability !== undefined ? a.page_probability : a.probability;
+                const probB = b.page_probability !== null && b.page_probability !== undefined ? b.page_probability : b.probability;
+                return parseFloat(probB) - parseFloat(probA);
+            });
+
+            container.innerHTML = sortedPrizes.map(prize => {
+                // 判断是否使用页面特定概率
+                const usingPageProbability = prize.page_probability !== null && prize.page_probability !== undefined;
+                const displayProbability = usingPageProbability ? prize.page_probability : prize.probability;
+                
+                return `
                 <div class="prize-card">
                     <div class="prize-image-container">
                         ${prize.image_url ? 
@@ -937,16 +968,28 @@
                                 <span>¥${prize.value}</span>
                             </div>
                             <div class="prize-detail">
-                                <span>概率:</span>
-                                <span>${prize.probability}%${
-                                    prize.rarity === 'legendary' && 
-                                    parseFloat(prize.probability) === 0 && 
-                                    prize.original_probability !== null && 
-                                    parseFloat(prize.original_probability) > 0 
-                                    ? ` <small style="color: #ffd700;">(可恢复至${prize.original_probability}%)</small>` 
-                                    : ''
-                                }</span>
+                                <span>当前概率:</span>
+                                <span>
+                                    ${displayProbability}%
+                                    ${usingPageProbability ? 
+                                        `<small style="color: #4ade80;"> (页面特定)</small>` : 
+                                        `<small style="color: #888;"> (默认)</small>`
+                                    }
+                                    ${prize.rarity === 'legendary' && 
+                                      parseFloat(displayProbability) === 0 && 
+                                      prize.original_probability !== null && 
+                                      parseFloat(prize.original_probability) > 0 
+                                      ? ` <small style="color: #ffd700;">(可恢复至${prize.original_probability}%)</small>` 
+                                      : ''
+                                    }
+                                </span>
                             </div>
+                            ${usingPageProbability ? 
+                                `<div class="prize-detail">
+                                    <span>默认概率:</span>
+                                    <span style="color: #888;">${prize.default_probability || prize.probability}%</span>
+                                </div>` : ''
+                            }
                             <div class="prize-detail">
                                 <span>稀有度:</span>
                                 <span>${getRarityText(prize.rarity)}</span>
@@ -959,8 +1002,13 @@
                             }
                             <div class="prize-detail">
                                 <span>状态:</span>
-                                <span>${prize.active ? '启用' : '禁用'}</span>
+                                <span>${prize.active ? '✅ 启用' : '❌ 禁用'}</span>
                             </div>
+                            ${!prize.is_linked ? 
+                                `<div class="prize-detail" style="color: #ff9800;">
+                                    <span>⚠️ 未关联到当前页面</span>
+                                </div>` : ''
+                            }
                         </div>
                         <div class="prize-actions">
                             <button class="btn btn-edit" onclick="editPrize(${prize.id})">编辑</button>
@@ -972,7 +1020,8 @@
                         </div>
                     </div>
                 </div>
-            `).join('');
+            `;
+            }).join('');
         }
 
         // 获取稀有度文本
@@ -989,7 +1038,14 @@
         // 更新概率统计
         function updateProbabilitySummary() {
             const activePrizes = prizes.filter(prize => prize.active);
-            const totalProbability = activePrizes.reduce((sum, prize) => sum + parseFloat(prize.probability), 0);
+            
+            // 使用实际概率（页面特定或默认）
+            const totalProbability = activePrizes.reduce((sum, prize) => {
+                const actualProb = prize.page_probability !== null && prize.page_probability !== undefined 
+                    ? prize.page_probability 
+                    : prize.probability;
+                return sum + parseFloat(actualProb);
+            }, 0);
             
             const totalElement = document.getElementById('totalProbability');
             const statusElement = document.getElementById('probabilityStatus');
@@ -1113,6 +1169,9 @@
             document.getElementById('prizeId').value = '';
             document.getElementById('imagePreview').innerHTML = '';
             
+            // 显示当前页面
+            document.getElementById('currentPageInForm').textContent = window.currentLuckyPage;
+            
             // 隐藏概率恢复相关元素
             document.getElementById('restoreProbabilityBtn').style.display = 'none';
             document.getElementById('probabilityHint').style.display = 'none';
@@ -1132,7 +1191,21 @@
             document.getElementById('prizeIcon').value = prize.icon;
             document.getElementById('prizeImageUrl').value = prize.image_url || '';
             document.getElementById('prizeValue').value = prize.value;
-            document.getElementById('prizeProbability').value = prize.probability;
+            
+            // 设置默认概率
+            document.getElementById('prizeProbability').value = prize.default_probability || prize.probability;
+            
+            // 设置页面特定概率（如果有）
+            const pageProbInput = document.getElementById('prizePageProbability');
+            if (prize.page_probability !== null && prize.page_probability !== undefined) {
+                pageProbInput.value = prize.page_probability;
+            } else {
+                pageProbInput.value = '';
+            }
+            
+            // 显示当前页面
+            document.getElementById('currentPageInForm').textContent = window.currentLuckyPage;
+            
             document.getElementById('prizeRarity').value = prize.rarity;
             document.getElementById('prizeActive').value = prize.active;
             
@@ -1142,7 +1215,7 @@
             
             if (prize.rarity === 'legendary' && prize.original_probability !== null && prize.original_probability !== undefined) {
                 const originalProb = parseFloat(prize.original_probability);
-                const currentProb = parseFloat(prize.probability);
+                const currentProb = parseFloat(prize.page_probability !== null && prize.page_probability !== undefined ? prize.page_probability : prize.probability);
                 
                 // 如果当前概率为0且有原始概率，显示恢复按钮
                 if (currentProb === 0 && originalProb > 0) {
@@ -1239,6 +1312,12 @@
                 formData.append('rarity', document.getElementById('prizeRarity').value);
                 formData.append('active', document.getElementById('prizeActive').value);
                 
+                // 添加页面特定概率（如果设置了）
+                const pageProbability = document.getElementById('prizePageProbability').value;
+                if (pageProbability !== '' && pageProbability !== null) {
+                    formData.append('page_probability', pageProbability);
+                }
+                
                 // 如果是传说物品，添加数量字段
                 if (document.getElementById('prizeRarity').value === 'legendary') {
                     const quantity = document.getElementById('prizeQuantity').value;
@@ -1249,17 +1328,26 @@
                     formData.append('quantity', quantity);
                 }
                 
-                // 验证概率
+                // 验证概率 - 使用实际概率（页面特定或默认）
                 const probability = parseFloat(document.getElementById('prizeProbability').value);
+                const pageProbValue = pageProbability !== '' ? parseFloat(pageProbability) : null;
+                const actualProbability = pageProbValue !== null ? pageProbValue : probability;
                 const active = parseInt(document.getElementById('prizeActive').value);
+                
                 if (active) {
                     const otherActivePrizes = prizes.filter(prize => 
                         prize.active && prize.id != document.getElementById('prizeId').value
                     );
-                    const otherProbabilitySum = otherActivePrizes.reduce((sum, prize) => 
-                        sum + parseFloat(prize.probability), 0
-                    );
-                    const totalProbability = otherProbabilitySum + probability;
+                    
+                    // 计算其他奖品的实际概率总和（考虑页面特定概率）
+                    const otherProbabilitySum = otherActivePrizes.reduce((sum, prize) => {
+                        const actualProb = prize.page_probability !== null && prize.page_probability !== undefined 
+                            ? prize.page_probability 
+                            : prize.probability;
+                        return sum + parseFloat(actualProb);
+                    }, 0);
+                    
+                    const totalProbability = otherProbabilitySum + actualProbability;
 
                     if (totalProbability > 100) {
                         showError(`概率超过100%！当前其他奖品概率总和为${otherProbabilitySum.toFixed(2)}%，最多只能设置${(100 - otherProbabilitySum).toFixed(2)}%`);
@@ -1300,6 +1388,12 @@
                     active: parseInt(document.getElementById('prizeActive').value)
                 };
                 
+                // 添加页面特定概率（如果设置了）
+                const pageProbability = document.getElementById('prizePageProbability').value;
+                if (pageProbability !== '' && pageProbability !== null) {
+                    formData.page_probability = parseFloat(pageProbability);
+                }
+                
                 // 如果是传说物品，添加数量字段
                 if (formData.rarity === 'legendary') {
                     const quantity = document.getElementById('prizeQuantity').value;
@@ -1310,15 +1404,26 @@
                     formData.quantity = parseInt(quantity);
                 }
 
-                // 验证概率
+                // 验证概率 - 使用实际概率（页面特定或默认）
                 if (formData.active) {
                     const otherActivePrizes = prizes.filter(prize => 
                         prize.active && prize.id != formData.id
                     );
-                    const otherProbabilitySum = otherActivePrizes.reduce((sum, prize) => 
-                        sum + parseFloat(prize.probability), 0
-                    );
-                    const totalProbability = otherProbabilitySum + formData.probability;
+                    
+                    // 计算其他奖品的实际概率总和（考虑页面特定概率）
+                    const otherProbabilitySum = otherActivePrizes.reduce((sum, prize) => {
+                        const actualProb = prize.page_probability !== null && prize.page_probability !== undefined 
+                            ? prize.page_probability 
+                            : prize.probability;
+                        return sum + parseFloat(actualProb);
+                    }, 0);
+                    
+                    // 当前奖品使用的概率
+                    const currentProbability = formData.page_probability !== undefined 
+                        ? formData.page_probability 
+                        : formData.probability;
+                    
+                    const totalProbability = otherProbabilitySum + currentProbability;
 
                     if (totalProbability > 100) {
                         showError(`概率超过100%！当前其他奖品概率总和为${otherProbabilitySum.toFixed(2)}%，最多只能设置${(100 - otherProbabilitySum).toFixed(2)}%`);
@@ -1382,7 +1487,7 @@
 
         // 删除奖品
         async function deletePrize(id) {
-            if (!confirm('确定要删除这个奖品吗？此操作不可恢复！')) {
+            if (!confirm('确定要删除这个奖品吗？\n\n此操作将：\n- 从所有页面移除该奖品\n- 删除关联的图片文件\n- 此操作不可恢复！')) {
                 return;
             }
 
@@ -1394,7 +1499,7 @@
                 const data = await response.json();
                 
                 if (data.success) {
-                    showSuccess('奖品删除成功！');
+                    showSuccess(data.message + (data.note ? '\n' + data.note : ''));
                     loadPrizes();
                 } else {
                     showError('删除失败: ' + data.error);

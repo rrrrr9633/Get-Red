@@ -252,24 +252,53 @@ function getPrizes() {
     global $db;
     
     try {
-        // 获取page参数，决定查询哪个表
+        // 获取page参数，决定查询哪个页面的奖品
         $page = $_GET['page'] ?? 'lucky1.html';
-        $tableName = str_replace('.html', '_prizes', $page);
-        $tableName = str_replace('-', '_', $tableName);
+        $luckyPage = str_replace('.html', '', $page);
         
-        // 检查表是否存在
-        $checkTableSQL = "SHOW TABLES LIKE '{$tableName}'";
-        $result = $db->query($checkTableSQL);
-        
-        if ($result->rowCount() == 0) {
-            // 如果表不存在，使用默认的prizes表
-            $tableName = 'prizes';
-        }
-        
-        $stmt = $db->query("SELECT * FROM `{$tableName}` ORDER BY probability DESC");
+        // 查询该页面的所有奖品（包含页面特定的启用状态和概率）
+        $stmt = $db->prepare("
+            SELECT 
+                p.id,
+                p.name,
+                p.icon,
+                p.image_url,
+                p.value,
+                p.probability AS default_probability,
+                COALESCE(plp.page_probability, p.probability) AS probability,
+                p.rarity,
+                p.quantity AS global_quantity,
+                COALESCE(plp.page_quantity, p.quantity) AS quantity,
+                p.original_probability,
+                p.active AS global_active,
+                plp.enabled AS active,
+                plp.page_probability,
+                plp.page_quantity,
+                p.created_at,
+                p.updated_at
+            FROM prizes p
+            LEFT JOIN prize_lucky_pages plp ON p.id = plp.prize_id AND plp.lucky_page = ?
+            ORDER BY COALESCE(plp.page_probability, p.probability) DESC
+        ");
+        $stmt->execute([$luckyPage]);
         $prizes = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
-        echo json_encode(['success' => true, 'prizes' => $prizes, 'table' => $tableName]);
+        // 标记哪些奖品在当前页面已关联
+        foreach ($prizes as &$prize) {
+            $prize['is_linked'] = !is_null($prize['active']);
+            // 如果未关联，设置默认值
+            if (!$prize['is_linked']) {
+                $prize['active'] = 0;
+                $prize['page_probability'] = null;
+            }
+        }
+        
+        echo json_encode([
+            'success' => true, 
+            'prizes' => $prizes, 
+            'lucky_page' => $luckyPage,
+            'table' => 'prizes (unified)'
+        ]);
     } catch (Exception $e) {
         http_response_code(500);
         echo json_encode(['error' => '获取奖品列表失败: ' . $e->getMessage()]);
@@ -383,19 +412,11 @@ function addPrize() {
     }
     
     try {
-        // 获取page参数，决定操作哪个表
+        // 获取page参数，决定关联到哪个页面
         $page = $_GET['page'] ?? 'lucky1.html';
-        $tableName = str_replace('.html', '_prizes', $page);
-        $tableName = str_replace('-', '_', $tableName);
+        $luckyPage = str_replace('.html', '', $page);
         
-        // 检查表是否存在
-        $checkTableSQL = "SHOW TABLES LIKE '{$tableName}'";
-        $result = $db->query($checkTableSQL);
-        
-        if ($result->rowCount() == 0) {
-            // 如果表不存在，使用默认的prizes表
-            $tableName = 'prizes';
-        }
+        $db->beginTransaction();
         
         // 处理图片上传
         $imageUrl = null;
@@ -435,7 +456,11 @@ function addPrize() {
             $originalProbability = $data['probability'];
         }
         
-        $stmt = $db->prepare("INSERT INTO `{$tableName}` (name, icon, image_url, value, probability, original_probability, rarity, quantity, active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        // 1. 插入到统一的prizes表
+        $stmt = $db->prepare("
+            INSERT INTO prizes (name, icon, image_url, value, probability, original_probability, rarity, quantity, active) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ");
         $stmt->execute([
             $data['name'],
             $data['icon'],
@@ -445,16 +470,33 @@ function addPrize() {
             $originalProbability,
             $data['rarity'] ?? 'common',
             $quantity,
-            $data['active'] ?? 1
+            1  // 全局默认启用
         ]);
         
-        echo json_encode(['success' => true, 'message' => '奖品添加成功']);
+        $prizeId = $db->lastInsertId();
         
-        // 如果添加的是传说奖品，检查并更新概率状态
-        if (isset($data['rarity']) && $data['rarity'] === 'legendary') {
-            updateLegendaryProbabilities($tableName);
-        }
+        // 2. 关联到当前Lucky页面
+        $pageEnabled = $data['active'] ?? 1;  // 页面级别的启用状态
+        $pageProbability = isset($data['page_probability']) && $data['page_probability'] !== '' 
+            ? $data['page_probability'] 
+            : null;  // 页面特定概率（NULL表示使用默认概率）
+        
+        $stmt = $db->prepare("
+            INSERT INTO prize_lucky_pages (prize_id, lucky_page, enabled, page_probability)
+            VALUES (?, ?, ?, ?)
+        ");
+        $stmt->execute([$prizeId, $luckyPage, $pageEnabled, $pageProbability]);
+        
+        $db->commit();
+        
+        echo json_encode([
+            'success' => true, 
+            'message' => '奖品添加成功',
+            'prize_id' => $prizeId
+        ]);
+        
     } catch (Exception $e) {
+        $db->rollBack();
         http_response_code(500);
         echo json_encode(['error' => '添加奖品失败: ' . $e->getMessage()]);
     }
@@ -507,24 +549,21 @@ function updatePrize() {
     }
     
     try {
-        // 获取page参数，决定操作哪个表
+        // 获取page参数，决定更新哪个页面的配置
         $page = $_GET['page'] ?? 'lucky1.html';
-        $tableName = str_replace('.html', '_prizes', $page);
-        $tableName = str_replace('-', '_', $tableName);
+        $luckyPage = str_replace('.html', '', $page);
         
-        // 检查表是否存在
-        $checkTableSQL = "SHOW TABLES LIKE '{$tableName}'";
-        $result = $db->query($checkTableSQL);
+        $db->beginTransaction();
         
-        if ($result->rowCount() == 0) {
-            // 如果表不存在，使用默认的prizes表
-            $tableName = 'prizes';
-        }
-        
-        // 获取当前奖品的稀有度和图片URL
-        $stmt = $db->prepare("SELECT rarity, original_probability, image_url FROM `{$tableName}` WHERE id = ?");
+        // 获取当前奖品信息
+        $stmt = $db->prepare("SELECT rarity, original_probability, image_url FROM prizes WHERE id = ?");
         $stmt->execute([$data['id']]);
         $currentPrize = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$currentPrize) {
+            throw new Exception('奖品不存在');
+        }
+        
         $currentRarity = $currentPrize['rarity'];
         $currentImageUrl = $currentPrize['image_url'];
         
@@ -573,15 +612,15 @@ function updatePrize() {
         if (isset($data['rarity']) && $data['rarity'] === 'legendary') {
             // 如果是传说奖品，始终使用用户输入的概率作为原始概率
             $originalProbability = $data['probability'];
-        } else if ($currentRarity === 'legendary' && $data['rarity'] !== 'legendary') {
-            // 从传说变为非传说，清除original_probability
-            $originalProbability = null;
-        } else if ($currentRarity !== 'legendary') {
-            // 非传说物品，不设置original_probability
-            $originalProbability = null;
         }
         
-        $stmt = $db->prepare("UPDATE `{$tableName}` SET name = ?, icon = ?, image_url = ?, value = ?, probability = ?, original_probability = ?, rarity = ?, quantity = ?, active = ? WHERE id = ?");
+        // 1. 更新prizes表（全局信息）
+        $stmt = $db->prepare("
+            UPDATE prizes 
+            SET name = ?, icon = ?, image_url = ?, value = ?, probability = ?, 
+                original_probability = ?, rarity = ?, quantity = ?
+            WHERE id = ?
+        ");
         $stmt->execute([
             $data['name'],
             $data['icon'],
@@ -591,17 +630,46 @@ function updatePrize() {
             $originalProbability,
             $data['rarity'] ?? 'common',
             $quantity,
-            $data['active'] ?? 1,
             $data['id']
         ]);
         
+        // 2. 更新或插入prize_lucky_pages表（页面特定配置）
+        // 检查是否已存在关联
+        $stmt = $db->prepare("
+            SELECT id FROM prize_lucky_pages 
+            WHERE prize_id = ? AND lucky_page = ?
+        ");
+        $stmt->execute([$data['id'], $luckyPage]);
+        $exists = $stmt->fetch();
+        
+        $pageEnabled = $data['active'] ?? 1;
+        $pageProbability = isset($data['page_probability']) && $data['page_probability'] !== '' 
+            ? $data['page_probability'] 
+            : null;
+        
+        if ($exists) {
+            // 更新现有关联
+            $stmt = $db->prepare("
+                UPDATE prize_lucky_pages 
+                SET enabled = ?, page_probability = ?
+                WHERE prize_id = ? AND lucky_page = ?
+            ");
+            $stmt->execute([$pageEnabled, $pageProbability, $data['id'], $luckyPage]);
+        } else {
+            // 创建新关联
+            $stmt = $db->prepare("
+                INSERT INTO prize_lucky_pages (prize_id, lucky_page, enabled, page_probability)
+                VALUES (?, ?, ?, ?)
+            ");
+            $stmt->execute([$data['id'], $luckyPage, $pageEnabled, $pageProbability]);
+        }
+        
+        $db->commit();
+        
         echo json_encode(['success' => true, 'message' => '奖品更新成功']);
         
-        // 如果修改了传说奖品的数量，检查并更新概率状态
-        if ((isset($data['rarity']) && $data['rarity'] === 'legendary') || $currentRarity === 'legendary') {
-            updateLegendaryProbabilities($tableName);
-        }
     } catch (Exception $e) {
+        $db->rollBack();
         http_response_code(500);
         echo json_encode(['error' => '更新奖品失败: ' . $e->getMessage()]);
     }
@@ -617,24 +685,40 @@ function togglePrize() {
     }
     
     try {
-        // 获取page参数，决定操作哪个表
+        // 获取page参数，决定切换哪个页面的启用状态
         $page = $_GET['page'] ?? 'lucky1.html';
-        $tableName = str_replace('.html', '_prizes', $page);
-        $tableName = str_replace('-', '_', $tableName);
+        $luckyPage = str_replace('.html', '', $page);
         
-        // 检查表是否存在
-        $checkTableSQL = "SHOW TABLES LIKE '{$tableName}'";
-        $result = $db->query($checkTableSQL);
+        // 检查是否已存在关联
+        $stmt = $db->prepare("
+            SELECT id FROM prize_lucky_pages 
+            WHERE prize_id = ? AND lucky_page = ?
+        ");
+        $stmt->execute([$input['id'], $luckyPage]);
+        $exists = $stmt->fetch();
         
-        if ($result->rowCount() == 0) {
-            // 如果表不存在，使用默认的prizes表
-            $tableName = 'prizes';
+        if ($exists) {
+            // 更新现有关联的启用状态
+            $stmt = $db->prepare("
+                UPDATE prize_lucky_pages 
+                SET enabled = ?
+                WHERE prize_id = ? AND lucky_page = ?
+            ");
+            $stmt->execute([$input['active'] ? 1 : 0, $input['id'], $luckyPage]);
+        } else {
+            // 创建新关联（使用默认概率）
+            $stmt = $db->prepare("
+                INSERT INTO prize_lucky_pages (prize_id, lucky_page, enabled, page_probability)
+                VALUES (?, ?, ?, NULL)
+            ");
+            $stmt->execute([$input['id'], $luckyPage, $input['active'] ? 1 : 0]);
         }
         
-        $stmt = $db->prepare("UPDATE `{$tableName}` SET active = ? WHERE id = ?");
-        $stmt->execute([$input['active'] ? 1 : 0, $input['id']]);
-        
-        echo json_encode(['success' => true, 'message' => '奖品状态更新成功']);
+        echo json_encode([
+            'success' => true, 
+            'message' => '奖品状态更新成功',
+            'note' => '此操作仅影响当前页面(' . $luckyPage . ')的启用状态'
+        ]);
     } catch (Exception $e) {
         http_response_code(500);
         echo json_encode(['error' => '更新奖品状态失败: ' . $e->getMessage()]);
@@ -835,22 +919,12 @@ function deletePrize() {
     }
     
     try {
-        // 获取page参数，决定操作哪个表
+        // 获取page参数
         $page = $_GET['page'] ?? 'lucky1.html';
-        $tableName = str_replace('.html', '_prizes', $page);
-        $tableName = str_replace('-', '_', $tableName);
+        $luckyPage = str_replace('.html', '', $page);
         
-        // 检查表是否存在
-        $checkTableSQL = "SHOW TABLES LIKE '{$tableName}'";
-        $result = $db->query($checkTableSQL);
-        
-        if ($result->rowCount() == 0) {
-            // 如果表不存在，使用默认的prizes表
-            $tableName = 'prizes';
-        }
-        
-        // 获取要删除的奖品信息
-        $stmt = $db->prepare("SELECT rarity FROM `{$tableName}` WHERE id = ?");
+        // 获取要删除的奖品信息（包括图片路径）
+        $stmt = $db->prepare("SELECT id, name, rarity, image_url FROM prizes WHERE id = ?");
         $stmt->execute([$id]);
         $prizeToDelete = $stmt->fetch(PDO::FETCH_ASSOC);
         
@@ -860,31 +934,51 @@ function deletePrize() {
             return;
         }
         
-        // 只有当要删除普通奖品且存在传说奖品时才进行限制
-        if ($prizeToDelete['rarity'] !== 'legendary') {
-            // 检查是否存在传说奖品
-            $stmt = $db->prepare("SELECT COUNT(*) as count FROM `{$tableName}` WHERE rarity = 'legendary' AND active = 1");
-            $stmt->execute();
-            $legendaryCount = $stmt->fetchColumn();
+        // 检查是否只是从当前页面移除，还是完全删除奖品
+        $removeFromPage = $_GET['remove_from_page'] ?? false;
+        
+        if ($removeFromPage) {
+            // 只从当前页面移除关联
+            $stmt = $db->prepare("DELETE FROM prize_lucky_pages WHERE prize_id = ? AND lucky_page = ?");
+            $stmt->execute([$id, $luckyPage]);
             
-            if ($legendaryCount > 0) {
-                // 检查删除后是否还有其他普通奖品
-                $stmt = $db->prepare("SELECT COUNT(*) as count FROM `{$tableName}` WHERE rarity != 'legendary' AND active = 1 AND id != ?");
-                $stmt->execute([$id]);
-                $remainingNormalCount = $stmt->fetchColumn();
+            echo json_encode([
+                'success' => true, 
+                'message' => '已从当前页面移除奖品',
+                'note' => '奖品仍存在于其他页面'
+            ]);
+        } else {
+            // 完全删除奖品（会自动删除所有页面关联，因为有外键约束）
+            
+            // 先删除图片文件（如果存在且是本地文件）
+            if (!empty($prizeToDelete['image_url'])) {
+                $imageUrl = $prizeToDelete['image_url'];
                 
-                if ($remainingNormalCount == 0) {
-                    http_response_code(400);
-                    echo json_encode(['error' => '不能删除最后一个普通奖品！当存在传说奖品时，必须保留至少一个普通奖品以确保抽奖系统正常运行。']);
-                    return;
+                // 检查是否是本地图片（在images/prizes/目录下）
+                if (strpos($imageUrl, 'images/prizes/') === 0) {
+                    $imagePath = dirname(__DIR__, 2) . '/' . $imageUrl;
+                    
+                    // 删除图片文件
+                    if (file_exists($imagePath)) {
+                        if (unlink($imagePath)) {
+                            error_log("成功删除图片: {$imagePath}");
+                        } else {
+                            error_log("删除图片失败: {$imagePath}");
+                        }
+                    }
                 }
             }
+            
+            // 删除数据库记录
+            $stmt = $db->prepare("DELETE FROM prizes WHERE id = ?");
+            $stmt->execute([$id]);
+            
+            echo json_encode([
+                'success' => true, 
+                'message' => '奖品已完全删除',
+                'note' => '已从所有页面移除，图片文件已删除'
+            ]);
         }
-        
-        $stmt = $db->prepare("DELETE FROM `{$tableName}` WHERE id = ?");
-        $stmt->execute([$id]);
-        
-        echo json_encode(['success' => true, 'message' => '奖品删除成功']);
     } catch (Exception $e) {
         http_response_code(500);
         echo json_encode(['error' => '删除奖品失败: ' . $e->getMessage()]);

@@ -70,23 +70,31 @@ function performLuckyDraw($userId, $count = 1, $page = 'lucky1.html') {
             throw new Exception('非绑定金币不足，请先充值！当前非绑定金币：' . $user['unbound_coins']);
         }
         
-        // 确定奖品表名
-        $tableName = 'prizes';
-        if ($page) {
-            $tableName = str_replace('.html', '_prizes', $page);
-            $tableName = str_replace('-', '_', $tableName);
-            
-            // 检查表是否存在
-            $checkTableSQL = "SHOW TABLES LIKE '{$tableName}'";
-            $result = $pdo->query($checkTableSQL);
-            if ($result->rowCount() == 0) {
-                $tableName = 'prizes';
-            }
-        }
+        // 获取Lucky页面标识
+        $luckyPage = $page ? str_replace('.html', '', $page) : 'lucky1';
         
-        // 获取指定页面的奖品列表（只获取激活且概率大于0的奖品）
-        $stmt = $pdo->prepare("SELECT * FROM `{$tableName}` WHERE active = 1 AND probability > 0");
-        $stmt->execute();
+        // 使用统一的prize表，通过prize_lucky_pages关联获取该页面的奖品
+        $stmt = $pdo->prepare("
+            SELECT 
+                p.id,
+                p.name,
+                p.icon,
+                p.image_url,
+                p.value,
+                COALESCE(plp.page_probability, p.probability) AS probability,
+                p.rarity,
+                p.quantity AS global_quantity,
+                COALESCE(plp.page_quantity, p.quantity) AS quantity,
+                p.original_probability
+            FROM prizes p
+            INNER JOIN prize_lucky_pages plp ON p.id = plp.prize_id
+            WHERE plp.lucky_page = ? 
+              AND p.active = 1 
+              AND plp.enabled = 1
+              AND COALESCE(plp.page_probability, p.probability) > 0
+            ORDER BY COALESCE(plp.page_probability, p.probability) ASC
+        ");
+        $stmt->execute([$luckyPage]);
         $prizes = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         if (empty($prizes)) {
@@ -99,8 +107,27 @@ function performLuckyDraw($userId, $count = 1, $page = 'lucky1.html') {
         // 执行抽奖
         for ($i = 0; $i < $count; $i++) {
             // 重新获取当前可用奖品列表（因为传说物品数量可能变化）
-            $stmt = $pdo->prepare("SELECT * FROM `{$tableName}` WHERE active = 1 AND probability > 0");
-            $stmt->execute();
+            $stmt = $pdo->prepare("
+                SELECT 
+                    p.id,
+                    p.name,
+                    p.icon,
+                    p.image_url,
+                    p.value,
+                    COALESCE(plp.page_probability, p.probability) AS probability,
+                    p.rarity,
+                    p.quantity AS global_quantity,
+                    COALESCE(plp.page_quantity, p.quantity) AS quantity,
+                    p.original_probability
+                FROM prizes p
+                INNER JOIN prize_lucky_pages plp ON p.id = plp.prize_id
+                WHERE plp.lucky_page = ? 
+                  AND p.active = 1 
+                  AND plp.enabled = 1
+                  AND COALESCE(plp.page_probability, p.probability) > 0
+                ORDER BY COALESCE(plp.page_probability, p.probability) ASC
+            ");
+            $stmt->execute([$luckyPage]);
             $currentPrizes = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
             if (empty($currentPrizes)) {
@@ -111,30 +138,41 @@ function performLuckyDraw($userId, $count = 1, $page = 'lucky1.html') {
             $results[] = $prize;
             $totalValue += floatval($prize['value']);
             
-            // 如果是传说物品且有数量限制，扣减数量
+            // 如果是传说物品且有数量限制，扣减页面特定数量
             if ($prize['rarity'] === 'legendary' && isset($prize['quantity']) && $prize['quantity'] !== null) {
                 $newQuantity = $prize['quantity'] - 1;
                 
-                // 更新数量
-                $stmt = $pdo->prepare("UPDATE `{$tableName}` SET quantity = ? WHERE id = ?");
-                $stmt->execute([$newQuantity, $prize['id']]);
+                // 更新页面特定数量（不影响全局数量和其他页面）
+                $stmt = $pdo->prepare("
+                    UPDATE prize_lucky_pages 
+                    SET page_quantity = ? 
+                    WHERE prize_id = ? AND lucky_page = ?
+                ");
+                $stmt->execute([$newQuantity, $prize['id'], $luckyPage]);
                 
-                // 如果数量变为0，将概率设为0
+                // 如果页面数量变为0，将该页面的概率设为0（只影响当前页面）
                 if ($newQuantity <= 0) {
-                    $stmt = $pdo->prepare("UPDATE `{$tableName}` SET probability = 0 WHERE id = ?");
-                    $stmt->execute([$prize['id']]);
+                    $stmt = $pdo->prepare("
+                        UPDATE prize_lucky_pages 
+                        SET page_probability = 0 
+                        WHERE prize_id = ? AND lucky_page = ?
+                    ");
+                    $stmt->execute([$prize['id'], $luckyPage]);
                 }
             }
             
             // 将抽中的物品添加到用户物品表
+            $prizeIdForStorage = isset($prize['id']) && $prize['id'] !== null ? $prize['id'] : null;
+            
             $stmt = $pdo->prepare("
                 INSERT INTO user_items (user_id, prize_id, name, icon, image_url, value, rarity)
-                VALUES (?, NULL, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
             ");
             $stmt->execute([
                 $userId,
+                $prizeIdForStorage,
                 $prize['name'],
-                $prize['icon'] ?? '',
+                $prize['icon'] ?? '🎁',
                 $prize['image_url'] ?? '',
                 $prize['value'],
                 $prize['rarity']

@@ -10,108 +10,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 require_once '../config/database.php';
 require_once '../config/coin-helper.php';
+require_once '../config/prize-helper.php';
 
 $database = new Database();
 $pdo = $database->getConnection();
 
-function getPrizes($gameType = null) {
+function getPrizes($luckyPage = null) {
     global $pdo;
     
     try {
-        if ($gameType) {
-            $stmt = $pdo->prepare("SELECT * FROM prizes WHERE game_type = ? AND active = 1 ORDER BY probability ASC");
-            $stmt->execute([$gameType]);
+        if ($luckyPage) {
+            // 获取指定Lucky页面的奖品
+            $luckyPage = str_replace('.html', '', $luckyPage);
+            $prizes = getPrizesByLuckyPage($pdo, $luckyPage, true);
         } else {
-            $stmt = $pdo->prepare("SELECT * FROM prizes WHERE active = 1 ORDER BY game_type, probability ASC");
+            // 获取所有启用的奖品
+            $stmt = $pdo->prepare("SELECT * FROM prizes WHERE active = 1 ORDER BY probability ASC");
             $stmt->execute();
+            $prizes = $stmt->fetchAll(PDO::FETCH_ASSOC);
         }
-        
-        $prizes = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         return [
             'success' => true,
-            'prizes' => $prizes
+            'prizes' => $prizes,
+            'lucky_page' => $luckyPage
         ];
     } catch (Exception $e) {
         return [
             'success' => false,
             'message' => '获取奖品失败: ' . $e->getMessage()
-        ];
-    }
-}
-
-function addPrize($data) {
-    global $pdo;
-    
-    try {
-        $stmt = $pdo->prepare("INSERT INTO prizes (name, icon, image_url, value, rarity, game_type, probability) VALUES (?, ?, ?, ?, ?, ?, ?)");
-        $stmt->execute([
-            $data['name'],
-            $data['icon'],
-            $data['image_url'] ?? null,
-            $data['value'],
-            $data['rarity'],
-            $data['game_type'],
-            $data['probability']
-        ]);
-        
-        return [
-            'success' => true,
-            'message' => '奖品添加成功',
-            'id' => $pdo->lastInsertId()
-        ];
-    } catch (Exception $e) {
-        return [
-            'success' => false,
-            'message' => '添加奖品失败: ' . $e->getMessage()
-        ];
-    }
-}
-
-function updatePrize($id, $data) {
-    global $pdo;
-    
-    try {
-        $stmt = $pdo->prepare("UPDATE prizes SET name = ?, icon = ?, image_url = ?, value = ?, rarity = ?, game_type = ?, probability = ? WHERE id = ?");
-        $stmt->execute([
-            $data['name'],
-            $data['icon'],
-            $data['image_url'] ?? null,
-            $data['value'],
-            $data['rarity'],
-            $data['game_type'],
-            $data['probability'],
-            $id
-        ]);
-        
-        return [
-            'success' => true,
-            'message' => '奖品更新成功'
-        ];
-    } catch (Exception $e) {
-        return [
-            'success' => false,
-            'message' => '更新奖品失败: ' . $e->getMessage()
-        ];
-    }
-}
-
-function deletePrize($id) {
-    global $pdo;
-    
-    try {
-        // 软删除，设置 active = 0
-        $stmt = $pdo->prepare("UPDATE prizes SET active = 0 WHERE id = ?");
-        $stmt->execute([$id]);
-        
-        return [
-            'success' => true,
-            'message' => '奖品删除成功'
-        ];
-    } catch (Exception $e) {
-        return [
-            'success' => false,
-            'message' => '删除奖品失败: ' . $e->getMessage()
         ];
     }
 }
@@ -126,6 +53,15 @@ function drawPrizes($gameType, $count, $userId, $page = '') {
         $coins = getUserCoins($pdo, $userId);
         if (!$coins) {
             throw new Exception('获取用户余额失败');
+        }
+        
+        // 获取用户信息
+        $stmt = $pdo->prepare("SELECT * FROM users WHERE id = ?");
+        $stmt->execute([$userId]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$user) {
+            throw new Exception('用户不存在');
         }
         
         // 获取动态价格
@@ -162,27 +98,35 @@ function drawPrizes($gameType, $count, $userId, $page = '') {
             $cost = $priceValue;
         }
         
-        if ($user['balance'] < $cost) {
+        if ($user['unbound_coins'] < $cost) {
             throw new Exception('余额不足');
         }
         
-        // 确定奖品表名
-        $tableName = 'prizes';
-        if ($page) {
-            $tableName = str_replace('.html', '_prizes', $page);
-            $tableName = str_replace('-', '_', $tableName);
-            
-            // 检查表是否存在
-            $checkTableSQL = "SHOW TABLES LIKE '{$tableName}'";
-            $result = $pdo->query($checkTableSQL);
-            if ($result->rowCount() == 0) {
-                $tableName = 'prizes';
-            }
-        }
+        // 获取Lucky页面标识
+        $luckyPage = $page ? str_replace('.html', '', $page) : 'lucky1';
         
-        // 获取可用奖品（概率大于0的奖品）
-        $stmt = $pdo->prepare("SELECT * FROM `{$tableName}` WHERE active = 1 AND probability > 0 ORDER BY probability ASC");
-        $stmt->execute();
+        // 使用统一的prize表，通过prize_lucky_pages关联获取该页面的奖品
+        $stmt = $pdo->prepare("
+            SELECT 
+                p.id,
+                p.name,
+                p.icon,
+                p.image_url,
+                p.value,
+                COALESCE(plp.page_probability, p.probability) AS probability,
+                p.rarity,
+                p.quantity AS global_quantity,
+                COALESCE(plp.page_quantity, p.quantity) AS quantity,
+                p.original_probability
+            FROM prizes p
+            INNER JOIN prize_lucky_pages plp ON p.id = plp.prize_id
+            WHERE plp.lucky_page = ? 
+              AND p.active = 1 
+              AND plp.enabled = 1
+              AND COALESCE(plp.page_probability, p.probability) > 0
+            ORDER BY COALESCE(plp.page_probability, p.probability) ASC
+        ");
+        $stmt->execute([$luckyPage]);
         $availablePrizes = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         if (empty($availablePrizes)) {
@@ -195,8 +139,27 @@ function drawPrizes($gameType, $count, $userId, $page = '') {
         // 执行抽奖 - 每次抽奖后立即更新数量和概率
         for ($i = 0; $i < $count; $i++) {
             // 重新获取当前可用奖品列表（因为可能有概率变化）
-            $stmt = $pdo->prepare("SELECT * FROM `{$tableName}` WHERE active = 1 AND probability > 0 ORDER BY probability ASC");
-            $stmt->execute();
+            $stmt = $pdo->prepare("
+                SELECT 
+                    p.id,
+                    p.name,
+                    p.icon,
+                    p.image_url,
+                    p.value,
+                    COALESCE(plp.page_probability, p.probability) AS probability,
+                    p.rarity,
+                    p.quantity AS global_quantity,
+                    COALESCE(plp.page_quantity, p.quantity) AS quantity,
+                    p.original_probability
+                FROM prizes p
+                INNER JOIN prize_lucky_pages plp ON p.id = plp.prize_id
+                WHERE plp.lucky_page = ? 
+                  AND p.active = 1 
+                  AND plp.enabled = 1
+                  AND COALESCE(plp.page_probability, p.probability) > 0
+                ORDER BY COALESCE(plp.page_probability, p.probability) ASC
+            ");
+            $stmt->execute([$luckyPage]);
             $currentPrizes = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
             if (empty($currentPrizes)) {
@@ -208,24 +171,43 @@ function drawPrizes($gameType, $count, $userId, $page = '') {
             $results[] = $prize;
             $totalValue += $prize['value'];
             
-            // 如果是传说物品且有数量限制，扣减数量
+            // 如果是传说物品且有数量限制，扣减页面特定数量
             if ($prize['rarity'] === 'legendary' && isset($prize['quantity']) && $prize['quantity'] !== null) {
                 $newQuantity = $prize['quantity'] - 1;
                 
-                // 更新数量
-                $stmt = $pdo->prepare("UPDATE `{$tableName}` SET quantity = ? WHERE id = ?");
-                $stmt->execute([$newQuantity, $prize['id']]);
+                // 更新页面特定数量（不影响全局数量和其他页面）
+                $stmt = $pdo->prepare("
+                    UPDATE prize_lucky_pages 
+                    SET page_quantity = ? 
+                    WHERE prize_id = ? AND lucky_page = ?
+                ");
+                $stmt->execute([$newQuantity, $prize['id'], $luckyPage]);
                 
-                // 如果数量变为0，将概率设为0
+                // 如果页面数量变为0，将该页面的概率设为0（只影响当前页面）
                 if ($newQuantity <= 0) {
-                    $stmt = $pdo->prepare("UPDATE `{$tableName}` SET probability = 0 WHERE id = ?");
-                    $stmt->execute([$prize['id']]);
+                    $stmt = $pdo->prepare("
+                        UPDATE prize_lucky_pages 
+                        SET page_probability = 0 
+                        WHERE prize_id = ? AND lucky_page = ?
+                    ");
+                    $stmt->execute([$prize['id'], $luckyPage]);
                 }
             }
             
             // 记录抽奖日志
-            $stmt = $pdo->prepare("INSERT INTO prize_draw_log (user_id, prize_table, prize_id, prize_name, rarity) VALUES (?, ?, ?, ?, ?)");
-            $stmt->execute([$userId, $tableName, $prize['id'], $prize['name'], $prize['rarity']]);
+            $stmt = $pdo->prepare("
+                INSERT INTO prize_draw_log (user_id, prize_table, prize_id, prize_name, rarity, original_quantity, remaining_quantity) 
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ");
+            $stmt->execute([
+                $userId, 
+                'prizes (unified)', 
+                $prize['id'], 
+                $prize['name'], 
+                $prize['rarity'],
+                $prize['quantity'] ?? null,
+                isset($prize['quantity']) ? ($prize['quantity'] - 1) : null
+            ]);
         }
         
         // 直接在当前事务中扣除非绑定金币
@@ -240,6 +222,8 @@ function drawPrizes($gameType, $count, $userId, $page = '') {
         $stmt = $pdo->prepare("SELECT bound_coins, unbound_coins FROM users WHERE id = ?");
         $stmt->execute([$userId]);
         $userAfter = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        $pageInfo = $page ? " - {$page}" : '';
         
         $stmt = $pdo->prepare("
             INSERT INTO coin_change_log 
@@ -265,7 +249,6 @@ function drawPrizes($gameType, $count, $userId, $page = '') {
         // 将抽到的物品添加到用户仓库
         $stmt = $pdo->prepare("INSERT INTO user_items (user_id, prize_id, name, icon, image_url, value, rarity) VALUES (?, ?, ?, ?, ?, ?, ?)");
         foreach ($results as $prize) {
-            // 允许prize_id为NULL，如果不存在或为null则保持null
             $prizeIdForStorage = isset($prize['id']) && $prize['id'] !== null ? $prize['id'] : null;
             
             $stmt->execute([
@@ -309,7 +292,8 @@ function drawPrizes($gameType, $count, $userId, $page = '') {
             'results' => $results,
             'prizes' => $results, // 兼容前端
             'total_value' => $totalValue,
-            'cost' => $cost
+            'cost' => $cost,
+            'lucky_page' => $luckyPage
         ];
         
     } catch (Exception $e) {
@@ -346,19 +330,13 @@ $input = json_decode(file_get_contents('php://input'), true);
 
 switch ($method) {
     case 'GET':
-        if (isset($_GET['game_type'])) {
-            echo json_encode(getPrizes($_GET['game_type']));
-        } else {
-            echo json_encode(getPrizes());
-        }
+        $luckyPage = $_GET['page'] ?? $_GET['lucky_page'] ?? null;
+        echo json_encode(getPrizes($luckyPage));
         break;
         
     case 'POST':
         if (isset($input['action'])) {
             switch ($input['action']) {
-                case 'add':
-                    echo json_encode(addPrize($input));
-                    break;
                 case 'draw':
                     $userId = $input['user_id'] ?? null;
                     $gameType = $input['game_type'] ?? 'lucky_drop';
@@ -377,22 +355,6 @@ switch ($method) {
             }
         } else {
             echo json_encode(['success' => false, 'message' => '缺少操作参数']);
-        }
-        break;
-        
-    case 'PUT':
-        if (isset($_GET['id'])) {
-            echo json_encode(updatePrize($_GET['id'], $input));
-        } else {
-            echo json_encode(['success' => false, 'message' => '缺少奖品ID']);
-        }
-        break;
-        
-    case 'DELETE':
-        if (isset($_GET['id'])) {
-            echo json_encode(deletePrize($_GET['id']));
-        } else {
-            echo json_encode(['success' => false, 'message' => '缺少奖品ID']);
         }
         break;
         

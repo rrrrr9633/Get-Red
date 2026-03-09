@@ -12,8 +12,7 @@ CREATE TABLE IF NOT EXISTS users (
     avatar TEXT,
     balance DECIMAL(10,2) DEFAULT 10.00,
     bound_coins DECIMAL(10,2) DEFAULT 0.00 COMMENT '绑定金币（签到、分解普通/稀有/史诗物品获得）',
-    unbound_coins DECIMAL(10,2) DEFAULT 10.00 COMMENT '非绑定金币（充值、分解传说物品获得）',
-    has_recharged TINYINT(1) DEFAULT 0 COMMENT '是否充值过（0=未充值，1=已充值）',
+    unbound_coins DECIMAL(10,2) DEFAULT 0.00 COMMENT '非绑定金币（充值、分解传说物品获得）',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     last_login TIMESTAMP NULL,
@@ -27,27 +26,45 @@ CREATE TABLE IF NOT EXISTS users (
     session_token VARCHAR(64) COMMENT '当前登录会话token，用于单点登录控制',
     login_ip VARCHAR(45) COMMENT '最后登录IP地址',
     login_device VARCHAR(255) COMMENT '最后登录设备信息',
+    has_recharged TINYINT(1) DEFAULT 0 COMMENT '是否充值过（0=未充值，1=已充值）',
     INDEX idx_last_activity (last_activity),
     INDEX idx_session_token (session_token)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 2. 奖品表
+-- 2. 统一奖品表（所有Lucky页面共享）
 CREATE TABLE IF NOT EXISTS prizes (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
-    icon VARCHAR(20),
-    image_url VARCHAR(255),
-    value DECIMAL(10,2),
-    rarity ENUM('common','rare','epic','legendary') DEFAULT 'common',
-    game_type ENUM('lucky_drop','prize_draw','wheel'),
-    probability DECIMAL(5,2),
-    original_probability DECIMAL(10,4),
-    active TINYINT(1) DEFAULT 1,
+    name VARCHAR(100) NOT NULL COMMENT '奖品名称',
+    icon VARCHAR(20) DEFAULT '?' COMMENT '奖品图标',
+    image_url VARCHAR(500) COMMENT '奖品图片URL',
+    value DECIMAL(10,2) DEFAULT 0.00 COMMENT '奖品价值',
+    probability DECIMAL(5,2) DEFAULT 0.00 COMMENT '默认中奖概率',
+    rarity ENUM('common','rare','epic','legendary') DEFAULT 'common' COMMENT '稀有度',
+    quantity INT COMMENT '数量限制（传说物品）',
+    original_probability DECIMAL(10,4) COMMENT '原始概率（传说物品）',
+    active TINYINT(1) DEFAULT 1 COMMENT '全局启用状态',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    quantity INT,
-    INDEX idx_game_active (game_type, active),
-    INDEX idx_rarity (rarity)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_rarity (rarity),
+    INDEX idx_active (active)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='统一奖品表';
+
+-- 2.1 奖品与Lucky页面关联表
+CREATE TABLE IF NOT EXISTS prize_lucky_pages (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    prize_id INT NOT NULL COMMENT '奖品ID',
+    lucky_page VARCHAR(50) NOT NULL COMMENT 'Lucky页面标识（如lucky1, lucky2）',
+    enabled TINYINT(1) DEFAULT 1 COMMENT '在该页面是否启用',
+    page_probability DECIMAL(5,2) DEFAULT NULL COMMENT '在该页面的特定概率（NULL表示使用奖品默认概率）',
+    page_quantity INT DEFAULT NULL COMMENT '页面特定数量（传说物品，NULL表示使用全局数量）',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_prize_page (prize_id, lucky_page),
+    FOREIGN KEY (prize_id) REFERENCES prizes(id) ON DELETE CASCADE,
+    INDEX idx_lucky_page (lucky_page),
+    INDEX idx_enabled (enabled),
+    INDEX idx_prize_page_enabled (prize_id, lucky_page, enabled)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='奖品与Lucky页面关联表';
 
 -- 3. 用户物品表
 CREATE TABLE IF NOT EXISTS user_items (
@@ -355,13 +372,27 @@ INSERT INTO draw_prices (page_name, price_type, price_value) VALUES
 ('lucky1.html', 'quintuple', 45.00);
 
 -- 插入示例奖品数据
-INSERT INTO prizes (name, icon, value, rarity, game_type, probability, original_probability, quantity) VALUES
-('金币+10', '💰', 10.00, 'common', 'lucky_drop', 30.00, 30.0000, 1000),
-('金币+50', '💰', 50.00, 'common', 'lucky_drop', 20.00, 20.0000, 500),
-('金币+100', '💎', 100.00, 'rare', 'lucky_drop', 15.00, 15.0000, 300),
-('金币+500', '💎', 500.00, 'epic', 'lucky_drop', 5.00, 5.0000, 100),
-('金币+1000', '👑', 1000.00, 'legendary', 'lucky_drop', 1.00, 1.0000, 50),
-('神秘礼盒', '🎁', 200.00, 'rare', 'lucky_drop', 10.00, 10.0000, 200);
+
+INSERT INTO prizes (name, icon, value, rarity, probability, original_probability, quantity) VALUES
+('金币+10', '💰', 10.00, 'common', 30.00, 30.0000, NULL),
+('金币+50', '💰', 50.00, 'common', 20.00, 20.0000, NULL),
+('金币+100', '💎', 100.00, 'rare', 15.00, 15.0000, NULL),
+('金币+500', '💎', 500.00, 'epic', 5.00, 5.0000, NULL),
+('金币+1000', '👑', 1000.00, 'legendary', 1.00, 1.0000, 50),
+('神秘礼盒', '🎁', 200.00, 'rare', 10.00, 10.0000, NULL);
+
+-- 为所有Lucky页面启用示例奖品
+INSERT INTO prize_lucky_pages (prize_id, lucky_page, enabled, page_probability)
+SELECT p.id, lp.page_name, 1, NULL
+FROM prizes p
+CROSS JOIN (
+    SELECT 'lucky1' AS page_name UNION ALL
+    SELECT 'lucky2' UNION ALL SELECT 'lucky3' UNION ALL
+    SELECT 'lucky4' UNION ALL SELECT 'lucky5' UNION ALL
+    SELECT 'lucky6' UNION ALL SELECT 'lucky7' UNION ALL
+    SELECT 'lucky8' UNION ALL SELECT 'lucky9' UNION ALL
+    SELECT 'lucky10' UNION ALL SELECT 'lucky11'
+) lp;
 
 -- 插入默认超级管理员（用户名: admin, 密码: password, 身份码: admin）
 -- 注意：此账户在创建新超级管理员后会自动禁用
@@ -625,7 +656,44 @@ CREATE INDEX idx_merge_group ON lucky_pages_meta(merge_group_id);
 CREATE INDEX idx_merge_order ON lucky_pages_meta(merge_order);
 
 -- 初始化现有页面的元数据
-INSERT IGNORE INTO lucky_pages_meta (file_name, display_name, description) VALUES
-('lucky1.html', '零号大坝(普通)', '零号大坝危机四伏'),
-('lucky2.html', '大红行动2', '抽取心爱的大红'),
-('lucky3.html', '大红行动3', '抽取心爱的大红');
+INSERT IGNORE INTO lucky_pages_meta (file_name, display_name, description, merge_group_id, merge_order) VALUES
+('lucky1.html', '零号大坝(普通)', '零号大坝危机四伏', 1, 1),
+('lucky2.html', '零号大坝(机密)', '零号大坝危机四伏', 1, 2),
+('lucky3.html', '零号大坝(永夜)', '零号大坝危机四伏', 1, 3),
+('lucky4.html', '长弓溪谷(普通)', '长弓溪谷烽烟四起', 2, 1),
+('lucky5.html', '长弓溪谷(机密)', '有一架飞机在长弓溪谷区域坠落！', 2, 2),
+('lucky6.html', '巴克什(机密)', '博士，他们来了', 3, 1),
+('lucky7.html', '巴克什(绝密)', '博士:"带我走~"', 3, 2),
+('lucky8.html', '航天基地(机密)', '威龙，你看过烟花吗？', 4, 1),
+('lucky9.html', '航天基地(绝密)', '我被敌机锁定了！', 4, 2),
+('lucky10.html', '潮汐监狱(适应)', '潮汐监狱等待自由', 5, 1),
+('lucky11.html', '潮汐监狱(绝密)', '潮汐监狱等待自由', 5, 2);
+
+
+-- ========================================
+-- 便捷视图：按页面查看奖品
+-- ========================================
+CREATE OR REPLACE VIEW v_prizes_by_page AS
+SELECT 
+    plp.lucky_page,
+    p.id AS prize_id,
+    p.name,
+    p.icon,
+    p.image_url,
+    p.value,
+    COALESCE(plp.page_probability, p.probability) AS probability,
+    p.rarity,
+    p.quantity AS global_quantity,
+    COALESCE(plp.page_quantity, p.quantity) AS quantity,
+    p.original_probability,
+    p.active AS global_active,
+    plp.enabled AS page_enabled,
+    plp.page_probability,
+    plp.page_quantity,
+    (p.active = 1 AND plp.enabled = 1) AS is_available
+FROM prizes p
+JOIN prize_lucky_pages plp ON p.id = plp.prize_id
+ORDER BY plp.lucky_page, p.probability DESC;
+
+SELECT 'Lucky页面奖品表创建完成！' AS message;
+

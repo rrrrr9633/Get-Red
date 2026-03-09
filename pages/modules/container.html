@@ -55,7 +55,7 @@
     <div class="container">
         <div class="header">
             <h2 class="neon-text rainbow">我的仓库</h2>
-            <p class="neon-text">管理您获得的所有物品，可以分解获得<span style="color: #4ade80;">绑定金币</span>（不能用于抽奖）</p>
+            <p class="neon-text">管理您获得的所有物品，分解可获得金币：<span style="color: #ff69b4;">传说级→非绑定金币</span>，<span style="color: #4ade80;">其他→绑定金币</span></p>
         </div>
 
         <!-- 操作工具栏 -->
@@ -86,11 +86,11 @@
             </div>
             <div class="stat-card">
                 <div class="stat-value" id="totalValue">0.00</div>
-                <div class="stat-label neon-text">总价值（绑定金币）</div>
+                <div class="stat-label neon-text">总价值（金币）</div>
             </div>
             <div class="stat-card">
                 <div class="stat-value" id="selectedValue">0.00</div>
-                <div class="stat-label neon-text">选中价值（绑定金币）</div>
+                <div class="stat-label neon-text">选中价值（金币）</div>
             </div>
         </div>
         
@@ -100,7 +100,10 @@
                 <span style="font-size: 20px;">💡</span>
                 <div style="flex: 1;">
                     <div class="neon-text" style="font-size: 14px; color: #ffa500; margin-bottom: 3px;">温馨提示</div>
-                    <div style="font-size: 13px; opacity: 0.9; color: #fff;">分解物品获得的是<span style="color: #4ade80; font-weight: bold;">绑定金币</span>，只能在商城兑换物品，不能用于抽奖</div>
+                    <div style="font-size: 13px; opacity: 0.9; color: #fff;">
+                        <span style="color: #ff69b4; font-weight: bold;">传说级物品</span>分解获得<span style="color: #ff69b4; font-weight: bold;">非绑定金币</span>（可抽奖），
+                        <span style="color: #4ade80; font-weight: bold;">其他物品</span>分解获得<span style="color: #4ade80; font-weight: bold;">绑定金币</span>（仅商城）
+                    </div>
                 </div>
             </div>
         </div>
@@ -1139,14 +1142,39 @@
                 `;
             }
             
+            // 计算金币类型分布
+            const legendaryValue = pendingDecompose
+                .filter(item => item.rarity === 'legendary')
+                .reduce((sum, item) => sum + parseFloat(item.value), 0);
+            const normalValue = totalValue - legendaryValue;
+            
+            let coinTypeInfo = '';
+            if (legendaryValue > 0 && normalValue > 0) {
+                coinTypeInfo = `
+                    <div style="color: #ffd700; margin-bottom: 5px;">📌 金币类型:</div>
+                    <div style="margin-left: 20px; color: #ff69b4;">• 非绑定金币: ${legendaryValue.toFixed(2)} (传说级物品)</div>
+                    <div style="margin-left: 20px; color: #4ade80;">• 绑定金币: ${normalValue.toFixed(2)} (其他物品)</div>
+                    <div style="color: #ffa500; margin-top: 5px;">⚠️ 非绑定金币可用于抽奖，绑定金币只能在商城兑换</div>
+                `;
+            } else if (legendaryValue > 0) {
+                coinTypeInfo = `
+                    <div style="color: #ffd700; margin-bottom: 5px;">📌 金币类型: <span style="color: #ff69b4;">非绑定金币</span></div>
+                    <div style="color: #4ade80;">✅ 非绑定金币可用于抽奖和商城兑换</div>
+                `;
+            } else {
+                coinTypeInfo = `
+                    <div style="color: #ffd700; margin-bottom: 5px;">📌 金币类型: <span style="color: #4ade80;">绑定金币</span></div>
+                    <div style="color: #ffa500;">⚠️ 绑定金币不能用于抽奖，只能在商城兑换物品</div>
+                `;
+            }
+            
             info.innerHTML = displayContent + `
                 <div style="margin: 15px 0; padding: 15px; background: rgba(255,215,0,0.1); border-radius: 10px; border: 1px solid rgba(255,215,0,0.3);">
                     <div class="neon-text gold" style="font-size: 16px; margin-bottom: 8px;">
                         💰 将获得金币: <span style="font-size: 18px; font-weight: bold;">${totalValue.toFixed(2)}</span>
                     </div>
                     <div style="font-size: 13px; opacity: 0.8; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,215,0,0.2);">
-                        <div style="color: #ffd700; margin-bottom: 5px;">📌 金币类型: <span style="color: #4ade80;">绑定金币</span></div>
-                        <div style="color: #ffa500;">⚠️ 绑定金币不能用于抽奖，只能在商城兑换物品</div>
+                        ${coinTypeInfo}
                     </div>
                 </div>
             `;
@@ -1205,7 +1233,27 @@
                     updateBatchButtons();
                     loadUserInfo(); // 刷新用户余额
                     
-                    alert(`✅ 成功分解 ${itemCount} 件物品\n\n💰 获得 ${totalValue.toFixed(2)} 绑定金币\n\n📌 绑定金币只能在商城兑换物品，不能用于抽奖`);
+                    // 根据金币类型显示不同的提示信息
+                    const legendaryCoins = result.legendary_coins || 0;
+                    const normalCoins = result.normal_coins || 0;
+                    
+                    let message = `✅ 成功分解 ${itemCount} 件物品\n\n`;
+                    
+                    if (legendaryCoins > 0 && normalCoins > 0) {
+                        message += `💰 获得金币:\n`;
+                        message += `  • 非绑定金币: ${legendaryCoins.toFixed(2)} (传说级)\n`;
+                        message += `  • 绑定金币: ${normalCoins.toFixed(2)} (其他)\n\n`;
+                        message += `📌 非绑定金币可用于抽奖\n`;
+                        message += `📌 绑定金币只能在商城兑换物品`;
+                    } else if (legendaryCoins > 0) {
+                        message += `💰 获得 ${legendaryCoins.toFixed(2)} 非绑定金币\n\n`;
+                        message += `✅ 非绑定金币可用于抽奖和商城兑换`;
+                    } else {
+                        message += `💰 获得 ${normalCoins.toFixed(2)} 绑定金币\n\n`;
+                        message += `📌 绑定金币只能在商城兑换物品，不能用于抽奖`;
+                    }
+                    
+                    alert(message);
                 } else {
                     alert('分解失败: ' + (result.message || '未知错误'));
                 }

@@ -207,14 +207,15 @@ class APIClient {
 
     // 获取奖品列表
     async getPrizes(gameType, page = null) {
-        if (page) {
-            // 如果指定了页面，使用admin.php获取特定页面的奖品
-            return await this.request(`/admin.php?action=prizes&page=${encodeURIComponent(page)}`);
-        } else {
-            // 否则获取通用奖品
-            return await this.request(`/prizes.php?game_type=${gameType}`);
+            if (page) {
+                // 如果指定了页面，使用prizes.php获取特定页面的奖品（只返回该页面启用的奖品）
+                return await this.request(`/prizes.php?page=${encodeURIComponent(page)}`);
+            } else {
+                // 否则获取通用奖品
+                return await this.request(`/prizes.php?game_type=${gameType}`);
+            }
         }
-    }
+
 
 
 
