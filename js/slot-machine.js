@@ -184,6 +184,13 @@ class SlotMachine {
             const items = reel.querySelectorAll('.slot-item');
             let targetIndex = -1;
             
+            // 检查items是否存在且有元素
+            if (!items || items.length === 0) {
+                console.warn('No items found in reel');
+                resolve();
+                return;
+            }
+            
             for (let i = 0; i < items.length; i++) {
                 if (items[i].textContent === targetSymbol) {
                     targetIndex = i;

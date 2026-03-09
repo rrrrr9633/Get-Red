@@ -21,9 +21,6 @@ body::before,
 body::after {
     display: none !important;
 }
-.particles {
-    display: none !important;
-}
 .game-container {
     background: transparent !important;
 }
@@ -55,8 +52,6 @@ body::after {
 </style>
 </head>
 <body>
-    <div class="particles"></div>
-    
     <!-- 导航栏 -->
     <nav class="navbar">
         <div class="nav-brand">
@@ -402,10 +397,6 @@ body::after {
                 -webkit-text-fill-color: transparent;
             }
             
-            /* 禁用粒子特效 */
-            .particles {
-                display: none !important;
-            }
         }
         
         /* 使用红色主题的自定义样式覆盖 */
@@ -1985,7 +1976,6 @@ body::after {
             await initLimitedDrop(); // 初始化限时掉落
             initSlotMachine();
             bindEvents();
-            createParticles();
         }
 
         // 加载用户信息
