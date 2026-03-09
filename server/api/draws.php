@@ -10,15 +10,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 require_once '../config/database.php';
 require_once '../config/coin-helper.php';
+require_once '../config/draw-cache.php';
 
 // 初始化数据库连接
 $database = new Database();
 $pdo = $database->getConnection();
 
+// 初始化缓存
+$drawCache = new DrawCache();
+
 function performLuckyDraw($userId, $count = 1, $page = 'lucky1.html') {
-    global $pdo;
+    global $pdo, $drawCache;
     
     try {
+        // ✅ 优化：分布式锁，防止用户重复提交
+        if ($drawCache->isEnabled() && !$drawCache->acquireLock($userId)) {
+            return [
+                'success' => false,
+                'message' => '请勿重复抽奖，请稍后再试'
+            ];
+        }
+        
         // 开始事务
         $pdo->beginTransaction();
         
@@ -73,40 +85,13 @@ function performLuckyDraw($userId, $count = 1, $page = 'lucky1.html') {
         // 获取Lucky页面标识
         $luckyPage = $page ? str_replace('.html', '', $page) : 'lucky1';
         
-        // 使用统一的prize表，通过prize_lucky_pages关联获取该页面的奖品
-        $stmt = $pdo->prepare("
-            SELECT 
-                p.id,
-                p.name,
-                p.icon,
-                p.image_url,
-                p.value,
-                COALESCE(plp.page_probability, p.probability) AS probability,
-                p.rarity,
-                p.quantity AS global_quantity,
-                COALESCE(plp.page_quantity, p.quantity) AS quantity,
-                p.original_probability
-            FROM prizes p
-            INNER JOIN prize_lucky_pages plp ON p.id = plp.prize_id
-            WHERE plp.lucky_page = ? 
-              AND p.active = 1 
-              AND plp.enabled = 1
-              AND COALESCE(plp.page_probability, p.probability) > 0
-            ORDER BY COALESCE(plp.page_probability, p.probability) ASC
-        ");
-        $stmt->execute([$luckyPage]);
-        $prizes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        // ✅ 优化：优先从缓存获取奖品列表
+        $prizes = $drawCache->isEnabled() 
+            ? $drawCache->getPrizes($luckyPage)
+            : [];
         
+        // 缓存未命中或未启用，从数据库查询
         if (empty($prizes)) {
-            throw new Exception('暂无可抽取的奖品，请联系管理员');
-        }
-        
-        $results = [];
-        $totalValue = 0;
-        
-        // 执行抽奖
-        for ($i = 0; $i < $count; $i++) {
-            // 重新获取当前可用奖品列表（因为传说物品数量可能变化）
             $stmt = $pdo->prepare("
                 SELECT 
                     p.id,
@@ -128,55 +113,96 @@ function performLuckyDraw($userId, $count = 1, $page = 'lucky1.html') {
                 ORDER BY COALESCE(plp.page_probability, p.probability) ASC
             ");
             $stmt->execute([$luckyPage]);
-            $currentPrizes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $prizes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        }
+        
+        if (empty($prizes)) {
+            throw new Exception('暂无可抽取的奖品，请联系管理员');
+        }
+        
+        $results = [];
+        $totalValue = 0;
+        $legendaryUpdates = []; // 记录传说物品的数量变化
+        
+        // ✅ 优化：在内存中执行抽奖循环，不再重复查询数据库
+        for ($i = 0; $i < $count; $i++) {
+            // 过滤掉概率为0的奖品（数量已耗尽）
+            $availablePrizes = array_filter($prizes, function($p) {
+                return floatval($p['probability']) > 0;
+            });
             
-            if (empty($currentPrizes)) {
-                throw new Exception('抽奖过程中奖品已耗尽');
-            }
+
             
-            $prize = selectPrizeByProbability($currentPrizes);
+            // 从内存中的奖品列表选择
+            $prize = selectPrizeByProbability($availablePrizes);
             $results[] = $prize;
             $totalValue += floatval($prize['value']);
             
-            // 如果是传说物品且有数量限制，扣减页面特定数量
+            // 如果是传说物品且有数量限制，在内存中更新数量
             if ($prize['rarity'] === 'legendary' && isset($prize['quantity']) && $prize['quantity'] !== null) {
-                $newQuantity = $prize['quantity'] - 1;
+                // 记录需要更新到数据库的数量变化
+                if (!isset($legendaryUpdates[$prize['id']])) {
+                    $legendaryUpdates[$prize['id']] = 0;
+                }
+                $legendaryUpdates[$prize['id']]++;
                 
-                // 更新页面特定数量（不影响全局数量和其他页面）
+                // 在内存中更新数量，避免重复抽中
+                foreach ($prizes as &$p) {
+                    if ($p['id'] == $prize['id']) {
+                        $p['quantity']--;
+                        // 如果数量为0，将概率设为0，下次循环不会再抽中
+                        if ($p['quantity'] <= 0) {
+                            $p['probability'] = 0;
+                        }
+                        break;
+                    }
+                }
+                unset($p); // 解除引用
+            }
+        }
+        
+        // ✅ 优化：批量更新传说物品数量（一次性处理所有更新）
+        if (!empty($legendaryUpdates)) {
+            foreach ($legendaryUpdates as $prizeId => $decreaseCount) {
+                // 更新页面特定数量
                 $stmt = $pdo->prepare("
                     UPDATE prize_lucky_pages 
-                    SET page_quantity = ? 
+                    SET page_quantity = page_quantity - ? 
                     WHERE prize_id = ? AND lucky_page = ?
                 ");
-                $stmt->execute([$newQuantity, $prize['id'], $luckyPage]);
+                $stmt->execute([$decreaseCount, $prizeId, $luckyPage]);
                 
-                // 如果页面数量变为0，将该页面的概率设为0（只影响当前页面）
-                if ($newQuantity <= 0) {
-                    $stmt = $pdo->prepare("
-                        UPDATE prize_lucky_pages 
-                        SET page_probability = 0 
-                        WHERE prize_id = ? AND lucky_page = ?
-                    ");
-                    $stmt->execute([$prize['id'], $luckyPage]);
-                }
+                // 如果数量变为0，将概率设为0
+                $stmt = $pdo->prepare("
+                    UPDATE prize_lucky_pages 
+                    SET page_probability = 0 
+                    WHERE prize_id = ? AND lucky_page = ? AND page_quantity <= 0
+                ");
+                $stmt->execute([$prizeId, $luckyPage]);
             }
-            
-            // 将抽中的物品添加到用户物品表
-            $prizeIdForStorage = isset($prize['id']) && $prize['id'] !== null ? $prize['id'] : null;
-            
+        }
+        
+        // ✅ 优化：批量插入用户物品（一次SQL代替N次）
+        if (!empty($results)) {
+            $values = [];
+            $params = [];
+            foreach ($results as $prize) {
+                $values[] = "(?, ?, ?, ?, ?, ?, ?)";
+                $params = array_merge($params, [
+                    $userId,
+                    $prize['id'] ?? null,
+                    $prize['name'],
+                    $prize['icon'] ?? '🎁',
+                    $prize['image_url'] ?? '',
+                    $prize['value'],
+                    $prize['rarity']
+                ]);
+            }
             $stmt = $pdo->prepare("
                 INSERT INTO user_items (user_id, prize_id, name, icon, image_url, value, rarity)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            ");
-            $stmt->execute([
-                $userId,
-                $prizeIdForStorage,
-                $prize['name'],
-                $prize['icon'] ?? '🎁',
-                $prize['image_url'] ?? '',
-                $prize['value'],
-                $prize['rarity']
-            ]);
+                VALUES " . implode(', ', $values)
+            );
+            $stmt->execute($params);
         }
         
         // ✅ 扣除非绑定金币（直接在当前事务中执行）
@@ -209,20 +235,29 @@ function performLuckyDraw($userId, $count = 1, $page = 'lucky1.html') {
             "幸运掉落抽奖x{$count}({$page})"
         ]);
         
-        // 记录抽奖到 draws 表
-        foreach ($results as $prize) {
+        // ✅ 优化：批量记录抽奖到 draws 表（一次SQL代替N次）
+        if (!empty($results)) {
+            $drawType = $count == 1 ? 'single' : ($count == 3 ? 'triple' : ($count == 5 ? 'quintuple' : 'multiple'));
+            $costPerDraw = $cost / $count;
+            
+            $values = [];
+            $params = [];
+            foreach ($results as $prize) {
+                $values[] = "(?, ?, ?, ?, ?, ?, 'unbound')";
+                $params = array_merge($params, [
+                    $userId,
+                    $prize['id'] ?? null,
+                    $prize['name'],
+                    $prize['value'],
+                    $drawType,
+                    $costPerDraw
+                ]);
+            }
             $stmt = $pdo->prepare("
                 INSERT INTO draws (user_id, prize_id, prize_name, prize_value, draw_type, cost, coin_type)
-                VALUES (?, ?, ?, ?, ?, ?, 'unbound')
-            ");
-            $stmt->execute([
-                $userId,
-                $prize['id'],
-                $prize['name'],
-                $prize['value'],
-                $count == 1 ? 'single' : ($count == 3 ? 'triple' : ($count == 5 ? 'quintuple' : 'multiple')),
-                $cost / $count
-            ]);
+                VALUES " . implode(', ', $values)
+            );
+            $stmt->execute($params);
         }
         
         // 记录抽奖历史
@@ -248,6 +283,13 @@ function performLuckyDraw($userId, $count = 1, $page = 'lucky1.html') {
         // 提交事务
         $pdo->commit();
         
+        // ✅ 优化：释放分布式锁
+        if ($drawCache->isEnabled()) {
+            $drawCache->releaseLock($userId);
+            // 刷新用户金币缓存
+            $drawCache->refreshUserGold($userId);
+        }
+        
         return [
             'success' => true,
             'results' => $results,
@@ -258,6 +300,12 @@ function performLuckyDraw($userId, $count = 1, $page = 'lucky1.html') {
         
     } catch (Exception $e) {
         $pdo->rollBack();
+        
+        // ✅ 优化：异常时也要释放锁
+        if (isset($drawCache) && $drawCache->isEnabled()) {
+            $drawCache->releaseLock($userId);
+        }
+        
         return [
             'success' => false,
             'message' => $e->getMessage()

@@ -194,6 +194,189 @@ class RedisCache {
     }
     
     /**
+     * 减少计数器（原子操作）
+     * @param string $key 缓存键
+     * @param int $value 减少的值，默认 1
+     * @return int|false 减少后的值，失败返回 false
+     */
+    public function decrement($key, $value = 1) {
+        if (!$this->enabled) {
+            return false;
+        }
+        
+        try {
+            return $this->redis->decrBy($key, $value);
+        } catch (Exception $e) {
+            error_log('Redis DECREMENT 失败: ' . $e->getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * 获取哈希表的所有字段和值
+     * @param string $key 哈希表键
+     * @return array|null 哈希表数据，失败返回 null
+     */
+    public function hGetAll($key) {
+        if (!$this->enabled) {
+            return null;
+        }
+        
+        try {
+            $data = $this->redis->hGetAll($key);
+            return $data === false ? null : $data;
+        } catch (Exception $e) {
+            error_log('Redis HGETALL 失败: ' . $e->getMessage());
+            return null;
+        }
+    }
+    
+    /**
+     * 设置哈希表的字段值
+     * @param string $key 哈希表键
+     * @param string $field 字段名
+     * @param mixed $value 字段值
+     * @return bool 是否成功
+     */
+    public function hSet($key, $field, $value) {
+        if (!$this->enabled) {
+            return false;
+        }
+        
+        try {
+            return $this->redis->hSet($key, $field, $value) !== false;
+        } catch (Exception $e) {
+            error_log('Redis HSET 失败: ' . $e->getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * 批量设置哈希表的字段值
+     * @param string $key 哈希表键
+     * @param array $data 字段值数组
+     * @return bool 是否成功
+     */
+    public function hMSet($key, $data) {
+        if (!$this->enabled) {
+            return false;
+        }
+        
+        try {
+            return $this->redis->hMSet($key, $data);
+        } catch (Exception $e) {
+            error_log('Redis HMSET 失败: ' . $e->getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * 获取哈希表的字段值
+     * @param string $key 哈希表键
+     * @param string $field 字段名
+     * @return mixed|null 字段值，不存在返回 null
+     */
+    public function hGet($key, $field) {
+        if (!$this->enabled) {
+            return null;
+        }
+        
+        try {
+            $value = $this->redis->hGet($key, $field);
+            return $value === false ? null : $value;
+        } catch (Exception $e) {
+            error_log('Redis HGET 失败: ' . $e->getMessage());
+            return null;
+        }
+    }
+    
+    /**
+     * 尝试获取分布式锁
+     * @param string $key 锁的键
+     * @param int $ttl 锁的过期时间（秒），默认 5 秒
+     * @return bool 是否成功获取锁
+     */
+    public function lock($key, $ttl = 5) {
+        if (!$this->enabled) {
+            return false;
+        }
+        
+        try {
+            // 使用 SET NX EX 实现分布式锁
+            return $this->redis->set($key, 1, ['NX', 'EX' => $ttl]);
+        } catch (Exception $e) {
+            error_log('Redis LOCK 失败: ' . $e->getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * 释放分布式锁
+     * @param string $key 锁的键
+     * @return bool 是否成功释放
+     */
+    public function unlock($key) {
+        return $this->delete($key);
+    }
+    
+    /**
+     * 将列表推入队列（左侧）
+     * @param string $key 队列键
+     * @param mixed $value 值
+     * @return int|false 队列长度，失败返回 false
+     */
+    public function lpush($key, $value) {
+        if (!$this->enabled) {
+            return false;
+        }
+        
+        try {
+            return $this->redis->lPush($key, $value);
+        } catch (Exception $e) {
+            error_log('Redis LPUSH 失败: ' . $e->getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * 从队列弹出元素（右侧，阻塞）
+     * @param string $key 队列键
+     * @param int $timeout 超时时间（秒），0 表示永久阻塞
+     * @return array|null [队列名, 值]，超时返回 null
+     */
+    public function brpop($key, $timeout = 0) {
+        if (!$this->enabled) {
+            return null;
+        }
+        
+        try {
+            $result = $this->redis->brPop($key, $timeout);
+            return $result === false ? null : $result;
+        } catch (Exception $e) {
+            error_log('Redis BRPOP 失败: ' . $e->getMessage());
+            return null;
+        }
+    }
+    
+    /**
+     * 获取队列长度
+     * @param string $key 队列键
+     * @return int 队列长度
+     */
+    public function llen($key) {
+        if (!$this->enabled) {
+            return 0;
+        }
+        
+        try {
+            return $this->redis->lLen($key);
+        } catch (Exception $e) {
+            error_log('Redis LLEN 失败: ' . $e->getMessage());
+            return 0;
+        }
+    }
+    
+    /**
      * 获取 Redis 原生对象（用于高级操作）
      * @return Redis|null
      */

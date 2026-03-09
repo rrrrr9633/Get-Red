@@ -1853,12 +1853,39 @@ body::after {
             }
             
             .prize-grid {
-                grid-template-columns: 1fr;
-                gap: 10px;
+                grid-template-columns: repeat(4, 1fr);
+                gap: 6px;
             }
             
             .prize-item {
-                padding: 10px;
+                padding: 6px;
+                min-height: auto;
+            }
+            
+            .prize-item .prize-icon {
+                font-size: 20px !important;
+                margin-bottom: 3px;
+            }
+            
+            .prize-item .prize-image {
+                width: 30px !important;
+                height: 30px !important;
+            }
+            
+            .prize-item .prize-name {
+                font-size: 9px !important;
+                margin: 3px 0 2px 0;
+                line-height: 1.2;
+            }
+            
+            .prize-item .prize-value {
+                font-size: 8px !important;
+                margin: 2px 0;
+            }
+            
+            .prize-item .prize-rarity {
+                font-size: 7px !important;
+                padding: 1px 4px;
             }
         }
     </style>
@@ -1984,7 +2011,15 @@ body::after {
                 const result = await api.getUserProfile();
                 if (result.success) {
                     const user = result.user;
-                    document.getElementById('userAvatar').src = user.avatar;
+                    
+                    // 处理头像路径
+                    let avatarSrc = user.avatar || '../images/default-avatar.gif';
+                    // 如果不是data:或http开头，添加../前缀
+                    if (avatarSrc && !avatarSrc.startsWith('data:') && !avatarSrc.startsWith('http') && !avatarSrc.startsWith('../')) {
+                        avatarSrc = '../' + avatarSrc;
+                    }
+                    document.getElementById('userAvatar').src = avatarSrc;
+                    
                     document.getElementById('userNickname').textContent = user.nickname;
                     
                     const boundCoins = parseFloat(user.bound_coins || 0).toFixed(2);
@@ -2137,23 +2172,20 @@ body::after {
             const pointer = document.createElement('div');
             pointer.className = 'slot-pointer';
             
-            // 计算需要的重复次数，确保在各种屏幕尺寸下都有足够的奖品
-            const isMobile = window.innerWidth <= 768;
-            const isSmallMobile = window.innerWidth <= 480;
-            const itemWidth = isSmallMobile ? 40 : (isMobile ? 50 : 100);
-            const containerWidth = Math.max(window.innerWidth * 0.9, 300);
-            const visibleItems = Math.ceil(containerWidth / itemWidth);
+            // 🚀 智能DOM优化：最小化初始DOM（只创建2-3轮），动画时按需补充
+            // 初始只创建最少的DOM：2-3轮奖品列表
+            // 这样不管奖品数量多少，初始DOM都很少
+            const initialRepeats = 3; // 固定只创建3轮
             
-            // 确保有足够的项目让滚动看起来真实，并且永远不会出现空白
-            const repeatTimes = Math.max(15, visibleItems * 3); // 至少重复15次或3倍可见项目数
-            
-            for (let repeat = 0; repeat < repeatTimes; repeat++) {
+            for (let repeat = 0; repeat < initialRepeats; repeat++) {
                 for (let i = 0; i < prizeData.length; i++) {
                     const prize = prizeData[i];
                     const item = createSlotItem(prize);
                     strip.appendChild(item);
                 }
             }
+            
+            console.log(`🚀 智能DOM: 初始DOM=${strip.children.length}个 (${prizeData.length}个奖品×${initialRepeats}轮) - 动画时按需补充`);
             
             row.appendChild(strip);
             row.appendChild(pointer);
@@ -2356,11 +2388,15 @@ body::after {
                     // 播放滚动动画，使用后端返回的结果
                     await performSpinWithResults(drawResult.prizes || drawResult.results);
                     
+                    // 根据设备类型设置不同的延迟时间
+                    const isMobileDevice = window.innerWidth <= 768;
+                    const resultDelay = isMobileDevice ? 4000 : 8000; // 手机3秒动画+1秒，PC 6秒动画+2秒
+                    
                     // 显示结果
                     setTimeout(() => {
                         showWinResult(drawResult.prizes || drawResult.results, drawResult.total_value);
                         finishSpin(spinBtn, showcaseArea, slotContainer, scrollY, preventScroll);
-                    }, 4000);
+                    }, resultDelay);
                 }
                 
             } catch (error) {
@@ -2447,9 +2483,8 @@ body::after {
                 
                 // 找到目标奖品的索引 - 使用名称和稀有度匹配
                 let targetIndex = -1;
-                for (let j = 0; j < items.length; j++) {
-                    const itemName = items[j].querySelector('.name')?.textContent;
-                    if (itemName === winningPrize.name) {
+                for (let j = 0; j < prizeData.length; j++) {
+                    if (prizeData[j].name === winningPrize.name) {
                         targetIndex = j;
                         break;
                     }
@@ -2457,56 +2492,77 @@ body::after {
                 
                 // 如果找不到完全匹配的，寻找相同稀有度的奖品
                 if (targetIndex === -1) {
-                    for (let j = 0; j < items.length; j++) {
-                        const itemId = parseInt(items[j].dataset.prizeId);
-                        const matchingPrize = prizeData.find(p => p.id === itemId);
-                        if (matchingPrize && matchingPrize.rarity === winningPrize.rarity) {
+                    for (let j = 0; j < prizeData.length; j++) {
+                        if (prizeData[j].rarity === winningPrize.rarity) {
                             targetIndex = j;
                             break;
                         }
                     }
                 }
                 
-                // 最后备用方案：随机选择一个位置
+                // 最后备用方案：使用第一个奖品
                 if (targetIndex === -1) {
-                    targetIndex = Math.floor(Math.random() * Math.min(10, items.length));
+                    targetIndex = 0;
                 }
                 
-                // 计算滚动参数 - 使用CSS定义的固定宽度
+                // 🚀 关键优化：确保有足够的DOM来完成动画
+                // 检查当前DOM数量是否足够
                 const isMobile = window.innerWidth <= 768;
                 const isSmallMobile = window.innerWidth <= 480;
+                const itemWidth = isSmallMobile ? 40 : (isMobile ? 50 : 100);
+                const containerWidth = row.offsetWidth;
+                const visibleItems = Math.ceil(containerWidth / itemWidth);
+                const animationDistance = isSmallMobile ? 10 : (isMobile ? 15 : 20);
                 
-                // 使用CSS中定义的固定宽度（flex: 0 0 XXpx）
-                let itemWidth;
-                if (isSmallMobile) {
-                    itemWidth = 40; // 对应 @media (max-width: 480px) 中的 flex: 0 0 40px
-                } else if (isMobile) {
-                    itemWidth = 50; // 对应 @media (max-width: 768px) 中的 flex: 0 0 50px
-                } else {
-                    itemWidth = 100; // 桌面版默认 flex: 0 0 100px
+                // 需要的最小DOM数量：可视区域 + 动画距离 + 目标位置在中间
+                const currentRepeats = Math.floor(items.length / prizeData.length);
+                const neededRepeats = Math.ceil((visibleItems + animationDistance + prizeData.length) / prizeData.length);
+                
+                // 如果DOM不够，动态添加
+                if (currentRepeats < neededRepeats) {
+                    const addRepeats = neededRepeats - currentRepeats;
+                    console.log(`🔧 动态补充DOM: 当前${currentRepeats}轮, 需要${neededRepeats}轮, 补充${addRepeats}轮`);
+                    
+                    for (let repeat = 0; repeat < addRepeats; repeat++) {
+                        for (let j = 0; j < prizeData.length; j++) {
+                            const prize = prizeData[j];
+                            const item = createSlotItem(prize);
+                            strip.appendChild(item);
+                        }
+                    }
                 }
                 
-                const containerWidth = row.offsetWidth;
+                // 重新获取items（可能已经添加了新的）
+                const updatedItems = strip.querySelectorAll('.slot-item');
+                const totalItems = updatedItems.length;
+                
+                // 计算滚动参数
                 const centerPosition = containerWidth / 2;
                 
-                // 找到目标奖品在中间某一轮重复中的索引
-                // 这样可以确保有足够的空间向左滚动
-                const repeatTimes = Math.max(15, Math.ceil(containerWidth / itemWidth / prizeData.length) * 3);
-                const middleRepeat = Math.floor(repeatTimes / 2); // 使用中间的重复轮次
-                const adjustedTargetIndex = middleRepeat * prizeData.length + targetIndex;
+                // 使用中间位置的目标奖品
+                const middleIndex = Math.floor(totalItems / 2);
+                const adjustedTargetIndex = middleIndex - (middleIndex % prizeData.length) + targetIndex;
                 
-                // 计算目标物品的中心位置（使用调整后的索引）
-                const targetItemLeftEdge = adjustedTargetIndex * itemWidth;
+                // 安全检查
+                const safeAdjustedIndex = Math.min(adjustedTargetIndex, totalItems - 1);
+                
+                // 计算目标物品的中心位置
+                const targetItemLeftEdge = safeAdjustedIndex * itemWidth;
                 const targetItemCenter = targetItemLeftEdge + itemWidth / 2;
                 
                 // 计算最终位置：让目标物品中心对齐容器中心
                 const finalTranslate = centerPosition - targetItemCenter;
                 
-                // 计算起始位置：从右边开始（更大的正值），向左滚动
-                const extraDistance = itemWidth * (isSmallMobile ? 10 : (isMobile ? 15 : 20));
-                const startTranslate = finalTranslate + extraDistance;
+                // 安全检查：确保finalTranslate不会过大
+                const maxTranslate = containerWidth;
+                const minTranslate = -(totalItems * itemWidth - containerWidth);
+                const safeFinalTranslate = Math.max(minTranslate, Math.min(maxTranslate, finalTranslate));
                 
-                console.log(`Row ${i}: targetIndex=${targetIndex}, adjustedTargetIndex=${adjustedTargetIndex}, itemWidth=${itemWidth}, containerWidth=${containerWidth}, centerPosition=${centerPosition}, targetItemCenter=${targetItemCenter}, startTranslate=${startTranslate}, finalTranslate=${finalTranslate}`);
+                // 计算起始位置：从右边开始（更大的正值），向左滚动
+                const extraDistance = itemWidth * animationDistance;
+                const startTranslate = safeFinalTranslate + extraDistance;
+                
+                console.log(`Row ${i}: 目标="${winningPrize.name}", targetIndex=${targetIndex}, safeAdjustedIndex=${safeAdjustedIndex}, totalItems=${totalItems}, safeFinalTranslate=${safeFinalTranslate}`);
                 
                 // 使用requestAnimationFrame确保动画在下一帧执行
                 setTimeout(() => {
@@ -2518,31 +2574,25 @@ body::after {
                         
                         // 然后动画滚动到目标位置（向左滚动）
                         requestAnimationFrame(() => {
-                            strip.style.transition = 'transform 3s cubic-bezier(0.25, 0.1, 0.25, 1)';
-                            strip.style.transform = `translate3d(${finalTranslate}px, 0, 0)`;
+                            // 设置6秒动画（2倍原始时间）
+                            const animationDuration = '6s';
+                            strip.style.transition = `transform ${animationDuration} cubic-bezier(0.25, 0.1, 0.25, 1)`;
+                            strip.style.webkitTransition = `transform ${animationDuration} cubic-bezier(0.25, 0.1, 0.25, 1)`;
+                            strip.style.transform = `translate3d(${safeFinalTranslate}px, 0, 0)`;
+                            console.log(`🎬 Row ${i} 动画时间: ${animationDuration}`);
                             strip.offsetHeight; // 强制触发重绘
                         });
                     });
-                }, 200 + i * 200);
+                }, 400 + i * 400);
             }
         }
 
-        // 根据概率选择奖品
-        function selectPrizeByProbability() {
-            const totalProbability = prizeData.reduce((sum, prize) => sum + prize.probability, 0);
-            const random = Math.random() * totalProbability;
-            
-            let accumulator = 0;
-            for (const prize of prizeData) {
-                accumulator += prize.probability;
-                if (random <= accumulator) {
-                    return prize;
-                }
-            }
-            
-            // 备用返回最后一个奖品
-            return prizeData[prizeData.length - 1];
-        }
+        // 🔒 安全说明：抽奖逻辑完全在后端执行
+        // 前端只负责：
+        // 1. 展示奖品列表（不含概率）
+        // 2. 调用后端API抽奖
+        // 3. 展示动画和结果
+        // ❌ 前端不做任何概率计算或奖品选择
 
         // 显示中奖结果
         function showWinResult(results, totalValue = null) {
@@ -2616,7 +2666,6 @@ body::after {
                     <span class="prize-name">${prize.name}</span>
                     <span class="prize-value">价值: ${prize.value}</span>
                     <span class="prize-rarity">${getRarityText(prize.rarity)}</span>
-                    <span class="prize-probability">概率: ${prize.probability}%</span>
                 </div>
                 `;
             }).join('');

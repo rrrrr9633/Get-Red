@@ -516,7 +516,14 @@
                 const data = await response.json();
                 
                 if (data.success) {
-                    document.getElementById('userAvatar').src = data.user.avatar || '/images/default-avatar.png';
+                    // 处理头像路径
+                    let avatarSrc = data.user.avatar || '../../images/default-avatar.gif';
+                    // 如果不是data:或http开头，添加../../前缀
+                    if (avatarSrc && !avatarSrc.startsWith('data:') && !avatarSrc.startsWith('http') && !avatarSrc.startsWith('../../')) {
+                        avatarSrc = '../../' + avatarSrc;
+                    }
+                    document.getElementById('userAvatar').src = avatarSrc;
+                    
                     document.getElementById('userNickname').textContent = data.user.nickname || data.user.username;
                     
                     const boundCoins = parseFloat(data.user.bound_coins || 0).toFixed(2);

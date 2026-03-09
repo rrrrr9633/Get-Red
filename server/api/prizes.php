@@ -30,9 +30,25 @@ function getPrizes($luckyPage = null) {
             $prizes = $stmt->fetchAll(PDO::FETCH_ASSOC);
         }
         
+        // 🔒 安全过滤：移除敏感信息（概率、库存、成本等）
+        // 前端只需要展示信息，不需要知道抽奖逻辑
+        $safePrizes = array_map(function($prize) {
+            return [
+                'id' => $prize['id'],
+                'name' => $prize['name'],
+                'icon' => $prize['icon'],
+                'image_url' => $prize['image_url'],
+                'value' => $prize['value'],
+                'rarity' => $prize['rarity'],
+                'description' => $prize['description'] ?? '',
+                'lucky_page' => $prize['lucky_page'] ?? ''
+                // ❌ 不返回: probability, stock, cost_price 等敏感信息
+            ];
+        }, $prizes);
+        
         return [
             'success' => true,
-            'prizes' => $prizes,
+            'prizes' => $safePrizes,
             'lucky_page' => $luckyPage
         ];
     } catch (Exception $e) {
