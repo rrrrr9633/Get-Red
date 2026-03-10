@@ -334,8 +334,8 @@
  * 总表数：31张表
  */
 
-// 加载环境变量
-$env_file = __DIR__ . '/../../.env';
+// 加载环境变量（从安全位置读取）
+$env_file = '/etc/lucky-box/.env';
 if (file_exists($env_file)) {
     $lines = file($env_file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
     foreach ($lines as $line) {
