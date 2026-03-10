@@ -7,16 +7,16 @@ configureSecureSession();
 
 // 设置CORS头
 $allowedOrigins = [
-    'http://localhost:8000',
-    'http://127.0.0.1:8000',
-    'http://192.168.1.12:8000'
+    'http://localhost:8080',
+    'http://127.0.0.1:8080',
+    'http://192.168.1.11:8080'
 ];
 
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
 if (in_array($origin, $allowedOrigins)) {
     header('Access-Control-Allow-Origin: ' . $origin);
 } else {
-    header('Access-Control-Allow-Origin: http://192.168.1.12:8000');
+    header('Access-Control-Allow-Origin: http://192.168.1.11:8080');
 }
 
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
