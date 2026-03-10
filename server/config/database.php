@@ -4,8 +4,8 @@
  * 
  * 当前数据库配置信息：
  * - 数据库名称: lucky_draw  
- * - 用户名: root
- * - 密码: 123123
+ * - 用户名: lucky_user
+ * - 密码: Lk9@mP2xQ#wR5sT8
  * - 主机: localhost
  * - 字符集: utf8mb4
  * 

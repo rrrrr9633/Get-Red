@@ -175,6 +175,8 @@
             cursor: pointer;
             transition: all 0.3s ease;
             width: 100%;
+            text-decoration: none;
+            display: inline-block;
         }
 
         .select-btn:hover {
@@ -475,14 +477,8 @@
             }
             
             selectedOption = window.rechargeOptionsData[index];
-            document.getElementById('modalAmount').textContent = `充值金额: ¥${selectedOption.amount} = ${selectedOption.total_coins} 金币`;
-            document.getElementById('paymentModal').classList.add('show');
-            
-            // 重置选择状态
-            selectedPaymentMethod = null;
-            document.querySelectorAll('.payment-method').forEach(el => el.classList.remove('selected'));
-            document.getElementById('confirmPaymentBtn').disabled = true;
-            document.getElementById('paymentWindow').classList.remove('show');
+            // 跳转到新的充值页面
+            window.location.href = 'recharge-v2.html?amount=' + selectedOption.amount;
         }
 
         // 选择支付方式

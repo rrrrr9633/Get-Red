@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>充值管理 - 无敌俱乐部</title>
+    <script>
+        async function checkAdminAccess() {
+            try {
+                const response = await fetch('../../server/api/super-admin.php?action=check');
+                const data = await response.json();
+                
+                if (!data.authenticated) {
+                    alert('需要超级管理员权限！');
+                    window.location.href = '../../super-admin.html';
+                    return false;
+                }
+                return true;
+            } catch (error) {
+                console.error('权限验证失败:', error);
+                window.location.href = '../../super-admin.html';
+                return false;
+            }
+        }
+        
+        checkAdminAccess();
+    </script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #0c0c0c, #1a1a1a);
+            color: #fff;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .back-btn {
+            position: fixed;
+            top: 30px;
+            left: 30px;
+            padding: 12px 24px;
+            background: linear-gradient(45deg, #ffd700, #ffed4e);
+            color: #000;
+            text-decoration: none;
+            border-radius: 25px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+
+        .back-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 215, 0, 0.4);
+        }
+
+        .header {
+            text-align: center;
+            margin: 60px 0 40px 0;
+        }
+
+        .header h1 {
+            color: #ffd700;
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+
+        .section {
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #ffd700;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+
+        .section h2 {
+            color: #ffd700;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid rgba(255, 215, 0, 0.3);
+        }
+
+        .tab-btn {
+            padding: 12px 24px;
+            background: transparent;
+            border: none;
+            color: #999;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            border-bottom: 3px solid transparent;
+        }
+
+        .tab-btn.active {
+            color: #ffd700;
+            border-bottom-color: #ffd700;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #ffd700;
+            font-weight: bold;
+        }
+
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 215, 0, 0.3);
+            border-radius: 10px;
+            color: #fff;
+            font-size: 16px;
+        }
+
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            outline: none;
+            border-color: #ffd700;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #ffd700, #ffed4e);
+            color: #000;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 215, 0, 0.4);
+        }
+
+        .btn-danger {
+            background: linear-gradient(45deg, #ff4444, #cc3333);
+            color: #fff;
+        }
+
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 68, 68, 0.4);
+        }
+
+        .config-card {
+            background: rgba(255, 215, 0, 0.05);
+            border: 1px solid rgba(255, 215, 0, 0.2);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .config-title {
+            color: #ffd700;
+            font-weight: bold;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            margin: 20px 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 215, 0, 0.3);
+        }
+
+        th {
+            background: rgba(255, 215, 0, 0.2);
+            color: #ffd700;
+            font-weight: bold;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .status-active {
+            background: rgba(74, 222, 128, 0.2);
+            color: #4ade80;
+        }
+
+        .status-inactive {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .alert-success {
+            background: rgba(74, 222, 128, 0.2);
+            border: 1px solid #4ade80;
+            color: #4ade80;
+        }
+
+        .alert-error {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid #ef4444;
+            color: #ef4444;
+        }
+
+        @media (max-width: 768px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 36px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <a href="admin.html" class="back-btn">← 返回管理后台</a>
+
+    <div class="container">
+        <div class="header">
+            <h1>充值管理系统 v2</h1>
+            <p>支持商户模式和个人模式（虎皮椒）</p>
+        </div>
+
+        <!-- 模式启用/禁用控制 -->
+        <div class="section">
+            <h2>🎛️ 模式启用/禁用控制</h2>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
+                <div style="background: rgba(255, 215, 0, 0.1); border: 2px solid #ffd700; border-radius: 15px; padding: 20px; text-align: center;">
+                    <div style="font-size: 24px; margin-bottom: 10px;">💳</div>
+                    <div style="font-size: 18px; font-weight: bold; color: #ffd700; margin-bottom: 15px;">商户模式</div>
+                    <button class="btn btn-primary" id="merchant_mode_btn" onclick="togglePaymentModeStatus('merchant')" style="width: 100%;">
+                        <span id="merchant_mode_status">启用</span>
+                    </button>
+                </div>
+                <div style="background: rgba(255, 215, 0, 0.1); border: 2px solid #ffd700; border-radius: 15px; padding: 20px; text-align: center;">
+                    <div style="font-size: 24px; margin-bottom: 10px;">👤</div>
+                    <div style="font-size: 18px; font-weight: bold; color: #ffd700; margin-bottom: 15px;">个人模式</div>
+                    <button class="btn btn-primary" id="personal_mode_btn" onclick="togglePaymentModeStatus('personal')" style="width: 100%;">
+                        <span id="personal_mode_status">启用</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="section">
+            <h2>💳 商户模式配置</h2>
+            
+            <div class="tabs">
+                <button class="tab-btn active" onclick="switchTab('merchant-alipay')">支付宝</button>
+                <button class="tab-btn" onclick="switchTab('merchant-wechat')">微信支付</button>
+            </div>
+
+            <!-- 商户支付宝配置 -->
+            <div id="merchant-alipay" class="tab-content active">
+                <div class="config-card">
+                    <div class="config-title">支付宝商户配置</div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>应用ID (App ID)</label>
+                            <input type="text" id="merchant_alipay_app_id" placeholder="请输入支付宝应用ID">
+                        </div>
+                        <div class="form-group">
+                            <label>商户号</label>
+                            <input type="text" id="merchant_alipay_merchant_id" placeholder="请输入商户号">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>商户私钥</label>
+                        <textarea id="merchant_alipay_private_key" placeholder="请输入商户私钥" rows="4"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>支付宝公钥</label>
+                        <textarea id="merchant_alipay_public_key" placeholder="请输入支付宝公钥" rows="4"></textarea>
+                    </div>
+                    <button class="btn btn-primary" onclick="saveMerchantConfig('alipay')">保存配置</button>
+                </div>
+            </div>
+
+            <!-- 商户微信配置 -->
+            <div id="merchant-wechat" class="tab-content">
+                <div class="config-card">
+                    <div class="config-title">微信支付商户配置</div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>应用ID (App ID)</label>
+                            <input type="text" id="merchant_wechat_app_id" placeholder="请输入微信应用ID">
+                        </div>
+                        <div class="form-group">
+                            <label>商户号 (Mch ID)</label>
+                            <input type="text" id="merchant_wechat_mch_id" placeholder="请输入微信商户号">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>API密钥</label>
+                        <input type="text" id="merchant_wechat_api_key" placeholder="请输入微信API密钥">
+                    </div>
+                    <button class="btn btn-primary" onclick="saveMerchantConfig('wechat')">保存配置</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 个人模式配置 -->
+        <div class="section">
+            <h2>👤 个人模式配置（虎皮椒）</h2>
+            
+            <div class="tabs">
+                <button class="tab-btn active" onclick="switchTab('personal-alipay')">支付宝</button>
+                <button class="tab-btn" onclick="switchTab('personal-wechat')">微信支付</button>
+            </div>
+
+            <!-- 个人支付宝配置 -->
+            <div id="personal-alipay" class="tab-content active">
+                <div class="config-card">
+                    <div class="config-title">虎皮椒支付宝个人收款码配置</div>
+                    <div class="alert alert-success">
+                        💡 提示：虎皮椒是一个支付聚合平台，支持个人收款码接入。
+                        <br>1. 访问 <a href="https://www.hupijiao.com" target="_blank" style="color: #4ade80;">https://www.hupijiao.com</a> 注册账号
+                        <br>2. 创建应用并获取 Merchant ID 和 API Key
+                        <br>3. 在下方填入相关信息
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>虎皮椒商户ID</label>
+                            <input type="text" id="personal_alipay_merchant_id" placeholder="请输入虎皮椒商户ID">
+                        </div>
+                        <div class="form-group">
+                            <label>虎皮椒API密钥</label>
+                            <input type="text" id="personal_alipay_api_key" placeholder="请输入虎皮椒API密钥">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>API地址</label>
+                        <input type="text" id="personal_alipay_api_url" value="https://api.hupijiao.com/v1/pay" placeholder="虎皮椒API地址">
+                    </div>
+                    <button class="btn btn-primary" onclick="savePersonalConfig('alipay')">保存配置</button>
+                </div>
+            </div>
+
+            <!-- 个人微信配置 -->
+            <div id="personal-wechat" class="tab-content">
+                <div class="config-card">
+                    <div class="config-title">虎皮椒微信个人收款码配置</div>
+                    <div class="alert alert-success">
+                        💡 提示：虎皮椒支持微信个人收款码接入，快速到账。
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>虎皮椒商户ID</label>
+                            <input type="text" id="personal_wechat_merchant_id" placeholder="请输入虎皮椒商户ID">
+                        </div>
+                        <div class="form-group">
+                            <label>虎皮椒API密钥</label>
+                            <input type="text" id="personal_wechat_api_key" placeholder="请输入虎皮椒API密钥">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>API地址</label>
+                        <input type="text" id="personal_wechat_api_url" value="https://api.hupijiao.com/v1/pay" placeholder="虎皮椒API地址">
+                    </div>
+                    <button class="btn btn-primary" onclick="savePersonalConfig('wechat')">保存配置</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 支付订单监控 -->
+        <div class="section">
+            <h2>📊 支付订单监控</h2>
+            
+            <div class="form-row" style="margin-bottom: 20px;">
+                <div class="form-group">
+                    <label>支付模式</label>
+                    <select id="filterMode" onchange="loadPaymentOrders()">
+                        <option value="">全部</option>
+                        <option value="merchant">商户模式</option>
+                        <option value="personal">个人模式</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>订单状态</label>
+                    <select id="filterStatus" onchange="loadPaymentOrders()">
+                        <option value="">全部</option>
+                        <option value="pending">待支付</option>
+                        <option value="completed">已完成</option>
+                        <option value="failed">失败</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>订单号</th>
+                            <th>用户ID</th>
+                            <th>金额</th>
+                            <th>支付方式</th>
+                            <th>模式</th>
+                            <th>状态</th>
+                            <th>创建时间</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ordersTableBody">
+                        <tr><td colspan="7" style="text-align: center;">加载中...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 支付统计 -->
+        <div class="section">
+            <h2>💹 支付统计</h2>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
+                <div style="background: rgba(255, 215, 0, 0.1); border: 2px solid #ffd700; border-radius: 15px; padding: 20px; text-align: center;">
+                    <div style="font-size: 24px; color: #ffd700; font-weight: bold;" id="totalRevenue">¥0.00</div>
+                    <div style="margin-top: 5px; color: #ccc;">总收入</div>
+                </div>
+                <div style="background: rgba(74, 222, 128, 0.1); border: 2px solid #4ade80; border-radius: 15px; padding: 20px; text-align: center;">
+                    <div style="font-size: 24px; color: #4ade80; font-weight: bold;" id="todayRevenue">¥0.00</div>
+                    <div style="margin-top: 5px; color: #ccc;">今日收入</div>
+                </div>
+                <div style="background: rgba(139, 92, 246, 0.1); border: 2px solid #8b5cf6; border-radius: 15px; padding: 20px; text-align: center;">
+                    <div style="font-size: 24px; color: #8b5cf6; font-weight: bold;" id="completedOrders">0</div>
+                    <div style="margin-top: 5px; color: #ccc;">已完成订单</div>
+                </div>
+                <div style="background: rgba(239, 68, 68, 0.1); border: 2px solid #ef4444; border-radius: 15px; padding: 20px; text-align: center;">
+                    <div style="font-size: 24px; color: #ef4444; font-weight: bold;" id="failedOrders">0</div>
+                    <div style="margin-top: 5px; color: #ccc;">失败订单</div>
+                </div>
+            </div>
+            
+            <button class="btn btn-primary" onclick="loadPaymentStats()" style="width: 100%; margin-top: 20px;">🔄 刷新统计</button>
+        </div>
+    </div>
+
+    <script>
+        // 页面初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            loadPaymentModeStatus(); // 加载模式状态
+            loadPaymentOrders();
+            loadPaymentStats();
+            
+            // 每30秒自动刷新
+            setInterval(() => {
+                loadPaymentOrders();
+                loadPaymentStats();
+            }, 30000);
+        });
+
+        // 切换标签页
+        function switchTab(tabName) {
+            // 隐藏所有标签页
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // 取消所有按钮的激活状态
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // 显示选中的标签页
+            document.getElementById(tabName).classList.add('active');
+            
+            // 激活对应的按钮
+            event.target.classList.add('active');
+        }
+
+        // 保存商户配置
+        async function saveMerchantConfig(method) {
+            try {
+                const settings = {
+                    app_id: document.getElementById(`merchant_${method}_app_id`).value,
+                    merchant_id: document.getElementById(`merchant_${method}_merchant_id`).value,
+                    private_key: document.getElementById(`merchant_${method}_private_key`).value,
+                    public_key: document.getElementById(`merchant_${method}_public_key`).value,
+                    api_key: document.getElementById(`merchant_${method}_api_key`).value
+                };
+
+                const response = await fetch('../../server/api/recharge-v2.php?action=save_payment_config', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        mode: 'merchant',
+                        payment_method: method,
+                        settings: settings
+                    })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    alert('商户配置保存成功！');
+                } else {
+                    alert('保存失败: ' + (result.error || '未知错误'));
+                }
+            } catch (error) {
+                console.error('保存配置失败:', error);
+                alert('网络错误，请稍后再试');
+            }
+        }
+
+        // 保存个人配置
+        async function savePersonalConfig(method) {
+            try {
+                const settings = {
+                    hupijiao_merchant_id: document.getElementById(`personal_${method}_merchant_id`).value,
+                    hupijiao_api_key: document.getElementById(`personal_${method}_api_key`).value,
+                    hupijiao_api_url: document.getElementById(`personal_${method}_api_url`).value
+                };
+
+                if (!settings.hupijiao_merchant_id || !settings.hupijiao_api_key) {
+                    alert('请填写虎皮椒商户ID和API密钥');
+                    return;
+                }
+
+                const response = await fetch('../../server/api/recharge-v2.php?action=save_payment_config', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        mode: 'personal',
+                        payment_method: method,
+                        settings: settings
+                    })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    alert('个人模式配置保存成功！');
+                } else {
+                    alert('保存失败: ' + (result.error || '未知错误'));
+                }
+            } catch (error) {
+                console.error('保存配置失败:', error);
+                alert('网络错误，请稍后再试');
+            }
+        }
+
+        // 加载支付订单
+        async function loadPaymentOrders() {
+            try {
+                const mode = document.getElementById('filterMode').value;
+                const status = document.getElementById('filterStatus').value;
+
+                const response = await fetch('../../server/api/recharge-v2.php?action=get_payment_orders', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        mode: mode,
+                        status: status,
+                        limit: 50
+                    })
+                });
+
+                const result = await response.json();
+                const tbody = document.getElementById('ordersTableBody');
+
+                if (result.success && result.orders.length > 0) {
+                    tbody.innerHTML = result.orders.map(order => `
+                        <tr>
+                            <td>${order.order_no}</td>
+                            <td>${order.user_id}</td>
+                            <td>¥${order.amount}</td>
+                            <td>${order.payment_method === 'alipay' ? '支付宝' : '微信支付'}</td>
+                            <td>${order.mode === 'merchant' ? '商户模式' : '个人模式'}</td>
+                            <td>
+                                <span class="status-badge ${order.status === 'completed' ? 'status-active' : 'status-inactive'}">
+                                    ${getStatusText(order.status)}
+                                </span>
+                            </td>
+                            <td>${new Date(order.created_at).toLocaleString()}</td>
+                        </tr>
+                    `).join('');
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align: center;">暂无订单</td></tr>';
+                }
+            } catch (error) {
+                console.error('加载订单失败:', error);
+            }
+        }
+
+        // 加载支付统计
+        async function loadPaymentStats() {
+            try {
+                const response = await fetch('../../server/api/recharge-v2.php?action=get_payment_stats');
+                const result = await response.json();
+
+                if (result.success && result.stats) {
+                    const stats = result.stats;
+                    document.getElementById('totalRevenue').textContent = `¥${parseFloat(stats.total_revenue || 0).toFixed(2)}`;
+                    document.getElementById('todayRevenue').textContent = `¥${parseFloat(stats.today_revenue || 0).toFixed(2)}`;
+
+                    // 统计订单数
+                    let completed = 0, failed = 0;
+                    if (stats.status_stats) {
+                        stats.status_stats.forEach(stat => {
+                            if (stat.status === 'completed') completed = stat.count;
+                            if (stat.status === 'failed') failed = stat.count;
+                        });
+                    }
+                    document.getElementById('completedOrders').textContent = completed;
+                    document.getElementById('failedOrders').textContent = failed;
+                }
+            } catch (error) {
+                console.error('加载统计失败:', error);
+            }
+        }
+
+        // 获取状态文本
+        function getStatusText(status) {
+            const statusMap = {
+                'pending': '待支付',
+                'completed': '已完成',
+                'failed': '失败',
+                'cancelled': '已取消'
+            };
+            return statusMap[status] || status;
+        }
+
+        // 加载支付模式状态
+        async function loadPaymentModeStatus() {
+            try {
+                const response = await fetch('../../server/api/recharge-v2.php?action=get_payment_mode_status');
+                const result = await response.json();
+                
+                if (result.success && result.statuses) {
+                    // 更新商户模式按钮
+                    const merchantBtn = document.getElementById('merchant_mode_btn');
+                    const merchantStatus = document.getElementById('merchant_mode_status');
+                    if (result.statuses.merchant === 1) {
+                        merchantBtn.style.background = 'linear-gradient(45deg, #4ade80, #22c55e)';
+                        merchantStatus.textContent = '✓ 已启用';
+                    } else {
+                        merchantBtn.style.background = 'linear-gradient(45deg, #ef4444, #dc2626)';
+                        merchantStatus.textContent = '✗ 已禁用';
+                    }
+                    
+                    // 更新个人模式按钮
+                    const personalBtn = document.getElementById('personal_mode_btn');
+                    const personalStatus = document.getElementById('personal_mode_status');
+                    if (result.statuses.personal === 1) {
+                        personalBtn.style.background = 'linear-gradient(45deg, #4ade80, #22c55e)';
+                        personalStatus.textContent = '✓ 已启用';
+                    } else {
+                        personalBtn.style.background = 'linear-gradient(45deg, #ef4444, #dc2626)';
+                        personalStatus.textContent = '✗ 已禁用';
+                    }
+                }
+            } catch (error) {
+                console.error('加载模式状态失败:', error);
+            }
+        }
+
+        // 切换支付模式状态
+        async function togglePaymentModeStatus(mode) {
+            try {
+                const response = await fetch('../../server/api/recharge-v2.php?action=toggle_payment_mode_status', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        mode: mode
+                    })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    alert(result.message);
+                    loadPaymentModeStatus(); // 刷新状态
+                } else {
+                    alert('操作失败: ' + (result.error || '未知错误'));
+                }
+            } catch (error) {
+                console.error('切换模式状态失败:', error);
+                alert('网络错误，请稍后再试');
+            }
+        }
+    </script>
+</body>
+</html>

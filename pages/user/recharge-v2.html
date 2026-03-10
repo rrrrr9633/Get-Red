@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>充值中心 - 无敌俱乐部</title>
+    <link rel="stylesheet" href="../../css/neon.css">
+    <link rel="stylesheet" href="../../css/customer-service.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            color: #fff;
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+        }
+        
+        @media (min-width: 769px) {
+            body {
+                background-image: url('../../images/7.png');
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                background: linear-gradient(135deg, #0a0a0a 0%, #1a0a1a 50%, #0a1a0a 100%);
+            }
+        }
+
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            position: relative;
+            z-index: 10;
+        }
+
+        .back-btn {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            padding: 10px 20px;
+            background: linear-gradient(45deg, #ffd700, #ffed4e);
+            color: #000;
+            text-decoration: none;
+            border-radius: 25px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+
+        .back-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 215, 0, 0.4);
+        }
+
+        .header {
+            text-align: center;
+            margin: 80px 0 40px 0;
+        }
+
+        .header h1 {
+            font-size: 48px;
+            margin-bottom: 15px;
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+        }
+
+        .header p {
+            font-size: 18px;
+            opacity: 0.8;
+        }
+
+        /* 模式选择 */
+        .mode-selector {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 30px 0;
+        }
+
+        .mode-selector.single-mode {
+            grid-template-columns: 1fr;
+            max-width: 400px;
+            margin: 30px auto;
+        }
+
+        .mode-card {
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid rgba(255, 215, 0, 0.3);
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .mode-card:hover {
+            border-color: #ffd700;
+            background: rgba(255, 215, 0, 0.1);
+        }
+
+        .mode-card.active {
+            border-color: #ffd700;
+            background: rgba(255, 215, 0, 0.15);
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+        }
+
+        .mode-title {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #ffd700;
+        }
+
+        .mode-desc {
+            font-size: 14px;
+            opacity: 0.8;
+        }
+
+        /* 充值选项 */
+        .recharge-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 30px 0;
+        }
+
+        .option-card {
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #ffd700;
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .option-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(255, 215, 0, 0.3);
+        }
+
+        .option-card.selected {
+            background: rgba(255, 215, 0, 0.2);
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.5);
+        }
+
+        .option-amount {
+            font-size: 32px;
+            font-weight: bold;
+            color: #ffd700;
+            margin-bottom: 10px;
+        }
+
+        .option-coins {
+            font-size: 16px;
+            color: #4ade80;
+            margin-bottom: 5px;
+        }
+
+        .option-bonus {
+            font-size: 12px;
+            color: #fbbf24;
+        }
+
+        /* 支付方式选择 */
+        .payment-methods {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 30px 0;
+        }
+
+        .payment-method {
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid rgba(255, 215, 0, 0.3);
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .payment-method:hover {
+            border-color: #ffd700;
+            background: rgba(255, 215, 0, 0.1);
+        }
+
+        .payment-method.selected {
+            border-color: #ffd700;
+            background: rgba(255, 215, 0, 0.15);
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+        }
+
+        .payment-icon {
+            font-size: 40px;
+            margin-bottom: 10px;
+        }
+
+        .payment-name {
+            font-size: 18px;
+            font-weight: bold;
+            color: #ffd700;
+        }
+
+        /* 按钮 */
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #4ade80, #22c55e);
+            color: #fff;
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(74, 222, 128, 0.4);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        /* 支付弹窗 */
+        .payment-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .payment-modal.show {
+            display: flex;
+        }
+
+        .payment-content {
+            background: rgba(0, 0, 0, 0.95);
+            border: 2px solid #ffd700;
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            max-width: 500px;
+            width: 90%;
+            position: relative;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            font-size: 30px;
+            cursor: pointer;
+            color: #999;
+            transition: color 0.3s;
+        }
+
+        .close-btn:hover {
+            color: #ffd700;
+        }
+
+        .qr-code {
+            width: 250px;
+            height: 250px;
+            margin: 20px auto;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            background: #fff;
+        }
+
+        .payment-info {
+            font-size: 16px;
+            margin: 15px 0;
+            color: #ccc;
+        }
+
+        .payment-amount {
+            font-size: 28px;
+            font-weight: bold;
+            color: #4ade80;
+            margin: 20px 0;
+        }
+
+        .payment-status {
+            font-size: 14px;
+            margin: 15px 0;
+            padding: 10px;
+            border-radius: 10px;
+            background: rgba(255, 215, 0, 0.1);
+            border: 1px solid rgba(255, 215, 0, 0.3);
+        }
+
+        .status-pending {
+            color: #fbbf24;
+        }
+
+        .status-completed {
+            color: #4ade80;
+        }
+
+        .status-failed {
+            color: #ef4444;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 215, 0, 0.3);
+            border-top-color: #ffd700;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .mode-selector,
+            .payment-methods {
+                grid-template-columns: 1fr;
+            }
+            
+            .recharge-options {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .header h1 {
+                font-size: 36px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="particles" id="particles"></div>
+    
+    <a href="../main.html" class="back-btn">← 返回主页</a>
+
+    <div class="container">
+        <div class="header">
+            <h1 class="neon-text rainbow">充值中心</h1>
+            <p class="neon-text">选择充值模式和套餐，开启幸运之旅</p>
+        </div>
+
+        <!-- 模式选择 -->
+        <div class="mode-selector">
+            <div class="mode-card active" onclick="selectMode('merchant')">
+                <div class="mode-title">💳 雷霆渠道</div>
+                <div class="mode-desc">官方支付通道，安全稳定</div>
+            </div>
+            <div class="mode-card" onclick="selectMode('personal')">
+                <div class="mode-title">💳 雷霆充值</div>
+                <div class="mode-desc">爆笑了哈哈哈</div>
+            </div>
+        </div>
+
+        <!-- 充值选项 -->
+        <div>
+            <h2 style="color: #ffd700; margin-bottom: 20px; text-align: center;">选择充值套餐</h2>
+            <div class="recharge-options" id="rechargeOptions">
+                <!-- 充值选项将在这里动态生成 -->
+            </div>
+        </div>
+
+        <!-- 支付方式选择 -->
+        <div>
+            <h2 style="color: #ffd700; margin-bottom: 20px; text-align: center;">选择支付方式</h2>
+            <div class="payment-methods">
+                <div class="payment-method" onclick="selectPaymentMethod('alipay')">
+                    <div class="payment-icon">💰</div>
+                    <div class="payment-name">支付宝</div>
+                </div>
+                <div class="payment-method" onclick="selectPaymentMethod('wechat')">
+                    <div class="payment-icon">💚</div>
+                    <div class="payment-name">微信支付</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 确认按钮 -->
+        <button class="btn btn-primary" id="confirmBtn" onclick="confirmPayment()" disabled>
+            立即充值
+        </button>
+    </div>
+
+    <!-- 支付弹窗 -->
+    <div class="payment-modal" id="paymentModal">
+        <div class="payment-content">
+            <span class="close-btn" onclick="closePaymentModal()">&times;</span>
+            
+            <h2 class="neon-text gold" id="modalTitle">支付确认</h2>
+            <div class="payment-amount" id="paymentAmount"></div>
+            
+            <div class="payment-info" id="paymentMethod"></div>
+            
+            <!-- 二维码 -->
+            <div id="qrCodeContainer" style="display: none;">
+                <img class="qr-code" id="qrCode" src="" alt="支付二维码">
+                <div class="payment-info">请使用对应的支付应用扫描二维码</div>
+            </div>
+            
+            <!-- 支付状态 -->
+            <div class="payment-status" id="paymentStatus">
+                <span class="loading-spinner"></span>
+                <span class="status-pending" id="statusText">等待支付...</span>
+            </div>
+            
+            <div class="payment-info" style="font-size: 12px; margin-top: 20px;">
+                支付完成后，金币将自动到账<br>
+                如长时间未到账，请联系客服
+            </div>
+        </div>
+    </div>
+
+    <script src="../../js/api-client.js"></script>
+    <script src="../../js/customer-service.js"></script>
+    <script src="../../js/effects.js"></script>
+    <script>
+        let selectedMode = 'merchant';
+        let selectedOption = null;
+        let selectedPaymentMethod = null;
+        let currentOrderNo = null;
+        let statusCheckInterval = null;
+        let statusCheckCount = 0;
+        const MAX_STATUS_CHECK = 180; // 最多检查180次（6分钟）
+
+        // 页面初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            createParticles();
+            checkLoginStatus();
+            loadPaymentModeStatus(); // 加载模式状态
+            loadRechargeOptions();
+            
+            // 检查URL参数中是否有金额
+            const urlParams = new URLSearchParams(window.location.search);
+            const amount = urlParams.get('amount');
+            if (amount) {
+                // 等待选项加载完成后自动选中
+                const checkAndSelect = setInterval(() => {
+                    if (window.rechargeOptionsData && window.rechargeOptionsData.length > 0) {
+                        clearInterval(checkAndSelect);
+                        const index = window.rechargeOptionsData.findIndex(opt => parseFloat(opt.amount) === parseFloat(amount));
+                        if (index !== -1) {
+                            selectRechargeOption(index);
+                        } else {
+                            console.warn('未找到金额为 ' + amount + ' 的充值选项');
+                        }
+                    }
+                }, 100);
+                
+                // 最多等待5秒
+                setTimeout(() => clearInterval(checkAndSelect), 5000);
+            }
+        });
+
+        // 检查登录状态
+        function checkLoginStatus() {
+            const isLoggedIn = localStorage.getItem('isLoggedIn');
+            if (isLoggedIn !== 'true') {
+                alert('请先登录');
+                window.location.href = '../auth/login.html';
+            }
+        }
+
+        // 加载支付模式状态
+        async function loadPaymentModeStatus() {
+            try {
+                const response = await fetch('../../server/api/recharge-v2.php?action=get_payment_mode_status');
+                const result = await response.json();
+                
+                if (result.success && result.statuses) {
+                    window.paymentModeStatus = result.statuses;
+                    updateModeCardDisplay();
+                }
+            } catch (error) {
+                console.error('加载模式状态失败:', error);
+            }
+        }
+
+        // 更新模式卡片显示
+        function updateModeCardDisplay() {
+            const modeSelector = document.querySelector('.mode-selector');
+            const modeCards = document.querySelectorAll('.mode-card');
+            let visibleCount = 0;
+            
+            modeCards.forEach(card => {
+                const isActive = card.classList.contains('active');
+                const mode = isActive ? selectedMode : (selectedMode === 'merchant' ? 'personal' : 'merchant');
+                
+                if (window.paymentModeStatus && window.paymentModeStatus[mode] === 0) {
+                    // 模式被禁用，隐藏卡片
+                    card.style.display = 'none';
+                } else {
+                    card.style.display = 'block';
+                    visibleCount++;
+                }
+            });
+            
+            // 如果只有一个模式可见，添加single-mode类使其居中
+            if (visibleCount === 1) {
+                modeSelector.classList.add('single-mode');
+            } else {
+                modeSelector.classList.remove('single-mode');
+            }
+        }
+
+        // 选择模式
+        function selectMode(mode) {
+            // 检查模式是否启用
+            if (window.paymentModeStatus && window.paymentModeStatus[mode] === 0) {
+                alert('该模式已禁用');
+                return;
+            }
+            
+            selectedMode = mode;
+            
+            // 更新UI
+            document.querySelectorAll('.mode-card').forEach(card => {
+                card.classList.remove('active');
+            });
+            event.target.closest('.mode-card').classList.add('active');
+            
+            // 重新加载充值选项
+            loadRechargeOptions();
+        }
+
+        // 加载充值选项
+        async function loadRechargeOptions() {
+            try {
+                const response = await fetch(`../../server/api/recharge-v2.php?action=get_recharge_options&mode=${selectedMode}`);
+                const result = await response.json();
+                
+                if (result.success) {
+                    const container = document.getElementById('rechargeOptions');
+                    window.rechargeOptionsData = result.options;
+                    
+                    container.innerHTML = result.options.map((option, index) => `
+                        <div class="option-card" onclick="selectRechargeOption(${index})">
+                            <div class="option-amount">¥${option.amount}</div>
+                            <div class="option-coins">获得 ${option.total_coins} 金币</div>
+                            ${option.bonus_coins > 0 ? `<div class="option-bonus">含赠送 ${option.bonus_coins} 金币</div>` : ''}
+                        </div>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('加载充值选项失败:', error);
+                alert('加载充值选项失败，请刷新页面');
+            }
+        }
+
+        // 选择充值选项
+        function selectRechargeOption(index) {
+            selectedOption = window.rechargeOptionsData[index];
+            
+            // 更新UI
+            document.querySelectorAll('.option-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            event.target.closest('.option-card').classList.add('selected');
+            
+            // 检查是否可以确认
+            checkConfirmButton();
+        }
+
+        // 选择支付方式
+        function selectPaymentMethod(method) {
+            const methodElement = event.target.closest('.payment-method');
+            
+            // 检查是否被禁用
+            if (methodElement.dataset.disabled === 'true' || methodElement.style.pointerEvents === 'none') {
+                alert('该支付方式已禁用，请选择其他支付方式');
+                return;
+            }
+            
+            selectedPaymentMethod = method;
+            
+            // 更新UI
+            document.querySelectorAll('.payment-method').forEach(card => {
+                card.classList.remove('selected');
+            });
+            methodElement.classList.add('selected');
+            
+            // 检查是否可以确认
+            checkConfirmButton();
+        }
+
+        // 检查是否可以确认
+        function checkConfirmButton() {
+            const btn = document.getElementById('confirmBtn');
+            if (selectedOption && selectedPaymentMethod) {
+                btn.disabled = false;
+            } else {
+                btn.disabled = true;
+            }
+        }
+
+        // 确认支付
+        async function confirmPayment() {
+            if (!selectedOption || !selectedPaymentMethod) {
+                alert('请选择充值套餐和支付方式');
+                return;
+            }
+
+            try {
+                const response = await fetch('../../server/api/recharge-v2.php?action=create_order', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        mode: selectedMode,
+                        payment_method: selectedPaymentMethod,
+                        amount: selectedOption.amount
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    currentOrderNo = result.order_no;
+                    showPaymentModal(result);
+                    startStatusCheck();
+                } else {
+                    alert('创建订单失败: ' + (result.error || '未知错误'));
+                }
+            } catch (error) {
+                console.error('创建订单失败:', error);
+                alert('网络错误，请稍后再试');
+            }
+        }
+
+        // 显示支付弹窗
+        function showPaymentModal(orderInfo) {
+            document.getElementById('paymentAmount').textContent = `¥${orderInfo.amount}`;
+            document.getElementById('paymentMethod').textContent = 
+                orderInfo.payment_method === 'alipay' ? '支付方式：支付宝' : '支付方式：微信支付';
+            
+            if (orderInfo.qr_code) {
+                document.getElementById('qrCode').src = orderInfo.qr_code;
+                document.getElementById('qrCodeContainer').style.display = 'block';
+            }
+            
+            document.getElementById('paymentModal').classList.add('show');
+        }
+
+        // 开始检查支付状态
+        function startStatusCheck() {
+            statusCheckCount = 0;
+            // 每2秒检查一次，最多检查180次（6分钟）
+            statusCheckInterval = setInterval(() => {
+                statusCheckCount++;
+                checkPaymentStatus();
+                
+                // 超过6分钟后停止检查
+                if (statusCheckCount >= MAX_STATUS_CHECK) {
+                    clearInterval(statusCheckInterval);
+                    const statusText = document.getElementById('statusText');
+                    statusText.textContent = '⏱ 支付超时，请重新发起支付';
+                    statusText.className = 'status-failed';
+                }
+            }, 2000);
+        }
+
+        // 检查支付状态
+        async function checkPaymentStatus() {
+            if (!currentOrderNo) {
+                clearInterval(statusCheckInterval);
+                return;
+            }
+
+            try {
+                const response = await fetch(`../../server/api/recharge-v2.php?action=get_payment_status&order_no=${encodeURIComponent(currentOrderNo)}`);
+                
+                if (!response.ok) {
+                    console.error('API返回错误状态码:', response.status);
+                    return;
+                }
+                
+                const result = await response.json();
+
+                if (!result.success) {
+                    console.error('API返回失败:', result.error);
+                    return;
+                }
+
+                const statusText = document.getElementById('statusText');
+                const paymentStatus = document.getElementById('paymentStatus');
+                
+                // 检查订单状态
+                if (result.is_completed) {
+                    // 支付成功
+                    clearInterval(statusCheckInterval);
+                    statusText.textContent = '✓ 支付成功！金币已到账';
+                    statusText.className = 'status-completed';
+                    paymentStatus.innerHTML = '<span style="color: #4ade80;">✓ 支付成功！金币已到账</span>';
+                    
+                    // 3秒后关闭弹窗并刷新
+                    setTimeout(() => {
+                        closePaymentModal();
+                        // 刷新用户信息
+                        location.reload();
+                    }, 3000);
+                } else if (result.status === 'failed') {
+                    // 支付失败
+                    clearInterval(statusCheckInterval);
+                    statusText.textContent = '✗ 支付失败，请重试';
+                    statusText.className = 'status-failed';
+                    paymentStatus.innerHTML = '<span style="color: #ef4444;">✗ 支付失败，请重试</span>';
+                } else if (result.status === 'cancelled') {
+                    // 支付已取消
+                    clearInterval(statusCheckInterval);
+                    statusText.textContent = '✗ 支付已取消';
+                    statusText.className = 'status-failed';
+                    paymentStatus.innerHTML = '<span style="color: #ef4444;">✗ 支付已取消</span>';
+                }
+                // 如果状态是 pending，继续轮询
+            } catch (error) {
+                console.error('检查支付状态异常:', error);
+                // 网络错误时继续轮询
+            }
+        }
+
+        // 关闭支付弹窗
+        function closePaymentModal() {
+            clearInterval(statusCheckInterval);
+            document.getElementById('paymentModal').classList.remove('show');
+            currentOrderNo = null;
+        }
+
+        // 创建粒子效果
+        function createParticles() {
+            const particlesContainer = document.getElementById('particles');
+            
+            for (let i = 0; i < 50; i++) {
+                const particle = document.createElement('div');
+                particle.style.position = 'absolute';
+                particle.style.width = Math.random() * 4 + 1 + 'px';
+                particle.style.height = particle.style.width;
+                particle.style.background = '#ffd700';
+                particle.style.borderRadius = '50%';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.top = Math.random() * 100 + '%';
+                particle.style.opacity = Math.random() * 0.5 + 0.3;
+                particle.style.animation = `float ${Math.random() * 3 + 2}s ease-in-out infinite alternate`;
+                
+                particlesContainer.appendChild(particle);
+            }
+        }
+    </script>
+</body>
+</html>

@@ -158,7 +158,7 @@ body::after {
         <!-- 抽奖按钮 -->
         <div class="slot-controls">
             <button id="spinBtn" class="btn-spin">
-                <span class="btn-text">开始抽奖</span>
+                <span class="btn-text">开始摸金</span>
                 <span class="btn-cost" id="btnCost">(消耗: 10)</span>
             </button>
         </div>
@@ -2281,7 +2281,7 @@ body::after {
             });
         }
 
-        // 开始抽奖
+        // 开始摸金
         async function startSpin() {
             const spinBtn = document.getElementById('spinBtn');
             const skipAnimation = document.getElementById('skipAnimation').checked;
@@ -2445,7 +2445,7 @@ body::after {
             
             // 重置按钮
             spinBtn.disabled = false;
-            spinBtn.querySelector('.btn-text').textContent = '开始抽奖';
+            spinBtn.querySelector('.btn-text').textContent = '开始摸金';
             
             // 设置3秒后恢复准备窗口的定时器
             // 如果用户在3秒内再次抽奖，这个定时器会被清除

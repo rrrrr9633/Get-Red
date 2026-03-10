@@ -697,3 +697,98 @@ ORDER BY plp.lucky_page, p.probability DESC;
 
 SELECT 'Lucky页面奖品表创建完成！' AS message;
 
+
+-- ========================================
+-- Payment System Tables (v2)
+-- ========================================
+
+-- Payment mode status table (controls whether merchant/personal mode is enabled)
+CREATE TABLE IF NOT EXISTS payment_mode_status (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    mode ENUM('merchant', 'personal') NOT NULL UNIQUE,
+    is_enabled TINYINT(1) DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_mode (mode)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Payment config table (supports merchant and personal modes)
+CREATE TABLE IF NOT EXISTS payment_config (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    mode ENUM('merchant', 'personal') NOT NULL,
+    payment_method ENUM('alipay', 'wechat') NOT NULL,
+    settings JSON NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_mode_method (mode, payment_method),
+    INDEX idx_mode (mode)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Payment orders table
+CREATE TABLE IF NOT EXISTS payment_orders (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    user_id INT NOT NULL,
+    order_no VARCHAR(50) NOT NULL UNIQUE,
+    amount DECIMAL(10,2) NOT NULL,
+    payment_method ENUM('alipay', 'wechat') NOT NULL,
+    mode ENUM('merchant', 'personal') NOT NULL,
+    gateway VARCHAR(50) NOT NULL,
+    status ENUM('pending', 'completed', 'failed', 'cancelled') DEFAULT 'pending',
+    qr_code TEXT,
+    pay_url TEXT,
+    response_data JSON,
+    callback_data JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    completed_at TIMESTAMP NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_user_id (user_id),
+    INDEX idx_order_no (order_no),
+    INDEX idx_status (status),
+    INDEX idx_created_at (created_at),
+    INDEX idx_mode (mode)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Payment callbacks table
+CREATE TABLE IF NOT EXISTS payment_callbacks (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    order_no VARCHAR(50) NOT NULL,
+    gateway VARCHAR(50) NOT NULL,
+    callback_type VARCHAR(50),
+    raw_data JSON NOT NULL,
+    processed TINYINT(1) DEFAULT 0,
+    error_message TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    processed_at TIMESTAMP NULL,
+    INDEX idx_order_no (order_no),
+    INDEX idx_gateway (gateway),
+    INDEX idx_processed (processed),
+    INDEX idx_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Extend recharge_history table
+ALTER TABLE recharge_history ADD COLUMN IF NOT EXISTS mode ENUM('merchant', 'personal') DEFAULT 'merchant' AFTER payment_method;
+ALTER TABLE recharge_history ADD COLUMN IF NOT EXISTS gateway VARCHAR(50) AFTER mode;
+ALTER TABLE recharge_history ADD COLUMN IF NOT EXISTS order_no VARCHAR(50) AFTER gateway;
+ALTER TABLE recharge_history ADD INDEX IF NOT EXISTS idx_mode (mode);
+ALTER TABLE recharge_history ADD INDEX IF NOT EXISTS idx_gateway (gateway);
+ALTER TABLE recharge_history ADD INDEX IF NOT EXISTS idx_order_no (order_no);
+
+-- Create performance indexes
+CREATE INDEX IF NOT EXISTS idx_payment_orders_user_status ON payment_orders(user_id, status);
+CREATE INDEX IF NOT EXISTS idx_payment_orders_gateway_status ON payment_orders(gateway, status);
+CREATE INDEX IF NOT EXISTS idx_payment_callbacks_order_processed ON payment_callbacks(order_no, processed);
+
+-- Insert default payment mode status
+INSERT IGNORE INTO payment_mode_status (mode, is_enabled) VALUES
+('merchant', 1),
+('personal', 1);
+
+-- Insert default payment config
+INSERT IGNORE INTO payment_config (mode, payment_method, settings) VALUES
+('merchant', 'alipay', '{"app_id":"","private_key":"","public_key":""}'),
+('merchant', 'wechat', '{"app_id":"","mch_id":"","api_key":""}'),
+('personal', 'alipay', '{"hupijiao_merchant_id":"","hupijiao_api_key":"","hupijiao_api_url":"https://api.hupijiao.com/v1/pay"}'),
+('personal', 'wechat', '{"hupijiao_merchant_id":"","hupijiao_api_key":"","hupijiao_api_url":"https://api.hupijiao.com/v1/pay"}');
+
+SELECT 'Payment system tables created successfully!' AS message;
