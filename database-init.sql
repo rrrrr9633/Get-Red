@@ -767,12 +767,12 @@ CREATE TABLE IF NOT EXISTS payment_callbacks (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Extend recharge_history table
-ALTER TABLE recharge_history ADD COLUMN IF NOT EXISTS mode ENUM('merchant', 'personal') DEFAULT 'merchant' AFTER payment_method;
-ALTER TABLE recharge_history ADD COLUMN IF NOT EXISTS gateway VARCHAR(50) AFTER mode;
-ALTER TABLE recharge_history ADD COLUMN IF NOT EXISTS order_no VARCHAR(50) AFTER gateway;
-ALTER TABLE recharge_history ADD INDEX IF NOT EXISTS idx_mode (mode);
-ALTER TABLE recharge_history ADD INDEX IF NOT EXISTS idx_gateway (gateway);
-ALTER TABLE recharge_history ADD INDEX IF NOT EXISTS idx_order_no (order_no);
+ALTER TABLE recharge_history ADD COLUMN mode ENUM('merchant', 'personal') DEFAULT 'merchant' AFTER payment_method;
+ALTER TABLE recharge_history ADD COLUMN gateway VARCHAR(50) AFTER mode;
+ALTER TABLE recharge_history ADD COLUMN order_no VARCHAR(50) AFTER gateway;
+ALTER TABLE recharge_history ADD INDEX idx_mode (mode);
+ALTER TABLE recharge_history ADD INDEX idx_gateway (gateway);
+ALTER TABLE recharge_history ADD INDEX idx_order_no (order_no);
 
 -- Create performance indexes
 CREATE INDEX IF NOT EXISTS idx_payment_orders_user_status ON payment_orders(user_id, status);
