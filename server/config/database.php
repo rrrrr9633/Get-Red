@@ -334,12 +334,28 @@
  * 总表数：31张表
  */
 
-// 数据库配置
-define('DB_HOST', 'localhost');
-define('DB_NAME', 'lucky_draw');
-define('DB_USER', 'root');
-define('DB_PASS', '123123');
-define('DB_CHARSET', 'utf8mb4');
+// 加载环境变量
+$env_file = __DIR__ . '/../../.env';
+if (file_exists($env_file)) {
+    $lines = file($env_file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    foreach ($lines as $line) {
+        if (strpos($line, '#') === 0) continue;
+        if (strpos($line, '=') === false) continue;
+        list($key, $value) = explode('=', $line, 2);
+        $key = trim($key);
+        $value = trim($value);
+        if (!empty($key)) {
+            putenv("$key=$value");
+        }
+    }
+}
+
+// 数据库配置 - 从环境变量读取
+define('DB_HOST', getenv('DB_HOST') ?: 'localhost');
+define('DB_NAME', getenv('DB_NAME') ?: 'lucky_draw');
+define('DB_USER', getenv('DB_USER') ?: 'lucky_user');
+define('DB_PASS', getenv('DB_PASS') ?: '');
+define('DB_CHARSET', getenv('DB_CHARSET') ?: 'utf8mb4');
 
 // 创建数据库连接
 class Database {

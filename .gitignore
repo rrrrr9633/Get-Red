@@ -31,3 +31,8 @@ test-*.php
 
 # 配置文件（如果包含敏感信息）
 # server/config/database.php
+
+# Environment variables
+.env
+.env.local
+.env.*.local
