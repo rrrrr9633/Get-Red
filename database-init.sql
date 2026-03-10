@@ -775,9 +775,9 @@ ALTER TABLE recharge_history ADD INDEX idx_gateway (gateway);
 ALTER TABLE recharge_history ADD INDEX idx_order_no (order_no);
 
 -- Create performance indexes
-CREATE INDEX IF NOT EXISTS idx_payment_orders_user_status ON payment_orders(user_id, status);
-CREATE INDEX IF NOT EXISTS idx_payment_orders_gateway_status ON payment_orders(gateway, status);
-CREATE INDEX IF NOT EXISTS idx_payment_callbacks_order_processed ON payment_callbacks(order_no, processed);
+CREATE INDEX idx_payment_orders_user_status ON payment_orders(user_id, status);
+CREATE INDEX idx_payment_orders_gateway_status ON payment_orders(gateway, status);
+CREATE INDEX idx_payment_callbacks_order_processed ON payment_callbacks(order_no, processed);
 
 -- Insert default payment mode status
 INSERT IGNORE INTO payment_mode_status (mode, is_enabled) VALUES
