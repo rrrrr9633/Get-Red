@@ -4,6 +4,29 @@
  * 用于缓存热点数据，减少数据库查询
  */
 
+// 加载环境变量
+if (file_exists(__DIR__ . '/../../.env.sms')) {
+    $lines = file(__DIR__ . '/../../.env.sms', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    foreach ($lines as $line) {
+        $line = trim($line);
+        // 跳过注释和空行
+        if (empty($line) || strpos($line, '#') === 0) continue;
+        // 跳过包含注释的行（但保留值中的#）
+        if (strpos($line, '=') === false) continue;
+        
+        list($name, $value) = explode('=', $line, 2);
+        $name = trim($name);
+        $value = trim($value);
+        
+        // 如果值后面有注释，去掉注释部分
+        if (strpos($value, ' #') !== false) {
+            $value = trim(substr($value, 0, strpos($value, ' #')));
+        }
+        
+        putenv($name . '=' . $value);
+    }
+}
+
 class RedisCache {
     private static $instance = null;
     private $redis;

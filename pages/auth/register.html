@@ -6,6 +6,7 @@
     <title>无敌俱乐部</title>
     <link rel="stylesheet" href="../../css/style.css">
     <link rel="stylesheet" href="../../css/neon.css">
+    <link rel="stylesheet" href="../../css/sms-captcha.css">
     <style>
         /* 优化的注册样式 */
         body {
@@ -298,7 +299,7 @@
                 </div>
                 
                 <div class="form-group">
-                    <input type="tel" id="phoneNumber" placeholder="手机号" required>
+                    <input type="tel" id="phoneNumber" placeholder="手机号" maxlength="11" required>
                 </div>
                 
                 <div id="sms-captcha-container"></div>
@@ -317,6 +318,12 @@
     <script src="../../js/sms-captcha.js"></script>
     <script>
         let countdownInterval = null;
+        let smsCaptchaManager = null; // 全局变量保存实例
+        
+        // 页面加载完成后初始化短信验证码组件
+        document.addEventListener('DOMContentLoaded', function() {
+            smsCaptchaManager = new SmsCaptchaManager('sms-captcha-container');
+        });
         
         // 消息提示函数
         function showMessage(text, type = 'success') {
@@ -431,8 +438,12 @@
             const originalText = submitBtn.textContent;
             
             try {
-                // 验证短信验证码
-                const smsCaptchaManager = new SmsCaptchaManager('sms-captcha-container');
+                // 验证短信验证码（使用全局实例）
+                if (!smsCaptchaManager) {
+                    showMessage('验证码组件未初始化', 'error');
+                    return;
+                }
+                
                 const smsCaptchaResult = await smsCaptchaManager.verify();
                 
                 if (!smsCaptchaResult.success) {

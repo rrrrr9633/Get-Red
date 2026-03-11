@@ -574,7 +574,7 @@ function verifyService() {
 
 // 验证超级管理员身份码（用于敏感操作）
 function verifyIdentity() {
-    session_start();
+    // Session已在文件开头启动
     global $db;
     
     // 检查是否为超级管理员会话
@@ -617,7 +617,7 @@ function verifyIdentity() {
 
 // 验证访问token
 function verifyAccessToken() {
-    session_start(); // 确保session已启动
+    // Session已在文件开头启动
     
     $input = json_decode(file_get_contents('php://input'), true);
     $token = $input['token'] ?? '';
@@ -657,7 +657,7 @@ function verifyAccessToken() {
 
 // 检查客服人员权限
 function checkServiceAccess() {
-    session_start(); // 确保session已启动
+    // Session已在文件开头启动
     global $db;
     
     // 检查是否有用户登录（支持普通登录和超级管理员登录）

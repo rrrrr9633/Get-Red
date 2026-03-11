@@ -1,69 +1,45 @@
-/* 短信验证码样式 */
+/* 短信验证码样式 - 优化版 */
 
 .sms-captcha-wrapper {
     margin-bottom: 20px;
 }
 
-.phone-input-group {
-    margin-bottom: 15px;
-}
-
-.phone-input {
-    width: 100%;
-    padding: 12px 15px;
-    background: rgba(255, 255, 255, 0.9);
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    border-radius: 8px;
-    color: #333;
-    font-size: 16px;
-    transition: all 0.3s ease;
-    outline: none;
-}
-
-.phone-input:focus {
-    border-color: rgba(255, 215, 0, 0.5);
-    box-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
-    background: rgba(255, 255, 255, 1);
-}
-
-.phone-input::placeholder {
-    color: rgba(51, 51, 51, 0.5);
-}
-
 .captcha-input-group {
     display: flex;
     gap: 10px;
-    align-items: center;
+    align-items: stretch;
+    margin-bottom: 10px;
 }
 
 .sms-captcha-input {
     flex: 1;
-    padding: 12px 15px;
-    background: rgba(255, 255, 255, 0.9);
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    border-radius: 8px;
-    color: #333;
+    padding: 15px 20px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    color: #fff;
     font-size: 16px;
     transition: all 0.3s ease;
     outline: none;
+    backdrop-filter: blur(10px);
 }
 
 .sms-captcha-input:focus {
-    border-color: rgba(255, 215, 0, 0.5);
-    box-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
-    background: rgba(255, 255, 255, 1);
+    border-color: rgba(255, 215, 0, 0.6);
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+    background: rgba(255, 255, 255, 0.15);
 }
 
 .sms-captcha-input::placeholder {
-    color: rgba(51, 51, 51, 0.5);
+    color: rgba(255, 255, 255, 0.5);
 }
 
 .sms-captcha-btn {
     min-width: 120px;
-    padding: 12px 15px;
+    padding: 15px 20px;
     background: linear-gradient(135deg, #ff00ff, #00ffff);
     border: none;
-    border-radius: 8px;
+    border-radius: 12px;
     color: white;
     font-size: 14px;
     font-weight: bold;
@@ -72,17 +48,24 @@
     text-align: center;
     position: relative;
     overflow: hidden;
+    white-space: nowrap;
 }
 
-.sms-captcha-btn:not(.disabled):hover {
+.sms-captcha-btn:not(:disabled):hover {
     transform: translateY(-2px);
-    box-shadow: 0 5px 20px rgba(255, 0, 255, 0.4);
+    box-shadow: 0 8px 25px rgba(255, 0, 255, 0.5);
+}
+
+.sms-captcha-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: linear-gradient(135deg, #666, #444);
 }
 
 .sms-captcha-btn.disabled {
-    opacity: 0.6;
+    opacity: 0.5;
     cursor: not-allowed;
-    background: linear-gradient(135deg, #999, #666);
+    background: linear-gradient(135deg, #666, #444);
 }
 
 .sms-captcha-btn::before {
@@ -92,11 +75,11 @@
     left: -100%;
     width: 100%;
     height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
     transition: left 0.5s;
 }
 
-.sms-captcha-btn:not(.disabled):hover::before {
+.sms-captcha-btn:not(:disabled):hover::before {
     left: 100%;
 }
 
@@ -106,16 +89,17 @@
 }
 
 .captcha-tips p {
-    color: rgba(255, 255, 255, 0.7);
-    font-size: 12px;
+    color: rgba(255, 215, 0, 0.8);
+    font-size: 13px;
     margin: 0;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
 }
 
 /* 响应式设计 */
 @media (max-width: 600px) {
     .captcha-input-group {
         flex-direction: column;
-        gap: 8px;
+        gap: 10px;
     }
     
     .sms-captcha-input {
@@ -126,40 +110,20 @@
         width: 100%;
         min-width: auto;
     }
-    
-    .phone-input {
-        font-size: 15px;
-        padding: 10px 12px;
-    }
-    
+}
+
+@media (max-width: 480px) {
     .sms-captcha-input {
-        font-size: 15px;
-        padding: 10px 12px;
+        font-size: 14px;
+        padding: 12px 15px;
     }
     
     .sms-captcha-btn {
         font-size: 13px;
-        padding: 10px 12px;
-    }
-}
-
-@media (max-width: 480px) {
-    .phone-input {
-        font-size: 14px;
-        padding: 8px 10px;
-    }
-    
-    .sms-captcha-input {
-        font-size: 14px;
-        padding: 8px 10px;
-    }
-    
-    .sms-captcha-btn {
-        font-size: 12px;
-        padding: 8px 10px;
+        padding: 12px 15px;
     }
     
     .captcha-tips p {
-        font-size: 11px;
+        font-size: 12px;
     }
 }

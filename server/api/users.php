@@ -185,7 +185,7 @@ function register() {
             (user_id, change_type, coin_type, bound_change, unbound_change, 
              bound_balance_before, unbound_balance_before, bound_balance_after, unbound_balance_after,
              related_id, description)
-            VALUES (?, 'register', 'unbound', 0, 10.00, 0, 0, 0, 10.00, NULL, '注册奖励')
+            VALUES (?, 'admin_adjust', 'unbound', 0, 10.00, 0, 0, 0, 10.00, NULL, '注册奖励')
         ");
         $stmt->execute([$userId]);
         

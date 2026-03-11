@@ -17,12 +17,9 @@ class SmsCaptchaManager {
     async init() {
         if (!this.container) return;
         
-        // 创建短信验证码HTML结构
+        // 创建短信验证码HTML结构（不包含手机号输入框，使用页面已有的）
         this.container.innerHTML = `
             <div class="sms-captcha-wrapper">
-                <div class="phone-input-group">
-                    <input type="tel" id="phoneNumber" placeholder="请输入手机号" maxlength="11" class="phone-input">
-                </div>
                 <div class="captcha-input-group">
                     <input type="text" id="smsCaptchaInput" placeholder="请输入短信验证码" maxlength="6" class="sms-captcha-input">
                     <button type="button" id="sendSmsCaptcha" class="sms-captcha-btn" disabled>
@@ -40,7 +37,10 @@ class SmsCaptchaManager {
         const phoneInput = document.getElementById('phoneNumber');
         const sendBtn = document.getElementById('sendSmsCaptcha');
         
-        phoneInput.addEventListener('input', () => this.onPhoneInputChange());
+        if (phoneInput) {
+            phoneInput.addEventListener('input', () => this.onPhoneInputChange());
+        }
+        
         sendBtn.addEventListener('click', () => this.sendVerificationCode());
         
         // 初始检查
