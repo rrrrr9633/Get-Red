@@ -933,8 +933,8 @@ function legendaryExchange($pdo) {
             $stmt->execute([$itemId]);
         }
         
-        // 获取用户信息
-        $stmt = $pdo->prepare("SELECT username FROM users WHERE id = ?");
+        // 获取用户信息和当前余额
+        $stmt = $pdo->prepare("SELECT username, bound_coins, unbound_coins FROM users WHERE id = ?");
         $stmt->execute([$userId]);
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
         
@@ -952,6 +952,34 @@ function legendaryExchange($pdo) {
             $config['item_type'],
             $usedItemsJson,
             $playerId
+        ]);
+        $purchaseId = $pdo->lastInsertId();
+        
+        // 构建使用的物品列表描述
+        $itemsList = [];
+        foreach ($requiredItems as $reqItem) {
+            $stmt = $pdo->prepare("SELECT name FROM prizes WHERE id = ?");
+            $stmt->execute([$reqItem['prize_id']]);
+            $prizeInfo = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($prizeInfo) {
+                $itemsList[] = "{$prizeInfo['name']} x{$reqItem['quantity']}";
+            }
+        }
+        $itemsListText = implode(', ', $itemsList);
+        
+        // 记录到 coin_change_log 表（金额为0，但记录交易行为）
+        $stmt = $pdo->prepare("
+            INSERT INTO coin_change_log 
+            (user_id, change_type, coin_type, bound_change, unbound_change, 
+             bound_balance_after, unbound_balance_after, related_id, description)
+            VALUES (?, 'legendary_exchange', 'none', 0, 0, ?, ?, ?, ?)
+        ");
+        $stmt->execute([
+            $userId,
+            $user['bound_coins'],
+            $user['unbound_coins'],
+            $purchaseId,
+            "传说级兑换: {$config['name']} (使用物品: {$itemsListText})"
         ]);
         
         // 查找负责该用户的客服并发送通知
@@ -984,15 +1012,7 @@ function legendaryExchange($pdo) {
             }
             
             // 构建消息
-            $itemsList = '';
-            foreach ($requiredItems as $reqItem) {
-                $stmt = $pdo->prepare("SELECT name FROM prizes WHERE id = ?");
-                $stmt->execute([$reqItem['prize_id']]);
-                $prizeInfo = $stmt->fetch(PDO::FETCH_ASSOC);
-                $itemsList .= "\n- {$prizeInfo['name']} x{$reqItem['quantity']}";
-            }
-            
-            $message = "【传说级兑换通知】用户 {$user['username']} 使用传说级物品兑换了：{$config['name']}（{$config['item_type']}）\n使用的物品：{$itemsList}\n玩家ID：{$playerId}\n请及时处理订单。";
+            $message = "【传说级兑换通知】用户 {$user['username']} 使用传说级物品兑换了：{$config['name']}（{$config['item_type']}）\n使用的物品：\n- " . implode("\n- ", $itemsList) . "\n玩家ID：{$playerId}\n请及时处理订单。";
             
             $stmt = $pdo->prepare("
                 INSERT INTO chat_messages (session_id, sender_id, sender_type, message, message_type)

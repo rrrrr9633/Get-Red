@@ -9,6 +9,14 @@ require_once '../config/database.php';
 require_once '../config/payment-gateway.php';
 require_once '../config/security.php';
 
+// 配置安全Session
+configureSecureSession();
+
+// 启动Session
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 // 初始化数据库
 $database = new Database();
 $db = $database->getConnection();
@@ -97,6 +105,34 @@ switch ($action) {
         handleGetPaymentModeStatus($db);
         break;
     
+    case 'get_payment_methods':
+        // 获取启用的支付方式列表
+        handleGetPaymentMethods($db);
+        break;
+    
+    case 'save_payment_method':
+        // 保存支付方式配置（管理端）
+        if ($method === 'POST') {
+            $data = json_decode(file_get_contents('php://input'), true);
+            handleSavePaymentMethod($db, $data);
+        }
+        break;
+    
+    case 'toggle_payment_method':
+        // 切换支付方式启用状态（管理端）
+        if ($method === 'POST') {
+            $data = json_decode(file_get_contents('php://input'), true);
+            handleTogglePaymentMethod($db, $data);
+        }
+        break;
+    
+    case 'upload_payment_qrcode':
+        // 上传支付方式二维码图片（管理端）
+        if ($method === 'POST') {
+            handleUploadPaymentQrCode($db);
+        }
+        break;
+    
     default:
         http_response_code(400);
         echo json_encode(['success' => false, 'error' => '未知的操作']);
@@ -110,7 +146,7 @@ switch ($action) {
  */
 function handleGetRechargeOptions($db, $mode) {
     try {
-        $query = "SELECT * FROM recharge_options WHERE is_active = 1 ORDER BY amount ASC";
+        $query = "SELECT * FROM recharge_options ORDER BY amount ASC";
         $stmt = $db->prepare($query);
         $stmt->execute();
         $options = $stmt->fetchAll();
@@ -389,18 +425,29 @@ function handleGetPaymentOrders($db, $data) {
             $params[':status'] = $status;
         }
         
-        $query .= " ORDER BY created_at DESC LIMIT :limit OFFSET :offset";
-        $params[':limit'] = $limit;
-        $params[':offset'] = $offset;
+        $query .= " ORDER BY created_at DESC LIMIT {$limit} OFFSET {$offset}";
         
         $stmt = $db->prepare($query);
         $stmt->execute($params);
         $orders = $stmt->fetchAll();
         
+        // 获取总数
+        $countQuery = "SELECT COUNT(*) as total FROM payment_orders WHERE 1=1";
+        if (!empty($mode)) {
+            $countQuery .= " AND mode = :mode";
+        }
+        if (!empty($status)) {
+            $countQuery .= " AND status = :status";
+        }
+        
+        $countStmt = $db->prepare($countQuery);
+        $countStmt->execute($params);
+        $totalCount = $countStmt->fetch()['total'];
+        
         echo json_encode([
             'success' => true,
             'orders' => $orders,
-            'total' => count($orders)
+            'total' => $totalCount
         ]);
     } catch (Exception $e) {
         http_response_code(500);
@@ -535,5 +582,181 @@ function getCoinRatio($db) {
         return 10;
     }
 }
-?>
 
+/**
+ * 获取启用的支付方式列表
+ */
+function handleGetPaymentMethods($db) {
+    try {
+        // 检查是否是管理员请求（获取所有支付方式）
+        $isAdmin = isset($_GET['admin']) && $_GET['admin'] === '1';
+        
+        if ($isAdmin) {
+            // 管理员获取所有支付方式
+            $query = "SELECT method_key, method_name, icon, qr_code_url, is_enabled, sort_order 
+                      FROM payment_method_config 
+                      ORDER BY sort_order ASC";
+        } else {
+            // 普通用户只获取启用的支付方式
+            $query = "SELECT method_key, method_name, icon, qr_code_url, sort_order 
+                      FROM payment_method_config 
+                      WHERE is_enabled = 1 
+                      ORDER BY sort_order ASC";
+        }
+        
+        $stmt = $db->prepare($query);
+        $stmt->execute();
+        $methods = $stmt->fetchAll();
+        
+        echo json_encode([
+            'success' => true,
+            'methods' => $methods
+        ]);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+}
+
+/**
+ * 保存支付方式配置（管理端）
+ */
+function handleSavePaymentMethod($db, $data) {
+    try {
+        $methodKey = $data['method_key'] ?? '';
+        $qrCodeUrl = $data['qr_code_url'] ?? '';
+        
+        if (empty($methodKey)) {
+            throw new Exception('支付方式键名不能为空');
+        }
+        
+        // 更新二维码URL
+        $query = "UPDATE payment_method_config SET qr_code_url = :qr_code_url WHERE method_key = :method_key";
+        $stmt = $db->prepare($query);
+        $stmt->execute([
+            ':qr_code_url' => $qrCodeUrl,
+            ':method_key' => $methodKey
+        ]);
+        
+        echo json_encode([
+            'success' => true,
+            'message' => '保存成功'
+        ]);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+}
+
+/**
+ * 切换支付方式启用状态（管理端）
+ */
+function handleTogglePaymentMethod($db, $data) {
+    try {
+        $methodKey = $data['method_key'] ?? '';
+        
+        if (empty($methodKey)) {
+            throw new Exception('支付方式键名不能为空');
+        }
+        
+        // 获取当前状态
+        $query = "SELECT is_enabled FROM payment_method_config WHERE method_key = :method_key LIMIT 1";
+        $stmt = $db->prepare($query);
+        $stmt->execute([':method_key' => $methodKey]);
+        $status = $stmt->fetch();
+        
+        if (!$status) {
+            throw new Exception('支付方式不存在');
+        }
+        
+        // 切换状态
+        $newStatus = $status['is_enabled'] ? 0 : 1;
+        $query = "UPDATE payment_method_config SET is_enabled = :is_enabled WHERE method_key = :method_key";
+        $stmt = $db->prepare($query);
+        $stmt->execute([
+            ':is_enabled' => $newStatus,
+            ':method_key' => $methodKey
+        ]);
+        
+        echo json_encode([
+            'success' => true,
+            'is_enabled' => $newStatus,
+            'message' => $newStatus ? '已启用' : '已禁用'
+        ]);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+}
+
+/**
+ * 上传支付方式二维码图片（管理端）
+ */
+function handleUploadPaymentQrCode($db) {
+    try {
+        $methodKey = $_POST['method_key'] ?? '';
+        
+        if (empty($methodKey)) {
+            throw new Exception('支付方式键名不能为空');
+        }
+        
+        // 检查文件是否上传
+        if (!isset($_FILES['file']) || $_FILES['file']['error'] !== UPLOAD_ERR_OK) {
+            throw new Exception('文件上传失败');
+        }
+        
+        $file = $_FILES['file'];
+        
+        // 验证文件类型
+        $allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mimeType = finfo_file($finfo, $file['tmp_name']);
+        finfo_close($finfo);
+        
+        if (!in_array($mimeType, $allowedTypes)) {
+            throw new Exception('只支持 JPG、PNG、GIF、WEBP 格式的图片');
+        }
+        
+        // 验证文件大小（最大5MB）
+        if ($file['size'] > 5 * 1024 * 1024) {
+            throw new Exception('图片文件不能超过5MB');
+        }
+        
+        // 生成文件名
+        $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
+        $fileName = 'xianyu_qrcode_' . time() . '.' . $extension;
+        
+        // 确保上传目录存在
+        $uploadDir = '../../images/payment/';
+        if (!file_exists($uploadDir)) {
+            mkdir($uploadDir, 0755, true);
+        }
+        
+        $uploadPath = $uploadDir . $fileName;
+        
+        // 移动文件
+        if (!move_uploaded_file($file['tmp_name'], $uploadPath)) {
+            throw new Exception('文件保存失败');
+        }
+        
+        // 生成相对URL（从项目根目录开始）
+        $qrCodeUrl = 'images/payment/' . $fileName;
+        
+        // 更新数据库
+        $query = "UPDATE payment_method_config SET qr_code_url = :qr_code_url WHERE method_key = :method_key";
+        $stmt = $db->prepare($query);
+        $stmt->execute([
+            ':qr_code_url' => $qrCodeUrl,
+            ':method_key' => $methodKey
+        ]);
+        
+        echo json_encode([
+            'success' => true,
+            'message' => '上传成功',
+            'qr_code_url' => $qrCodeUrl
+        ]);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+}

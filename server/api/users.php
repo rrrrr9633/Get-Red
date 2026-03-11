@@ -613,7 +613,7 @@ function getTransactions() {
                 $whereClause .= " AND change_type = 'decompose'";
                 break;
             case 'financial':
-                // 资金流水（排除抽奖和分解）
+                // 资金流水（排除抽奖和分解，包含传说级兑换）
                 $whereClause .= " AND change_type NOT IN ('draw', 'decompose')";
                 break;
             case 'all':

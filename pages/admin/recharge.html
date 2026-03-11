@@ -505,25 +505,50 @@
             const result = await apiRequest('get_payment_settings');
             if (result.success && result.settings) {
                 const settings = result.settings;
-                document.getElementById('alipayAppId').value = settings.alipay_app_id || '';
-                document.getElementById('alipayPrivateKey').value = settings.alipay_private_key || '';
-                document.getElementById('alipayPublicKey').value = settings.alipay_public_key || '';
-                document.getElementById('wechatAppId').value = settings.wechat_app_id || '';
-                document.getElementById('wechatMchId').value = settings.wechat_mch_id || '';
-                document.getElementById('wechatApiKey').value = settings.wechat_api_key || '';
+                
+                // 只在元素存在时才设置值
+                const alipayAppId = document.getElementById('alipayAppId');
+                if (alipayAppId) alipayAppId.value = settings.alipay_app_id || '';
+                
+                const alipayPrivateKey = document.getElementById('alipayPrivateKey');
+                if (alipayPrivateKey) alipayPrivateKey.value = settings.alipay_private_key || '';
+                
+                const alipayPublicKey = document.getElementById('alipayPublicKey');
+                if (alipayPublicKey) alipayPublicKey.value = settings.alipay_public_key || '';
+                
+                const wechatAppId = document.getElementById('wechatAppId');
+                if (wechatAppId) wechatAppId.value = settings.wechat_app_id || '';
+                
+                const wechatMchId = document.getElementById('wechatMchId');
+                if (wechatMchId) wechatMchId.value = settings.wechat_mch_id || '';
+                
+                const wechatApiKey = document.getElementById('wechatApiKey');
+                if (wechatApiKey) wechatApiKey.value = settings.wechat_api_key || '';
             }
         }
 
         // 保存支付设置
         async function savePaymentSettings() {
-            const settings = {
-                alipay_app_id: document.getElementById('alipayAppId').value,
-                alipay_private_key: document.getElementById('alipayPrivateKey').value,
-                alipay_public_key: document.getElementById('alipayPublicKey').value,
-                wechat_app_id: document.getElementById('wechatAppId').value,
-                wechat_mch_id: document.getElementById('wechatMchId').value,
-                wechat_api_key: document.getElementById('wechatApiKey').value
-            };
+            const settings = {};
+            
+            // 只获取存在的元素的值
+            const alipayAppId = document.getElementById('alipayAppId');
+            if (alipayAppId) settings.alipay_app_id = alipayAppId.value;
+            
+            const alipayPrivateKey = document.getElementById('alipayPrivateKey');
+            if (alipayPrivateKey) settings.alipay_private_key = alipayPrivateKey.value;
+            
+            const alipayPublicKey = document.getElementById('alipayPublicKey');
+            if (alipayPublicKey) settings.alipay_public_key = alipayPublicKey.value;
+            
+            const wechatAppId = document.getElementById('wechatAppId');
+            if (wechatAppId) settings.wechat_app_id = wechatAppId.value;
+            
+            const wechatMchId = document.getElementById('wechatMchId');
+            if (wechatMchId) settings.wechat_mch_id = wechatMchId.value;
+            
+            const wechatApiKey = document.getElementById('wechatApiKey');
+            if (wechatApiKey) settings.wechat_api_key = wechatApiKey.value;
 
             const result = await apiRequest('save_payment_settings', 'POST', { settings: settings });
             if (result.success) {

@@ -1806,12 +1806,12 @@ function getUserTransactions() {
     }
     
     try {
-        // 获取总数
-        $countStmt = $db->prepare("SELECT COUNT(*) as total FROM coin_change_log WHERE user_id = ?");
+        // 获取总数 - 排除抽奖记录
+        $countStmt = $db->prepare("SELECT COUNT(*) as total FROM coin_change_log WHERE user_id = ? AND change_type != 'draw'");
         $countStmt->execute([$userId]);
         $total = $countStmt->fetch(PDO::FETCH_ASSOC)['total'];
         
-        // 获取交易记录 - 使用coin_change_log表获取详细信息
+        // 获取交易记录 - 使用coin_change_log表获取详细信息，排除抽奖记录
         $stmt = $db->prepare("
             SELECT 
                 id,
@@ -1824,7 +1824,7 @@ function getUserTransactions() {
                 description,
                 created_at
             FROM coin_change_log 
-            WHERE user_id = ?
+            WHERE user_id = ? AND change_type != 'draw'
             ORDER BY created_at DESC
             LIMIT {$limit} OFFSET {$offset}
         ");

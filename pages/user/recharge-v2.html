@@ -382,11 +382,11 @@
 
         <!-- 模式选择 -->
         <div class="mode-selector">
-            <div class="mode-card active" onclick="selectMode('merchant')">
+            <div class="mode-card" onclick="selectMode('merchant')">
                 <div class="mode-title">💳 雷霆渠道</div>
                 <div class="mode-desc">官方支付通道，安全稳定</div>
             </div>
-            <div class="mode-card" onclick="selectMode('personal')">
+            <div class="mode-card active" onclick="selectMode('personal')">
                 <div class="mode-title">💳 雷霆充值</div>
                 <div class="mode-desc">爆笑了哈哈哈</div>
             </div>
@@ -403,15 +403,8 @@
         <!-- 支付方式选择 -->
         <div>
             <h2 style="color: #ffd700; margin-bottom: 20px; text-align: center;">选择支付方式</h2>
-            <div class="payment-methods">
-                <div class="payment-method" onclick="selectPaymentMethod('alipay')">
-                    <div class="payment-icon">💰</div>
-                    <div class="payment-name">支付宝</div>
-                </div>
-                <div class="payment-method" onclick="selectPaymentMethod('wechat')">
-                    <div class="payment-icon">💚</div>
-                    <div class="payment-name">微信支付</div>
-                </div>
+            <div class="payment-methods" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));">
+                <!-- 支付方式将在这里动态生成 -->
             </div>
         </div>
 
@@ -454,7 +447,7 @@
     <script src="../../js/customer-service.js"></script>
     <script src="../../js/effects.js"></script>
     <script>
-        let selectedMode = 'merchant';
+        let selectedMode = 'personal'; // 默认选择雷霆充值
         let selectedOption = null;
         let selectedPaymentMethod = null;
         let currentOrderNo = null;
@@ -467,6 +460,7 @@
             createParticles();
             checkLoginStatus();
             loadPaymentModeStatus(); // 加载模式状态
+            loadPaymentMethods(); // 加载支付方式
             loadRechargeOptions();
             
             // 检查URL参数中是否有金额
@@ -561,6 +555,41 @@
             // 重新加载充值选项
             loadRechargeOptions();
         }
+        
+        // 加载支付方式
+        async function loadPaymentMethods() {
+            try {
+                const response = await fetch('../../server/api/recharge-v2.php?action=get_payment_methods');
+                const result = await response.json();
+                
+                if (result.success && result.methods) {
+                    const container = document.querySelector('.payment-methods');
+                    container.innerHTML = result.methods.map(method => {
+                        return `
+                            <div class="payment-method" onclick="selectPaymentMethod('${method.method_key}')">
+                                <div class="payment-icon">${method.icon}</div>
+                                <div class="payment-name">${method.method_name}</div>
+                            </div>
+                        `;
+                    }).join('');
+                    
+                    // 保存支付方式数据供后续使用
+                    window.paymentMethodsData = result.methods;
+                    
+                    // 默认选择第一个支付方式
+                    if (result.methods.length > 0) {
+                        setTimeout(() => {
+                            const firstMethod = container.querySelector('.payment-method');
+                            if (firstMethod) {
+                                firstMethod.click();
+                            }
+                        }, 100);
+                    }
+                }
+            } catch (error) {
+                console.error('加载支付方式失败:', error);
+            }
+        }
 
         // 加载充值选项
         async function loadRechargeOptions() {
@@ -638,6 +667,12 @@
                 alert('请选择充值套餐和支付方式');
                 return;
             }
+            
+            // 如果是咸鱼充值，显示二维码弹窗
+            if (selectedPaymentMethod === 'xianyu') {
+                showXianyuQrCode();
+                return;
+            }
 
             try {
                 const response = await fetch('../../server/api/recharge-v2.php?action=create_order', {
@@ -665,6 +700,66 @@
                 console.error('创建订单失败:', error);
                 alert('网络错误，请稍后再试');
             }
+        }
+        
+        // 显示咸鱼二维码
+        function showXianyuQrCode() {
+            const xianyuMethod = window.paymentMethodsData.find(m => m.method_key === 'xianyu');
+            
+            if (!xianyuMethod || !xianyuMethod.qr_code_url) {
+                alert('咸鱼充值二维码未设置，请联系管理员');
+                return;
+            }
+            
+            // 修正图片路径
+            let qrCodeUrl = xianyuMethod.qr_code_url;
+            
+            // 如果是绝对路径（http/https），直接使用
+            if (qrCodeUrl.startsWith('http://') || qrCodeUrl.startsWith('https://')) {
+                // 已经是完整URL，直接使用
+            }
+            // 如果是从根目录开始的路径（images/...）
+            else if (qrCodeUrl.startsWith('images/')) {
+                // 从 pages/user/ 访问，需要添加 ../../
+                qrCodeUrl = '../../' + qrCodeUrl;
+            }
+            // 如果是相对路径（../images/...）
+            else if (qrCodeUrl.startsWith('../images/')) {
+                // 从 pages/user/ 访问，需要 ../../images/
+                qrCodeUrl = qrCodeUrl.replace('../images/', '../../images/');
+            }
+            // 其他情况，尝试添加 ../../
+            else if (!qrCodeUrl.startsWith('/')) {
+                qrCodeUrl = '../../' + qrCodeUrl;
+            }
+            
+            console.log('咸鱼二维码URL:', qrCodeUrl); // 调试日志
+            
+            // 使用支付弹窗显示咸鱼二维码
+            document.getElementById('modalTitle').textContent = '咸鱼账户充值';
+            document.getElementById('paymentAmount').textContent = `¥${selectedOption.amount}`;
+            document.getElementById('paymentMethod').textContent = '支付方式：咸鱼账户充值';
+            
+            // 显示二维码
+            const qrCodeImg = document.getElementById('qrCode');
+            qrCodeImg.src = qrCodeUrl;
+            qrCodeImg.onerror = function() {
+                console.error('二维码图片加载失败:', qrCodeUrl);
+                alert('二维码图片加载失败，请联系管理员');
+            };
+            document.getElementById('qrCodeContainer').style.display = 'block';
+            
+            // 修改状态提示
+            const statusDiv = document.getElementById('paymentStatus');
+            statusDiv.innerHTML = `
+                <div style="color: #ffd700; font-size: 14px; line-height: 1.6;">
+                    <p style="margin-bottom: 10px;">📱 请使用咸鱼APP扫描上方二维码</p>
+                    <p style="margin-bottom: 10px;">💰 充值金额：¥${selectedOption.amount}</p>
+                    <p style="color: #4ade80;">✓ 充值后请联系客服确认到账</p>
+                </div>
+            `;
+            
+            document.getElementById('paymentModal').classList.add('show');
         }
 
         // 显示支付弹窗

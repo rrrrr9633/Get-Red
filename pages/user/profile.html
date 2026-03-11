@@ -944,6 +944,10 @@
                     <span class="profile-info-value neon-text">${user.nickname || '未设置'}</span>
                 </div>
                 <div class="profile-info-item">
+                    <span class="profile-info-label neon-text">手机号:</span>
+                    <span class="profile-info-value neon-text">${user.phone_number || '未绑定'}</span>
+                </div>
+                <div class="profile-info-item">
                     <span class="profile-info-label neon-text">邮箱:</span>
                     <span class="profile-info-value neon-text">${user.email || '未设置'}</span>
                 </div>
@@ -1230,7 +1234,7 @@
                 if (currentTransactionType === 'recharge') {
                     // 加载充值记录
                     console.log('加载充值记录...');
-                    const response = await fetch(`../../server/api/recharge.php?action=get_user_recharge_history`, {
+                    const response = await fetch(`../../server/api/recharge-v2.php?action=get_payment_orders`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
