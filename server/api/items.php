@@ -78,6 +78,12 @@ function decomposeItems($userId, $itemIds, $totalValue) {
         // 根据稀有度增加对应类型的金币
         $itemNames = implode('、', array_column($items, 'name'));
         
+        // 限制描述长度，避免超过数据库字段限制（假设description字段为VARCHAR(255)）
+        $maxDescLength = 200; // 留一些余量
+        if (mb_strlen($itemNames, 'UTF-8') > $maxDescLength) {
+            $itemNames = mb_substr($itemNames, 0, $maxDescLength, 'UTF-8') . '...(共' . count($items) . '件)';
+        }
+        
         if ($legendaryValue > 0) {
             // 直接在当前事务中增加非绑定金币
             $stmt = $pdo->prepare("UPDATE users SET unbound_coins = unbound_coins + ?, balance = balance + ? WHERE id = ?");
