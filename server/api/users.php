@@ -121,10 +121,18 @@ function register() {
     // 频率限制：30秒内最多3次注册尝试
     checkRateLimit('register', 3, 30);
     
-    if(!isset($input['username']) || !isset($input['password']) || !isset($input['nickname'])) {
+    if(!isset($input['username']) || !isset($input['password']) || !isset($input['nickname']) || !isset($input['phone_number'])) {
         http_response_code(400);
         echo json_encode(['error' => '缺少必要参数']);
         logSecurityEvent($db, 'register_attempt', 'failed', null, '缺少必要参数');
+        return;
+    }
+    
+    // 验证手机号格式
+    if (!preg_match('/^1[3-9]\d{9}$/', $input['phone_number'])) {
+        http_response_code(400);
+        echo json_encode(['error' => '手机号格式不正确']);
+        logSecurityEvent($db, 'register_attempt', 'failed', null, '手机号格式不正确');
         return;
     }
     
@@ -147,14 +155,24 @@ function register() {
         return;
     }
     
-    // 创建用户（不包含手机号）
+    // 检查手机号是否已注册
+    $stmt = $db->prepare("SELECT id FROM users WHERE phone_number = ?");
+    $stmt->execute([$input['phone_number']]);
+    if($stmt->fetch()) {
+        http_response_code(400);
+        echo json_encode(['error' => '手机号已注册']);
+        logSecurityEvent($db, 'register_attempt', 'failed', $input['phone_number'], '手机号已注册');
+        return;
+    }
+    
+    // 创建用户（包含手机号）
     $hashedPassword = password_hash($input['password'], PASSWORD_DEFAULT);
     $avatar = isset($input['avatar']) ? $input['avatar'] : 'images/default-avatar.gif';
     
     // 插入用户数据（初始赠送10非绑定金币）
-    $stmt = $db->prepare("INSERT INTO users (username, password, nickname, avatar, balance, bound_coins, unbound_coins) VALUES (?, ?, ?, ?, 10.00, 0.00, 10.00)");
+    $stmt = $db->prepare("INSERT INTO users (username, password, nickname, phone_number, avatar, balance, bound_coins, unbound_coins) VALUES (?, ?, ?, ?, ?, 10.00, 0.00, 10.00)");
     
-    if ($stmt->execute([$input['username'], $hashedPassword, $input['nickname'], $avatar])) {
+    if ($stmt->execute([$input['username'], $hashedPassword, $input['nickname'], $input['phone_number'], $avatar])) {
         $userId = $db->lastInsertId();
         
         // 记录注册奖励（10非绑定金币）
@@ -167,7 +185,7 @@ function register() {
             (user_id, change_type, coin_type, bound_change, unbound_change, 
              bound_balance_before, unbound_balance_before, bound_balance_after, unbound_balance_after,
              related_id, description)
-            VALUES (?, 'register', 'unbound', 0, 10.00, 0, 0, 0, 10.00, NULL, '注册奖励')
+            VALUES (?, 'admin_adjust', 'unbound', 0, 10.00, 0, 0, 0, 10.00, NULL, '注册奖励')
         ");
         $stmt->execute([$userId]);
         

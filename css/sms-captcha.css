@@ -1,0 +1,129 @@
+/* 短信验证码样式 - 优化版 */
+
+.sms-captcha-wrapper {
+    margin-bottom: 20px;
+}
+
+.captcha-input-group {
+    display: flex;
+    gap: 10px;
+    align-items: stretch;
+    margin-bottom: 10px;
+}
+
+.sms-captcha-input {
+    flex: 1;
+    padding: 15px 20px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    color: #fff;
+    font-size: 16px;
+    transition: all 0.3s ease;
+    outline: none;
+    backdrop-filter: blur(10px);
+}
+
+.sms-captcha-input:focus {
+    border-color: rgba(255, 215, 0, 0.6);
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.sms-captcha-input::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.sms-captcha-btn {
+    min-width: 120px;
+    padding: 15px 20px;
+    background: linear-gradient(135deg, #ff00ff, #00ffff);
+    border: none;
+    border-radius: 12px;
+    color: white;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.sms-captcha-btn:not(:disabled):hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(255, 0, 255, 0.5);
+}
+
+.sms-captcha-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: linear-gradient(135deg, #666, #444);
+}
+
+.sms-captcha-btn.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: linear-gradient(135deg, #666, #444);
+}
+
+.sms-captcha-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    transition: left 0.5s;
+}
+
+.sms-captcha-btn:not(:disabled):hover::before {
+    left: 100%;
+}
+
+.captcha-tips {
+    margin-top: 8px;
+    text-align: center;
+}
+
+.captcha-tips p {
+    color: rgba(255, 215, 0, 0.8);
+    font-size: 13px;
+    margin: 0;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+
+/* 响应式设计 */
+@media (max-width: 600px) {
+    .captcha-input-group {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .sms-captcha-input {
+        width: 100%;
+    }
+    
+    .sms-captcha-btn {
+        width: 100%;
+        min-width: auto;
+    }
+}
+
+@media (max-width: 480px) {
+    .sms-captcha-input {
+        font-size: 14px;
+        padding: 12px 15px;
+    }
+    
+    .sms-captcha-btn {
+        font-size: 13px;
+        padding: 12px 15px;
+    }
+    
+    .captcha-tips p {
+        font-size: 12px;
+    }
+}

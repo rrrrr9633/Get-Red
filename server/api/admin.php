@@ -745,68 +745,69 @@ function deleteUser() {
         // 开始事务
         $db->beginTransaction();
         
-        // 删除用户相关数据（按外键依赖顺序）
-        
-        // 1. 删除充值历史记录
-        $stmt = $db->prepare("DELETE FROM recharge_history WHERE user_id = ?");
+        // 获取用户信息用于日志记录
+        $stmt = $db->prepare("SELECT username, user_type FROM users WHERE id = ?");
         $stmt->execute([$id]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
         
-        // 2. 删除用户物品
-        $stmt = $db->prepare("DELETE FROM user_items WHERE user_id = ?");
-        $stmt->execute([$id]);
+        if (!$user) {
+            $db->rollBack();
+            http_response_code(404);
+            echo json_encode(['error' => '用户不存在']);
+            return;
+        }
         
-        // 3. 删除抽奖记录
-        $stmt = $db->prepare("DELETE FROM draws WHERE user_id = ?");
-        $stmt->execute([$id]);
+        // 防止删除最后一个超级管理员
+        if ($user['user_type'] === 'super_admin') {
+            $stmt = $db->prepare("SELECT COUNT(*) as count FROM users WHERE user_type = 'super_admin' AND status = 'active' AND id != ?");
+            $stmt->execute([$id]);
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if ($result['count'] == 0) {
+                $db->rollBack();
+                http_response_code(400);
+                echo json_encode(['error' => '不能删除最后一个超级管理员']);
+                return;
+            }
+        }
         
-        // 4. 删除签到记录
-        $stmt = $db->prepare("DELETE FROM user_checkin WHERE user_id = ?");
-        $stmt->execute([$id]);
+        // 删除用户（数据库会自动级联删除以下相关数据）：
+        // - user_inventory (用户背包)
+        // - draw_history (抽奖历史)
+        // - user_coins (用户金币)
+        // - customer_service_sessions (客服会话)
+        // - customer_service_messages (客服消息)
+        // - service_user_assignments (客服分配)
+        // - recharge_records (充值记录)
+        // - user_checkin (签到记录)
+        // - user_draw_history (用户抽奖历史)
+        // - user_game_history (游戏历史)
+        // - decompose_history (分解历史)
+        // - user_settings (用户设置)
+        // - coin_change_log (金币变动日志)
+        // - withdrawal_requests (提现请求)
+        // - recharge_requests (充值请求)
+        // - shop_orders (商城订单)
+        // - payment_orders (支付订单)
         
-        // 5. 删除签到历史记录
-        $stmt = $db->prepare("DELETE FROM checkin_records WHERE user_id = ?");
-        $stmt->execute([$id]);
-        
-        // 6. 删除抽奖历史
-        $stmt = $db->prepare("DELETE FROM draw_history WHERE user_id = ?");
-        $stmt->execute([$id]);
-        
-        // 7. 删除彩票记录
-        $stmt = $db->prepare("DELETE FROM lottery_records WHERE user_id = ?");
-        $stmt->execute([$id]);
-        
-        // 8. 删除奖品抽取日志
-        $stmt = $db->prepare("DELETE FROM prize_draw_log WHERE user_id = ?");
-        $stmt->execute([$id]);
-        
-        // 9. 删除交易记录
-        $stmt = $db->prepare("DELETE FROM transactions WHERE user_id = ?");
-        $stmt->execute([$id]);
-        
-        // 10. 最后删除用户本身
         $stmt = $db->prepare("DELETE FROM users WHERE id = ?");
         $stmt->execute([$id]);
-        
-        // 检查是否删除的是超级管理员
-        $stmt = $db->prepare("SELECT COUNT(*) as count FROM users WHERE user_type = 'super_admin' AND status = 'active'");
-        $stmt->execute();
-        $result = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        // 如果没有活跃的超级管理员了，重新激活默认admin账户
-        if ($result['count'] == 0) {
-            $stmt = $db->prepare("UPDATE users SET status = 'active' WHERE username = 'admin' AND user_type = 'super_admin' AND nickname = '默认超级管理员'");
-            $stmt->execute();
-        }
         
         // 提交事务
         $db->commit();
         
-        echo json_encode(['success' => true, 'message' => '用户及相关数据删除成功']);
+        // 记录删除日志
+        error_log("管理员删除用户: ID={$id}, Username={$user['username']}, Type={$user['user_type']}");
+        
+        echo json_encode([
+            'success' => true,
+            'message' => '用户及其所有相关数据已删除'
+        ]);
+        
     } catch (Exception $e) {
         // 回滚事务
-        if ($db->inTransaction()) {
-            $db->rollBack();
-        }
+        $db->rollBack();
+        error_log("删除用户失败: " . $e->getMessage());
         http_response_code(500);
         echo json_encode(['error' => '删除用户失败: ' . $e->getMessage()]);
     }
