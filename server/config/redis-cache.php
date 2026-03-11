@@ -11,6 +11,12 @@ class RedisCache {
     
     private function __construct() {
         try {
+            // 检查 Redis 是否启用
+            if (getenv('REDIS_ENABLED') !== 'true') {
+                error_log('Redis 缓存已禁用');
+                return;
+            }
+            
             // 检查 Redis 扩展是否安装
             if (!class_exists('Redis')) {
                 error_log('Redis 扩展未安装，缓存功能已禁用');
@@ -19,13 +25,27 @@ class RedisCache {
             
             $this->redis = new Redis();
             
-            // 连接 Redis（默认配置）
-            $connected = $this->redis->connect('127.0.0.1', 6379, 2); // 2秒超时
+            // 从环境变量读取配置
+            $host = getenv('REDIS_HOST') ?: '127.0.0.1';
+            $port = getenv('REDIS_PORT') ?: 6379;
+            $password = getenv('REDIS_PASSWORD');
+            $db = getenv('REDIS_DB') ?: 0;
+            
+            // 连接 Redis
+            $connected = $this->redis->connect($host, $port, 2); // 2秒超时
             
             if (!$connected) {
                 error_log('Redis 连接失败，缓存功能已禁用');
                 return;
             }
+            
+            // 如果有密码，进行认证
+            if ($password) {
+                $this->redis->auth($password);
+            }
+            
+            // 选择数据库
+            $this->redis->select($db);
             
             // 设置序列化方式为 JSON
             $this->redis->setOption(Redis::OPT_SERIALIZER, Redis::SERIALIZER_JSON);
@@ -34,6 +54,7 @@ class RedisCache {
             $this->redis->setOption(Redis::OPT_PREFIX, 'lucky_draw:');
             
             $this->enabled = true;
+            error_log('Redis 连接成功 (Host: ' . $host . ':' . $port . ', DB: ' . $db . ')');
             
         } catch (Exception $e) {
             error_log('Redis 初始化失败: ' . $e->getMessage());
