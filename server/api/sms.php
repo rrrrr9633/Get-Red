@@ -4,6 +4,11 @@
  * 处理短信验证码的发送和验证
  */
 
+// 启动Session（用于Redis不可用时的备选方案）
+require_once __DIR__ . '/../config/security.php';
+configureSecureSession();
+session_start();
+
 header('Content-Type: application/json; charset=utf-8');
 
 require_once __DIR__ . '/../config/database.php';
