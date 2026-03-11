@@ -1177,6 +1177,232 @@
         }
 
         /* 响应式设计 */
+
+        /* ==================== 公告按钮样式 ==================== */
+        .announcement-btn {
+            position: fixed;
+            bottom: 150px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #ffd700, #ffed4e);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(255, 215, 0, 0.4);
+            transition: all 0.3s ease;
+            z-index: 999;
+        }
+
+        .announcement-btn:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 20px rgba(255, 215, 0, 0.6);
+        }
+
+        .announcement-icon {
+            font-size: 28px;
+            animation: none;
+        }
+
+        /* 未读状态 - 疯狂闪动 */
+        .announcement-btn.has-unread {
+            animation: crazyBlink 0.5s infinite;
+        }
+
+        .announcement-btn.has-unread .announcement-icon {
+            animation: shake 0.5s infinite;
+        }
+
+        @keyframes crazyBlink {
+            0%, 100% { 
+                background: linear-gradient(135deg, #ffd700, #ffed4e);
+                box-shadow: 0 4px 15px rgba(255, 215, 0, 0.4);
+            }
+            50% { 
+                background: linear-gradient(135deg, #ff4444, #ff6666);
+                box-shadow: 0 4px 25px rgba(255, 68, 68, 0.8);
+            }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: rotate(0deg); }
+            25% { transform: rotate(-15deg); }
+            75% { transform: rotate(15deg); }
+        }
+
+        .announcement-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: #ff4444;
+            color: white;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            border: 2px solid #fff;
+        }
+
+        /* ==================== 公告弹窗样式 ==================== */
+        .announcement-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .announcement-modal-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+        }
+
+        .announcement-modal-content {
+            position: relative;
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.95), rgba(26, 26, 26, 0.95));
+            border: 2px solid #ffd700;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 0 50px rgba(255, 215, 0, 0.3);
+        }
+
+        .announcement-modal-header {
+            padding: 20px;
+            border-bottom: 1px solid rgba(255, 215, 0, 0.3);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .announcement-modal-header h2 {
+            margin: 0;
+            font-size: 24px;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            color: #999;
+            font-size: 36px;
+            cursor: pointer;
+            transition: color 0.3s;
+            line-height: 1;
+            padding: 0;
+            width: 40px;
+            height: 40px;
+        }
+
+        .close-btn:hover {
+            color: #ffd700;
+        }
+
+        .announcement-modal-body {
+            padding: 20px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .announcement-item {
+            background: rgba(255, 215, 0, 0.05);
+            border: 1px solid rgba(255, 215, 0, 0.2);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .announcement-item.unread {
+            background: rgba(255, 215, 0, 0.1);
+            border-color: rgba(255, 215, 0, 0.4);
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.2);
+        }
+
+        .announcement-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(255, 215, 0, 0.2);
+        }
+
+        .announcement-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .announcement-title {
+            color: #ffd700;
+            font-size: 18px;
+            margin: 0;
+        }
+
+        .announcement-time {
+            color: #999;
+            font-size: 12px;
+        }
+
+        .announcement-content {
+            color: #ccc;
+            line-height: 1.6;
+            font-size: 14px;
+        }
+
+        .loading, .no-announcements, .error {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+            font-size: 16px;
+        }
+
+        .error {
+            color: #ff4444;
+        }
+
+        /* 移动端适配 */
+        @media (max-width: 768px) {
+            .announcement-btn {
+                width: 50px;
+                height: 50px;
+                bottom: 140px;
+                bottom: 80px;
+                right: 15px;
+            }
+
+            .announcement-icon {
+                font-size: 24px;
+            }
+
+            .announcement-modal-content {
+                width: 95%;
+                max-height: 85vh;
+            }
+
+            .announcement-modal-header h2 {
+                font-size: 20px;
+            }
+
+            .announcement-title {
+                font-size: 16px;
+            }
+        }
     </style>
 
     <script src="../js/effects.js"></script>
@@ -1609,5 +1835,27 @@
         }
 
     </script>
+
+    <!-- 公告按钮 -->
+    <div class="announcement-btn" id="announcementBtn" onclick="openAnnouncementModal()">
+        <span class="announcement-icon">📢</span>
+        <span class="announcement-badge" id="announcementBadge" style="display: none;">0</span>
+    </div>
+
+    <!-- 公告弹窗 -->
+    <div class="announcement-modal" id="announcementModal">
+        <div class="announcement-modal-overlay" onclick="closeAnnouncementModal()"></div>
+        <div class="announcement-modal-content">
+            <div class="announcement-modal-header">
+                <h2 class="neon-text gold">📢 系统公告</h2>
+                <button class="close-btn" onclick="closeAnnouncementModal()">×</button>
+            </div>
+            <div class="announcement-modal-body" id="announcementList">
+                <div class="loading">加载中...</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/announcement.js"></script>
 </body>
 </html>

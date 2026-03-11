@@ -792,3 +792,88 @@ INSERT IGNORE INTO payment_config (mode, payment_method, settings) VALUES
 ('personal', 'wechat', '{"hupijiao_merchant_id":"","hupijiao_api_key":"","hupijiao_api_url":"https://api.hupijiao.com/v1/pay"}');
 
 SELECT 'Payment system tables created successfully!' AS message;
+
+-- ========================================
+-- 手机号字段扩展
+-- 添加时间：2026-03-11
+-- ========================================
+
+-- 为users表添加手机号字段
+ALTER TABLE users 
+ADD COLUMN phone_number VARCHAR(20) NULL AFTER email,
+ADD UNIQUE INDEX idx_phone_number (phone_number);
+
+-- 添加注释说明
+ALTER TABLE users 
+MODIFY COLUMN phone_number VARCHAR(20) NULL COMMENT '手机号，用于短信验证';
+
+SELECT '手机号字段已添加到users表' AS message;
+
+
+-- ========================================
+-- 传说级兑换类型扩展
+-- 添加时间：2026-03-11
+-- ========================================
+
+-- 修改 coin_change_log 表的 change_type 字段，添加 'legendary_exchange' 选项
+ALTER TABLE coin_change_log 
+MODIFY COLUMN change_type ENUM(
+    'recharge',
+    'draw',
+    'decompose',
+    'shop_purchase',
+    'withdrawal',
+    'checkin',
+    'refund',
+    'admin_adjust',
+    'legendary_exchange'
+) NOT NULL COMMENT '变更类型';
+
+-- 同时修改 coin_type 字段，添加 'none' 选项（用于不涉及金币变化的记录）
+ALTER TABLE coin_change_log 
+MODIFY COLUMN coin_type ENUM(
+    'bound',
+    'unbound',
+    'mixed',
+    'none'
+) NOT NULL COMMENT '金币类型';
+
+SELECT '传说级兑换类型已添加到 coin_change_log 表' AS message;
+
+
+-- ========================================
+-- 咸鱼充值方式和支付方式配置
+-- 添加时间：2026-03-11
+-- ========================================
+
+-- 创建支付方式配置表（如果不存在）
+CREATE TABLE IF NOT EXISTS payment_method_config (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    method_key VARCHAR(50) NOT NULL UNIQUE COMMENT '支付方式键名（alipay, wechat, xianyu）',
+    method_name VARCHAR(100) NOT NULL COMMENT '支付方式显示名称',
+    icon VARCHAR(50) DEFAULT '💰' COMMENT '图标',
+    qr_code_url VARCHAR(500) COMMENT '二维码图片URL（咸鱼专用）',
+    is_enabled TINYINT(1) DEFAULT 1 COMMENT '是否启用',
+    sort_order INT DEFAULT 0 COMMENT '排序顺序',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_method_key (method_key),
+    INDEX idx_is_enabled (is_enabled)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='支付方式配置表';
+
+-- 插入默认支付方式配置
+INSERT INTO payment_method_config (method_key, method_name, icon, qr_code_url, is_enabled, sort_order) VALUES
+('alipay', '支付宝', '💰', NULL, 1, 1),
+('wechat', '微信支付', '💚', NULL, 1, 2),
+('xianyu', '咸鱼账户充值', '🐟', 'images/payment/xianyu_qrcode_1773242487.jpg', 1, 3)
+ON DUPLICATE KEY UPDATE 
+    method_name = VALUES(method_name),
+    icon = VALUES(icon),
+    qr_code_url = COALESCE(VALUES(qr_code_url), qr_code_url);
+
+-- 修复已存在的错误路径（将 ../images/ 改为 images/）
+UPDATE payment_method_config 
+SET qr_code_url = REPLACE(qr_code_url, '../images/', 'images/')
+WHERE qr_code_url LIKE '../images/%';
+
+SELECT '咸鱼充值方式已添加完成' AS message;
