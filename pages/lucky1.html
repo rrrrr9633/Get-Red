@@ -21,6 +21,9 @@ body::before,
 body::after {
     display: none !important;
 }
+.particles {
+    display: none !important;
+}
 .game-container {
     background: transparent !important;
 }
@@ -396,7 +399,11 @@ body::after {
                 -webkit-background-clip: text;
                 -webkit-text-fill-color: transparent;
             }
-            
+
+            /* 禁用粒子特效 */
+            .particles {
+                display: none !important;
+            }
         }
         
         /* 使用红色主题的自定义样式覆盖 */
