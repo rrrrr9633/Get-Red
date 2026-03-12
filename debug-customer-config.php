@@ -152,7 +152,7 @@ echo "<li>登录超级管理员账号</li>";
 echo "<li>进入管理后台 → 系统配置</li>";
 echo "<li>配置QQ客服和微信客服信息</li>";
 echo "<li>上传二维码图片</li>";
-echo "<li>确保配置状态为"启用"</li>";
+echo "<li>确保配置状态为启用</li>";
 echo "<li>刷新此页面验证配置是否保存成功</li>";
 echo "</ol>";
 echo "</div>";
