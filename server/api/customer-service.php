@@ -154,15 +154,35 @@ switch($method) {
 function getServiceConfig() {
     global $db;
     
-    if (!checkPermission($db, ['admin', 'super_admin'])) {
-        http_response_code(403);
-        echo json_encode(['error' => '权限不足']);
-        return;
-    }
+    // 允许所有用户（包括未登录用户）读取客服配置，因为这是公开的联系方式
+    // 管理员可以看到所有字段，普通用户只能看到公开字段
     
     try {
-        $stmt = $db->prepare("SELECT * FROM customer_service_config ORDER BY sort_order");
-        $stmt->execute();
+        $user_id = getCurrentUserId();
+        $is_admin = false;
+        
+        if ($user_id) {
+            $stmt = $db->prepare("SELECT user_type FROM users WHERE id = ?");
+            $stmt->execute([$user_id]);
+            $user = $stmt->fetch();
+            $is_admin = $user && in_array($user['user_type'], ['admin', 'super_admin']);
+        }
+        
+        if ($is_admin) {
+            // 管理员可以看到所有配置
+            $stmt = $db->prepare("SELECT * FROM customer_service_config ORDER BY sort_order");
+            $stmt->execute();
+        } else {
+            // 普通用户只能看到启用的配置，且只返回必要字段
+            $stmt = $db->prepare("
+                SELECT service_type, title, content, contact_info, qr_code_url, is_enabled 
+                FROM customer_service_config 
+                WHERE is_enabled = 1 
+                ORDER BY sort_order
+            ");
+            $stmt->execute();
+        }
+        
         $configs = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         logSecurityEvent($db, 'get_service_config', 'success');

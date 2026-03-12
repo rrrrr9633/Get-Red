@@ -13,6 +13,42 @@ class CustomerServiceWidget {
         this.init();
     }
     
+    // 获取API路径前缀（根据当前页面位置动态计算）
+    getApiPath() {
+        const path = window.location.pathname;
+        
+        // 根目录页面（index.html）
+        if (path.endsWith('/') || path.endsWith('index.html') || !path.includes('/pages/')) {
+            return '.';
+        }
+        // pages/ 目录下的页面（main.html, auth/login.html等）
+        else if (path.includes('/pages/') && !path.includes('/pages/modules/') && !path.includes('/pages/user/') && !path.includes('/pages/admin/')) {
+            return '..';
+        }
+        // pages/modules/, pages/user/, pages/admin/ 等子目录下的页面
+        else {
+            return '../..';
+        }
+    }
+    
+    // 获取图片路径前缀（根据当前页面位置动态计算）
+    getImagePath() {
+        const path = window.location.pathname;
+        
+        // 根目录页面
+        if (path.endsWith('/') || path.endsWith('index.html') || !path.includes('/pages/')) {
+            return '';
+        }
+        // pages/ 目录下的页面
+        else if (path.includes('/pages/') && !path.includes('/pages/modules/') && !path.includes('/pages/user/') && !path.includes('/pages/admin/')) {
+            return '../';
+        }
+        // pages/modules/, pages/user/, pages/admin/ 等子目录下的页面
+        else {
+            return '../../';
+        }
+    }
+    
     // 初始化组件
     init() {
         this.createWidget();
@@ -144,7 +180,9 @@ class CustomerServiceWidget {
     // 加载客服配置
     async loadConfigs() {
         try {
-            const response = await fetch('../../server/api/customer-service.php?action=config');
+            // 动态计算API路径
+            const apiPath = this.getApiPath();
+            const response = await fetch(`${apiPath}/server/api/customer-service.php?action=config`);
             const data = await response.json();
             
             if (data.success && data.configs) {
@@ -209,6 +247,8 @@ class CustomerServiceWidget {
     
     // 更新配置显示
     updateConfigs() {
+        const imagePathPrefix = this.getImagePath();
+        
         // 更新QQ客服信息
         const qqConfig = this.configs.qq;
         if (qqConfig && qqConfig.is_enabled) {
@@ -223,18 +263,17 @@ class CustomerServiceWidget {
                 if (qrCodeUrl.startsWith('http://') || qrCodeUrl.startsWith('https://')) {
                     // 已经是完整URL，直接使用
                 }
-                // 如果是从根目录开始的路径（images/...）
+                // 如果是从根目录开始的路径（images/...），添加动态前缀
                 else if (qrCodeUrl.startsWith('images/')) {
-                    // 从 js/ 目录访问，需要添加 ../
-                    qrCodeUrl = '../' + qrCodeUrl;
+                    qrCodeUrl = imagePathPrefix + qrCodeUrl;
                 }
-                // 如果是相对路径（../images/...）
-                else if (qrCodeUrl.startsWith('../images/')) {
-                    // 已经是正确的相对路径
-                }
-                // 其他情况，尝试添加 ../
-                else if (!qrCodeUrl.startsWith('/')) {
-                    qrCodeUrl = '../' + qrCodeUrl;
+                // 如果已经有相对路径前缀，保持不变
+                else if (qrCodeUrl.startsWith('../')) {
+                    // 已经是相对路径，但可能不正确，重新计算
+                    qrCodeUrl = qrCodeUrl.replace(/^(\.\.\/)+/, '');
+                    if (qrCodeUrl.startsWith('images/')) {
+                        qrCodeUrl = imagePathPrefix + qrCodeUrl;
+                    }
                 }
                 
                 qqQR.innerHTML = `<img src="${qrCodeUrl}" alt="QQ二维码" style="max-width: 200px; border-radius: 8px;">`;
@@ -257,18 +296,17 @@ class CustomerServiceWidget {
                 if (qrCodeUrl.startsWith('http://') || qrCodeUrl.startsWith('https://')) {
                     // 已经是完整URL，直接使用
                 }
-                // 如果是从根目录开始的路径（images/...）
+                // 如果是从根目录开始的路径（images/...），添加动态前缀
                 else if (qrCodeUrl.startsWith('images/')) {
-                    // 从 js/ 目录访问，需要添加 ../
-                    qrCodeUrl = '../' + qrCodeUrl;
+                    qrCodeUrl = imagePathPrefix + qrCodeUrl;
                 }
-                // 如果是相对路径（../images/...）
-                else if (qrCodeUrl.startsWith('../images/')) {
-                    // 已经是正确的相对路径
-                }
-                // 其他情况，尝试添加 ../
-                else if (!qrCodeUrl.startsWith('/')) {
-                    qrCodeUrl = '../' + qrCodeUrl;
+                // 如果已经有相对路径前缀，保持不变
+                else if (qrCodeUrl.startsWith('../')) {
+                    // 已经是相对路径，但可能不正确，重新计算
+                    qrCodeUrl = qrCodeUrl.replace(/^(\.\.\/)+/, '');
+                    if (qrCodeUrl.startsWith('images/')) {
+                        qrCodeUrl = imagePathPrefix + qrCodeUrl;
+                    }
                 }
                 
                 wechatQR.innerHTML = `<img src="${qrCodeUrl}" alt="微信二维码" style="max-width: 200px; border-radius: 8px;">`;
@@ -347,7 +385,8 @@ class CustomerServiceWidget {
             this.showChatStatus('正在连接客服...');
             
             // 调用API创建或获取会话
-            const response = await fetch('../../server/api/customer-service.php?action=start_session', {
+            const apiPath = this.getApiPath();
+            const response = await fetch(`${apiPath}/server/api/customer-service.php?action=start_session`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -389,7 +428,8 @@ class CustomerServiceWidget {
         if (!this.chatSession) return;
         
         try {
-            const response = await fetch(`../../server/api/customer-service.php?action=messages&session_id=${this.chatSession}`, {
+            const apiPath = this.getApiPath();
+            const response = await fetch(`${apiPath}/server/api/customer-service.php?action=messages&session_id=${this.chatSession}`, {
                 credentials: 'include'
             });
             
@@ -475,7 +515,8 @@ class CustomerServiceWidget {
         }
         
         try {
-            const response = await fetch('../../server/api/customer-service.php?action=send_message', {
+            const apiPath = this.getApiPath();
+            const response = await fetch(`${apiPath}/server/api/customer-service.php?action=send_message`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
