@@ -406,32 +406,51 @@ function getAdminPurchases($pdo) {
     
     try {
         $status = $_GET['status'] ?? null;
+        $page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
+        $perPage = isset($_GET['per_page']) ? max(1, min(100, intval($_GET['per_page']))) : 10;
+        $offset = ($page - 1) * $perPage;
         
+        // 构建WHERE条件
+        $whereClause = '';
+        $params = [];
         if ($status && in_array($status, ['pending', 'processing', 'completed', 'cancelled'])) {
-            $stmt = $pdo->prepare("
-                SELECT sph.*, u.username, u.nickname 
-                FROM shop_purchase_history sph
-                JOIN users u ON sph.user_id = u.id
-                WHERE sph.status = ?
-                ORDER BY sph.created_at DESC
-            ");
-            $stmt->execute([$status]);
-        } else {
-            $stmt = $pdo->prepare("
-                SELECT sph.*, u.username, u.nickname 
-                FROM shop_purchase_history sph
-                JOIN users u ON sph.user_id = u.id
-                ORDER BY sph.created_at DESC
-                LIMIT 100
-            ");
-            $stmt->execute();
+            $whereClause = 'WHERE sph.status = ?';
+            $params[] = $status;
         }
         
-        $purchases = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        // 获取总数
+        $countSql = "
+            SELECT COUNT(*) as total
+            FROM shop_purchase_history sph
+            JOIN users u ON sph.user_id = u.id
+            $whereClause
+        ";
+        $countStmt = $pdo->prepare($countSql);
+        $countStmt->execute($params);
+        $total = $countStmt->fetch(PDO::FETCH_ASSOC)['total'];
+        
+        // 获取分页数据 - 使用字符串拼接而不是参数绑定（LIMIT/OFFSET必须是整数）
+        $dataSql = "
+            SELECT sph.*, u.username, u.nickname 
+            FROM shop_purchase_history sph
+            JOIN users u ON sph.user_id = u.id
+            $whereClause
+            ORDER BY sph.created_at DESC
+            LIMIT $perPage OFFSET $offset
+        ";
+        $dataStmt = $pdo->prepare($dataSql);
+        $dataStmt->execute($params);
+        $purchases = $dataStmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        $totalPages = ceil($total / $perPage);
         
         echo json_encode([
             'success' => true,
-            'purchases' => $purchases
+            'purchases' => $purchases,
+            'total' => (int)$total,
+            'page' => $page,
+            'per_page' => $perPage,
+            'total_pages' => $totalPages
         ]);
     } catch (Exception $e) {
         http_response_code(500);

@@ -715,8 +715,13 @@
                     </div>
                     
                     <div class="form-group">
-                        <label class="form-label" for="qrCodeUrl">二维码图片URL</label>
-                        <input type="url" id="qrCodeUrl" name="qr_code_url" class="form-input" placeholder="http://example.com/qr.png">
+                        <label class="form-label" for="qrCodeFile">二维码图片</label>
+                        <input type="file" id="qrCodeFile" name="qr_code_file" class="form-input" accept="image/*" onchange="previewQrCode(event)">
+                        <small class="form-help">支持 JPG、PNG 格式，建议尺寸 500x500 像素</small>
+                        <div id="qrCodePreview" style="margin-top: 10px; display: none;">
+                            <img id="qrCodePreviewImg" style="max-width: 200px; border-radius: 8px; border: 2px solid #ffd700;">
+                        </div>
+                        <input type="hidden" id="qrCodeUrl" name="qr_code_url">
                     </div>
                     
                     <div class="form-group">
@@ -966,35 +971,46 @@
         // 加载客服配置
         async function loadServiceConfigs() {
             try {
-                // 这里应该调用API获取客服配置
-                // 暂时使用默认配置
-                serviceConfigs = {
-                    online: {
-                        title: '在线客服',
-                        content: '24小时在线客服为您服务',
-                        contact_info: '',
-                        qr_code_url: '',
-                        is_enabled: 1
-                    },
-                    qq: {
-                        title: 'QQ客服',
-                        content: '官方QQ客服',
-                        contact_info: '123456789',
-                        qr_code_url: '',
-                        is_enabled: 1
-                    },
-                    wechat: {
-                        title: '微信客服',
-                        content: '官方微信客服',
-                        contact_info: 'lucky_service',
-                        qr_code_url: '',
-                        is_enabled: 1
-                    }
-                };
+                const response = await fetch('../../server/api/customer-service.php?action=config');
+                const data = await response.json();
+                
+                if (data.success && data.configs) {
+                    // 将数组转换为对象
+                    serviceConfigs = {};
+                    data.configs.forEach(config => {
+                        serviceConfigs[config.service_type] = config;
+                    });
+                } else {
+                    // 使用默认配置
+                    serviceConfigs = {
+                        online: {
+                            title: '在线客服',
+                            content: '24小时在线客服为您服务',
+                            contact_info: '',
+                            qr_code_url: '',
+                            is_enabled: 1
+                        },
+                        qq: {
+                            title: 'QQ客服',
+                            content: '官方QQ客服',
+                            contact_info: '',
+                            qr_code_url: '',
+                            is_enabled: 1
+                        },
+                        wechat: {
+                            title: '微信客服',
+                            content: '官方微信客服',
+                            contact_info: '',
+                            qr_code_url: '',
+                            is_enabled: 1
+                        }
+                    };
+                }
                 
                 updateServiceStatus();
             } catch (error) {
                 console.error('加载客服配置失败:', error);
+                showMessage('加载客服配置失败', 'error');
             }
         }
         
@@ -1040,6 +1056,26 @@
             document.getElementById('qrCodeUrl').value = config.qr_code_url || '';
             document.getElementById('isEnabled').value = config.is_enabled || 1;
             
+            // 显示现有二维码预览
+            const preview = document.getElementById('qrCodePreview');
+            const img = document.getElementById('qrCodePreviewImg');
+            if (config.qr_code_url) {
+                // 处理图片路径
+                let qrCodeUrl = config.qr_code_url;
+                if (qrCodeUrl.startsWith('images/')) {
+                    qrCodeUrl = '../../' + qrCodeUrl;
+                } else if (!qrCodeUrl.startsWith('http') && !qrCodeUrl.startsWith('../')) {
+                    qrCodeUrl = '../../' + qrCodeUrl;
+                }
+                img.src = qrCodeUrl;
+                preview.style.display = 'block';
+            } else {
+                preview.style.display = 'none';
+            }
+            
+            // 清空文件输入
+            document.getElementById('qrCodeFile').value = '';
+            
             // 显示表单
             form.style.display = 'block';
             form.scrollIntoView({ behavior: 'smooth' });
@@ -1050,6 +1086,21 @@
             document.getElementById('serviceConfigForm').style.display = 'none';
         }
         
+        // 预览二维码图片
+        function previewQrCode(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const preview = document.getElementById('qrCodePreview');
+                    const img = document.getElementById('qrCodePreviewImg');
+                    img.src = e.target.result;
+                    preview.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+        
         // 保存客服配置
         async function saveServiceConfig() {
             try {
@@ -1057,27 +1108,66 @@
                 const formData = new FormData(form);
                 const serviceType = formData.get('serviceType');
                 
+                // 检查是否有文件上传
+                const fileInput = document.getElementById('qrCodeFile');
+                let qrCodeUrl = formData.get('qr_code_url');
+                
+                if (fileInput && fileInput.files.length > 0) {
+                    // 先上传图片
+                    const uploadFormData = new FormData();
+                    uploadFormData.append('qr_code', fileInput.files[0]);
+                    uploadFormData.append('service_type', serviceType);
+                    
+                    const uploadResponse = await fetch('../../server/api/customer-service.php?action=upload_qr_code', {
+                        method: 'POST',
+                        body: uploadFormData
+                    });
+                    
+                    const uploadData = await uploadResponse.json();
+                    
+                    if (uploadData.success) {
+                        qrCodeUrl = uploadData.file_path;
+                    } else {
+                        throw new Error(uploadData.error || '图片上传失败');
+                    }
+                }
+                
                 const config = {
                     service_type: serviceType,
                     title: formData.get('title'),
                     content: formData.get('content'),
                     contact_info: formData.get('contact_info'),
-                    qr_code_url: formData.get('qr_code_url'),
+                    qr_code_url: qrCodeUrl,
                     is_enabled: parseInt(formData.get('is_enabled'))
                 };
                 
-                // 这里应该调用API保存配置
-                console.log('保存客服配置:', config);
+                // 调用API保存配置
+                const response = await fetch('../../server/api/customer-service.php?action=save_config', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(config)
+                });
                 
-                // 更新本地配置
-                serviceConfigs[serviceType] = config;
-                updateServiceStatus();
+                const data = await response.json();
                 
-                // 隐藏表单
-                document.getElementById('serviceConfigForm').style.display = 'none';
-                
-                // 显示成功消息
-                showMessage('配置保存成功！', 'success');
+                if (data.success) {
+                    // 更新本地配置
+                    serviceConfigs[serviceType] = config;
+                    updateServiceStatus();
+                    
+                    // 隐藏表单
+                    document.getElementById('serviceConfigForm').style.display = 'none';
+                    
+                    // 显示成功消息
+                    showMessage('配置保存成功！', 'success');
+                    
+                    // 重新加载配置
+                    await loadServiceConfigs();
+                } else {
+                    throw new Error(data.error || '保存失败');
+                }
                 
             } catch (error) {
                 console.error('保存配置失败:', error);

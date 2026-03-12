@@ -144,7 +144,44 @@ class CustomerServiceWidget {
     // 加载客服配置
     async loadConfigs() {
         try {
-            // 这里应该调用API获取配置，暂时使用默认配置
+            const response = await fetch('../../server/api/customer-service.php?action=config');
+            const data = await response.json();
+            
+            if (data.success && data.configs) {
+                // 将数组转换为对象
+                this.configs = {};
+                data.configs.forEach(config => {
+                    this.configs[config.service_type] = config;
+                });
+            } else {
+                // 使用默认配置
+                this.configs = {
+                    online: {
+                        title: '在线客服',
+                        content: '24小时在线客服为您服务',
+                        is_enabled: 1
+                    },
+                    qq: {
+                        title: 'QQ客服',
+                        content: '官方QQ客服',
+                        contact_info: '',
+                        qr_code_url: '',
+                        is_enabled: 1
+                    },
+                    wechat: {
+                        title: '微信客服',
+                        content: '官方微信客服',
+                        contact_info: '',
+                        qr_code_url: '',
+                        is_enabled: 1
+                    }
+                };
+            }
+            
+            this.updateConfigs();
+        } catch (error) {
+            console.error('加载客服配置失败:', error);
+            // 使用默认配置
             this.configs = {
                 online: {
                     title: '在线客服',
@@ -154,22 +191,19 @@ class CustomerServiceWidget {
                 qq: {
                     title: 'QQ客服',
                     content: '官方QQ客服',
-                    contact_info: '123456789',
+                    contact_info: '',
                     qr_code_url: '',
                     is_enabled: 1
                 },
                 wechat: {
                     title: '微信客服',
                     content: '官方微信客服',
-                    contact_info: 'lucky_service',
+                    contact_info: '',
                     qr_code_url: '',
                     is_enabled: 1
                 }
             };
-            
             this.updateConfigs();
-        } catch (error) {
-            console.error('加载客服配置失败:', error);
         }
     }
     
@@ -182,7 +216,28 @@ class CustomerServiceWidget {
             
             const qqQR = document.getElementById('qqQR');
             if (qqConfig.qr_code_url) {
-                qqQR.innerHTML = `<img src="${qqConfig.qr_code_url}" alt="QQ二维码">`;
+                // 处理图片路径
+                let qrCodeUrl = qqConfig.qr_code_url;
+                
+                // 如果是绝对路径（http/https），直接使用
+                if (qrCodeUrl.startsWith('http://') || qrCodeUrl.startsWith('https://')) {
+                    // 已经是完整URL，直接使用
+                }
+                // 如果是从根目录开始的路径（images/...）
+                else if (qrCodeUrl.startsWith('images/')) {
+                    // 从 js/ 目录访问，需要添加 ../
+                    qrCodeUrl = '../' + qrCodeUrl;
+                }
+                // 如果是相对路径（../images/...）
+                else if (qrCodeUrl.startsWith('../images/')) {
+                    // 已经是正确的相对路径
+                }
+                // 其他情况，尝试添加 ../
+                else if (!qrCodeUrl.startsWith('/')) {
+                    qrCodeUrl = '../' + qrCodeUrl;
+                }
+                
+                qqQR.innerHTML = `<img src="${qrCodeUrl}" alt="QQ二维码" style="max-width: 200px; border-radius: 8px;">`;
             } else {
                 qqQR.textContent = '二维码暂未配置';
             }
@@ -195,7 +250,28 @@ class CustomerServiceWidget {
             
             const wechatQR = document.getElementById('wechatQR');
             if (wechatConfig.qr_code_url) {
-                wechatQR.innerHTML = `<img src="${wechatConfig.qr_code_url}" alt="微信二维码">`;
+                // 处理图片路径
+                let qrCodeUrl = wechatConfig.qr_code_url;
+                
+                // 如果是绝对路径（http/https），直接使用
+                if (qrCodeUrl.startsWith('http://') || qrCodeUrl.startsWith('https://')) {
+                    // 已经是完整URL，直接使用
+                }
+                // 如果是从根目录开始的路径（images/...）
+                else if (qrCodeUrl.startsWith('images/')) {
+                    // 从 js/ 目录访问，需要添加 ../
+                    qrCodeUrl = '../' + qrCodeUrl;
+                }
+                // 如果是相对路径（../images/...）
+                else if (qrCodeUrl.startsWith('../images/')) {
+                    // 已经是正确的相对路径
+                }
+                // 其他情况，尝试添加 ../
+                else if (!qrCodeUrl.startsWith('/')) {
+                    qrCodeUrl = '../' + qrCodeUrl;
+                }
+                
+                wechatQR.innerHTML = `<img src="${qrCodeUrl}" alt="微信二维码" style="max-width: 200px; border-radius: 8px;">`;
             } else {
                 wechatQR.textContent = '二维码暂未配置';
             }

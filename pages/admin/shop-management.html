@@ -416,6 +416,107 @@
             background: #6b7280;
             color: #fff;
         }
+
+        /* 翻页样式 */
+        .pagination-container {
+            margin-top: 30px;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 15px;
+            border: 2px solid #10b981;
+        }
+
+        .pagination-info {
+            text-align: center;
+            color: #10b981;
+            font-size: 14px;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+
+        .pagination-buttons {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+
+        .btn-page {
+            padding: 8px 16px;
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+            border: 1px solid #10b981;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .btn-page:hover:not(:disabled) {
+            background: #10b981;
+            color: #000;
+            transform: translateY(-2px);
+        }
+
+        .btn-page:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .page-numbers {
+            display: flex;
+            gap: 5px;
+        }
+
+        .page-number {
+            padding: 8px 12px;
+            background: rgba(16, 185, 129, 0.1);
+            color: #10b981;
+            border: 1px solid #10b981;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .page-number:hover {
+            background: rgba(16, 185, 129, 0.3);
+        }
+
+        .page-number.active {
+            background: #10b981;
+            color: #000;
+            font-weight: bold;
+        }
+
+        .pagination-jump {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            color: #fff;
+            font-size: 14px;
+        }
+
+        .page-jump-input {
+            width: 60px;
+            padding: 6px;
+            background: #333;
+            color: #fff;
+            border: 1px solid #10b981;
+            border-radius: 5px;
+            text-align: center;
+            font-size: 14px;
+        }
+
+        .page-jump-input:focus {
+            outline: none;
+            border-color: #4ade80;
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+        }
     </style>
 </head>
 <body>
@@ -457,7 +558,7 @@
         <!-- 购买订单 -->
         <div id="ordersTab" class="tab-content">
             <div class="filter-bar">
-                <select id="orderStatusFilter" class="filter-select" onchange="loadOrders()">
+                <select id="orderStatusFilter" class="filter-select" onchange="loadOrders(1)">
                     <option value="">全部订单</option>
                     <option value="pending">待处理</option>
                     <option value="processing">处理中</option>
@@ -467,6 +568,24 @@
             </div>
             <div id="ordersList" class="orders-list">
                 <!-- 数据将在这里动态加载 -->
+            </div>
+            <!-- 翻页控件 -->
+            <div id="ordersPagination" class="pagination-container" style="display:none;">
+                <div class="pagination-info">
+                    共 <span id="ordersTotal">0</span> 条订单，
+                    第 <span id="ordersCurrentPage">1</span> / <span id="ordersTotalPages">1</span> 页
+                </div>
+                <div class="pagination-buttons">
+                    <button class="btn-page" onclick="loadOrders(1)" id="ordersFirstBtn">首页</button>
+                    <button class="btn-page" onclick="loadOrders(currentOrdersPage - 1)" id="ordersPrevBtn">上一页</button>
+                    <span id="ordersPageNumbers" class="page-numbers"></span>
+                    <button class="btn-page" onclick="loadOrders(currentOrdersPage + 1)" id="ordersNextBtn">下一页</button>
+                    <button class="btn-page" onclick="loadOrders(ordersTotalPages)" id="ordersLastBtn">末页</button>
+                </div>
+                <div class="pagination-jump">
+                    跳转到 <input type="number" id="ordersJumpPage" min="1" class="page-jump-input"> 页
+                    <button class="btn-page" onclick="jumpToOrdersPage()">跳转</button>
+                </div>
             </div>
         </div>
 
@@ -707,21 +826,47 @@
             return map[rarity] || '普通';
         }
 
-        // 加载订单
-        async function loadOrders() {
+        // 加载订单（支持分页）
+        let currentOrdersPage = 1;
+        let ordersTotalPages = 1;
+        const ordersPerPage = 10; // 每页显示10条订单
+
+        async function loadOrders(page = 1) {
             const listElement = document.getElementById('ordersList');
             const status = document.getElementById('orderStatusFilter').value;
             
+            currentOrdersPage = page;
+            
             try {
-                const url = status ? 
-                    `../../server/api/shop.php?action=admin_purchases&status=${status}` :
-                    '../../server/api/shop.php?action=admin_purchases';
+                let url = `../../server/api/shop.php?action=admin_purchases&page=${page}&per_page=${ordersPerPage}`;
+                if (status) {
+                    url += `&status=${status}`;
+                }
                     
                 const response = await fetch(url);
                 const data = await response.json();
                 
                 if (data.success) {
-                    if (data.purchases.length === 0) {
+                    const purchases = data.purchases || [];
+                    const total = data.total || 0;
+                    ordersTotalPages = data.total_pages || 1;
+                    
+                    // 更新分页信息
+                    document.getElementById('ordersTotal').textContent = total;
+                    document.getElementById('ordersCurrentPage').textContent = currentOrdersPage;
+                    document.getElementById('ordersTotalPages').textContent = ordersTotalPages;
+                    document.getElementById('ordersJumpPage').max = ordersTotalPages;
+                    
+                    // 显示/隐藏分页控件
+                    const paginationContainer = document.getElementById('ordersPagination');
+                    if (total > ordersPerPage) {
+                        paginationContainer.style.display = 'block';
+                        updateOrdersPaginationButtons();
+                    } else {
+                        paginationContainer.style.display = 'none';
+                    }
+                    
+                    if (purchases.length === 0) {
                         listElement.innerHTML = `
                             <div class="empty-state">
                                 <div class="empty-state-icon">📦</div>
@@ -731,7 +876,7 @@
                         return;
                     }
                     
-                    listElement.innerHTML = data.purchases.map(order => {
+                    listElement.innerHTML = purchases.map(order => {
                         const statusColors = {
                             'pending': '#f59e0b',
                             'processing': '#3b82f6',
@@ -787,6 +932,59 @@
                         <p>网络错误，请稍后重试</p>
                     </div>
                 `;
+            }
+        }
+
+        // 更新分页按钮状态
+        function updateOrdersPaginationButtons() {
+            const firstBtn = document.getElementById('ordersFirstBtn');
+            const prevBtn = document.getElementById('ordersPrevBtn');
+            const nextBtn = document.getElementById('ordersNextBtn');
+            const lastBtn = document.getElementById('ordersLastBtn');
+            
+            // 禁用/启用按钮
+            firstBtn.disabled = currentOrdersPage === 1;
+            prevBtn.disabled = currentOrdersPage === 1;
+            nextBtn.disabled = currentOrdersPage === ordersTotalPages;
+            lastBtn.disabled = currentOrdersPage === ordersTotalPages;
+            
+            // 生成页码按钮
+            const pageNumbersContainer = document.getElementById('ordersPageNumbers');
+            const pageNumbers = [];
+            
+            // 显示当前页附近的页码
+            const range = 2; // 当前页前后各显示2页
+            let start = Math.max(1, currentOrdersPage - range);
+            let end = Math.min(ordersTotalPages, currentOrdersPage + range);
+            
+            // 确保至少显示5个页码（如果总页数>=5）
+            if (end - start < 4) {
+                if (start === 1) {
+                    end = Math.min(5, ordersTotalPages);
+                } else if (end === ordersTotalPages) {
+                    start = Math.max(1, ordersTotalPages - 4);
+                }
+            }
+            
+            for (let i = start; i <= end; i++) {
+                pageNumbers.push(`
+                    <span class="page-number ${i === currentOrdersPage ? 'active' : ''}" 
+                          onclick="loadOrders(${i})">${i}</span>
+                `);
+            }
+            
+            pageNumbersContainer.innerHTML = pageNumbers.join('');
+        }
+
+        // 跳转到指定页
+        function jumpToOrdersPage() {
+            const input = document.getElementById('ordersJumpPage');
+            const page = parseInt(input.value);
+            
+            if (page >= 1 && page <= ordersTotalPages) {
+                loadOrders(page);
+            } else {
+                alert(`请输入 1 到 ${ordersTotalPages} 之间的页码`);
             }
         }
 

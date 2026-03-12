@@ -235,6 +235,62 @@
             align-items: end;
         }
 
+        /* 卡密弹窗样式 */
+        .card-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .card-modal.show {
+            display: flex;
+        }
+
+        .card-content {
+            background: rgba(0, 0, 0, 0.95);
+            border: 2px solid #ffd700;
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            max-width: 500px;
+            width: 90%;
+            position: relative;
+        }
+
+        .card-code-display {
+            font-family: 'Courier New', monospace;
+            font-size: 28px;
+            font-weight: bold;
+            color: #ffd700;
+            background: rgba(255, 215, 0, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            letter-spacing: 2px;
+        }
+
+        .card-info {
+            margin: 20px 0;
+            color: #ccc;
+        }
+
+        .card-info p {
+            margin: 10px 0;
+            font-size: 16px;
+        }
+
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 14px;
+        }
+
         @media (max-width: 768px) {
             .payment-settings {
                 grid-template-columns: 1fr;
@@ -279,6 +335,34 @@
             <!-- 现有选项展示 -->
             <div class="options-container" id="rechargeOptions">
                 <!-- 充值选项将在这里动态生成 -->
+            </div>
+        </div>
+
+        <!-- 卡密管理 -->
+        <div class="section">
+            <h2>🎫 我的卡密</h2>
+            <p style="color: #ccc; margin-bottom: 15px;">显示最近生成的有效卡密（5分钟内）</p>
+            
+            <button class="btn btn-primary" onclick="loadCardList()" style="margin-bottom: 15px;">
+                🔄 刷新卡密列表
+            </button>
+            
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>卡密</th>
+                            <th>金额</th>
+                            <th>金币</th>
+                            <th>生成时间</th>
+                            <th>剩余时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="cardListBody">
+                        <tr><td colspan="6" style="text-align:center;">暂无有效卡密</td></tr>
+                    </tbody>
+                </table>
             </div>
         </div>
 
@@ -357,6 +441,22 @@
         </div>
     </div>
 
+    <!-- 卡密显示弹窗 -->
+    <div class="card-modal" id="cardModal">
+        <div class="card-content">
+            <h2 style="color: #ffd700; margin-bottom: 20px;">卡密生成成功</h2>
+            <div class="card-code-display" id="cardCodeDisplay">ABCD1234EFGH5678</div>
+            <div class="card-info">
+                <p>充值金额：<span id="cardAmount">¥0.00</span></p>
+                <p>获得金币：<span id="cardCoins">0</span></p>
+                <p>有效期：5分钟</p>
+                <p>过期时间：<span id="cardExpires">-</span></p>
+            </div>
+            <button class="btn btn-primary" onclick="copyCardCode()" style="margin-right: 10px;">复制卡密</button>
+            <button class="btn" onclick="closeCardModal()" style="background: #666; color: #fff;">关闭</button>
+        </div>
+    </div>
+
     <script>
         // 页面加载时初始化数据
         document.addEventListener('DOMContentLoaded', function() {
@@ -365,6 +465,10 @@
             loadPaymentSettings();
             loadRechargeHistory();
             loadRevenueStats(); // 加载统计数据
+            loadCardList(); // 加载卡密列表
+            
+            // 每30秒自动刷新卡密列表
+            setInterval(loadCardList, 30000);
         });
 
         // API请求函数
@@ -426,7 +530,8 @@
                         <div class="option-amount">${option.amount}元</div>
                         <div class="option-coins">获得 ${(option.amount * coinRatio) + (option.bonus_coins || 0)} 金币</div>
                         ${option.bonus_coins > 0 ? `<div style="color: #4ade80; font-size: 14px;">含赠送 ${option.bonus_coins} 金币</div>` : ''}
-                        <button class="btn btn-danger" onclick="deleteRechargeOption(${option.id})" style="margin-top: 10px;">删除</button>
+                        <button class="btn btn-primary btn-sm" onclick="generateCard(${option.id}, ${option.amount})" style="margin-top: 10px; margin-right: 5px;">生成卡密</button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteRechargeOption(${option.id})" style="margin-top: 10px;">删除</button>
                     </div>
                 `).join('');
             } else {
@@ -636,6 +741,143 @@
             loadRechargeHistory();
             loadRevenueStats();
         }, 30000); // 每30秒刷新一次
+
+        // ==================== 卡密管理功能 ====================
+
+        // 生成卡密
+        async function generateCard(optionId, amount) {
+            try {
+                const response = await fetch('../../server/api/recharge-card.php?action=generate_card', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ option_id: optionId, amount: amount })
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    showCardModal(result);
+                    loadCardList(); // 刷新卡密列表
+                } else {
+                    alert('生成失败: ' + (result.error || '未知错误'));
+                }
+            } catch (error) {
+                console.error('生成卡密失败:', error);
+                alert('网络错误，请稍后再试');
+            }
+        }
+
+        // 显示卡密弹窗
+        function showCardModal(cardInfo) {
+            document.getElementById('cardCodeDisplay').textContent = cardInfo.card_code;
+            document.getElementById('cardAmount').textContent = '¥' + cardInfo.amount;
+            document.getElementById('cardCoins').textContent = cardInfo.coins;
+            document.getElementById('cardExpires').textContent = cardInfo.expires_at;
+            document.getElementById('cardModal').classList.add('show');
+        }
+
+        // 关闭卡密弹窗
+        function closeCardModal() {
+            document.getElementById('cardModal').classList.remove('show');
+        }
+
+        // 复制卡密
+        function copyCardCode() {
+            const cardCode = document.getElementById('cardCodeDisplay').textContent;
+            navigator.clipboard.writeText(cardCode).then(() => {
+                alert('卡密已复制到剪贴板');
+            }).catch(err => {
+                console.error('复制失败:', err);
+                alert('复制失败，请手动复制');
+            });
+        }
+
+        // 加载卡密列表
+        async function loadCardList() {
+            try {
+                const response = await fetch('../../server/api/recharge-card.php?action=get_card_list');
+                const result = await response.json();
+                
+                if (result.success) {
+                    const tbody = document.getElementById('cardListBody');
+                    
+                    if (result.cards.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">暂无有效卡密</td></tr>';
+                        return;
+                    }
+                    
+                    tbody.innerHTML = result.cards.map(card => `
+                        <tr>
+                            <td>
+                                <span style="font-family: monospace; font-weight: bold;">${card.card_code}</span>
+                                <button class="btn btn-primary btn-sm" onclick="copyText('${card.card_code}')" style="margin-left: 10px;">复制</button>
+                            </td>
+                            <td>¥${card.amount}</td>
+                            <td>${card.coins}</td>
+                            <td>${formatDateTime(card.generated_at)}</td>
+                            <td>
+                                <span style="color: ${card.remaining_seconds < 60 ? '#ef4444' : '#4ade80'};">
+                                    ${formatRemainingTime(card.remaining_seconds)}
+                                </span>
+                            </td>
+                            <td>
+                                <button class="btn btn-danger btn-sm" onclick="deleteCard('${card.card_code}')">删除</button>
+                            </td>
+                        </tr>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('加载卡密列表失败:', error);
+            }
+        }
+
+        // 删除卡密
+        async function deleteCard(cardCode) {
+            if (!confirm(`确定要删除卡密 ${cardCode} 吗？\n删除后该卡密将立即失效且无法恢复。`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('../../server/api/recharge-card.php?action=delete_card', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ card_code: cardCode })
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('卡密已删除');
+                    loadCardList(); // 刷新列表
+                } else {
+                    alert('删除失败: ' + (result.error || '未知错误'));
+                }
+            } catch (error) {
+                console.error('删除卡密失败:', error);
+                alert('网络错误，请稍后再试');
+            }
+        }
+
+        // 复制文本
+        function copyText(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                alert('已复制到剪贴板');
+            }).catch(err => {
+                console.error('复制失败:', err);
+                alert('复制失败，请手动复制');
+            });
+        }
+
+        // 格式化剩余时间
+        function formatRemainingTime(seconds) {
+            if (seconds <= 0) return '已过期';
+            const minutes = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${minutes}分${secs}秒`;
+        }
+
+        // 格式化日期时间
+        function formatDateTime(datetime) {
+            return new Date(datetime).toLocaleString('zh-CN');
+        }
     </script>
 </body>
 </html>

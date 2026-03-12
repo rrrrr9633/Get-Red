@@ -16,6 +16,7 @@ uploads/avatars/*
 .DS_Store
 Thumbs.db
 .env
+.kiro
 .env.sms
 # IDE 配置
 .vscode/

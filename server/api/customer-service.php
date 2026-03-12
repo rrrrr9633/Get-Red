@@ -110,6 +110,9 @@ switch($method) {
                 case 'save_config':
                     saveServiceConfig();
                     break;
+                case 'upload_qr_code':
+                    uploadQrCode();
+                    break;
                 case 'start_session':
                     startChatSession();
                     break;
@@ -214,6 +217,81 @@ function saveServiceConfig() {
         logSecurityEvent($db, 'save_service_config', 'failed', json_encode($input), $e->getMessage());
         http_response_code(500);
         echo json_encode(['error' => '保存配置失败']);
+    }
+}
+
+// 上传二维码图片
+function uploadQrCode() {
+    global $db;
+    
+    if (!checkPermission($db, ['admin', 'super_admin'])) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'error' => '权限不足']);
+        return;
+    }
+    
+    if (!isset($_FILES['qr_code']) || !isset($_POST['service_type'])) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => '缺少必要参数']);
+        return;
+    }
+    
+    try {
+        $file = $_FILES['qr_code'];
+        $serviceType = $_POST['service_type'];
+        
+        // 验证文件
+        if ($file['error'] !== UPLOAD_ERR_OK) {
+            throw new Exception('文件上传失败');
+        }
+        
+        // 验证文件类型
+        $allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mimeType = finfo_file($finfo, $file['tmp_name']);
+        finfo_close($finfo);
+        
+        if (!in_array($mimeType, $allowedTypes)) {
+            throw new Exception('只支持 JPG、PNG、GIF 格式的图片');
+        }
+        
+        // 验证文件大小（最大5MB）
+        if ($file['size'] > 5 * 1024 * 1024) {
+            throw new Exception('图片大小不能超过5MB');
+        }
+        
+        // 生成文件名
+        $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
+        $filename = $serviceType . '_qrcode_' . time() . '.' . $extension;
+        
+        // 确保目录存在（使用相对于API文件的路径）
+        $uploadDir = '../../images/payment/';
+        if (!file_exists($uploadDir)) {
+            mkdir($uploadDir, 0755, true);
+        }
+        
+        $uploadPath = $uploadDir . $filename;
+        
+        // 移动文件
+        if (!move_uploaded_file($file['tmp_name'], $uploadPath)) {
+            throw new Exception('保存文件失败');
+        }
+        
+        // 返回相对于网站根目录的路径
+        $relativePath = 'images/payment/' . $filename;
+        
+        logSecurityEvent($db, 'upload_qr_code', 'success', "service_type: $serviceType, file: $relativePath");
+        
+        echo json_encode([
+            'success' => true,
+            'file_path' => $relativePath,
+            'message' => '图片上传成功'
+        ]);
+        
+    } catch (Exception $e) {
+        logSecurityEvent($db, 'upload_qr_code', 'failed', null, $e->getMessage());
+        http_response_code(500);
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
     }
 }
 

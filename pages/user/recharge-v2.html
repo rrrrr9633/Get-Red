@@ -74,6 +74,110 @@
             box-shadow: 0 5px 15px rgba(255, 215, 0, 0.4);
         }
 
+        /* 卡密兑换按钮 */
+        .card-redeem-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            background: linear-gradient(45deg, #4ade80, #22c55e);
+            color: #fff;
+            border: none;
+            border-radius: 25px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+
+        .card-redeem-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(74, 222, 128, 0.4);
+        }
+
+        /* 卡密兑换弹窗 */
+        .redeem-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .redeem-modal.show {
+            display: flex;
+        }
+
+        .redeem-content {
+            background: rgba(0, 0, 0, 0.95);
+            border: 2px solid #4ade80;
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            max-width: 500px;
+            width: 90%;
+            position: relative;
+        }
+
+        .redeem-content h2 {
+            color: #4ade80;
+            margin-bottom: 20px;
+        }
+
+        .card-input {
+            width: 100%;
+            padding: 15px;
+            font-size: 18px;
+            text-align: center;
+            border: 2px solid #4ade80;
+            border-radius: 10px;
+            background: rgba(0, 0, 0, 0.5);
+            color: #fff;
+            margin: 20px 0;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .card-input:focus {
+            outline: none;
+            box-shadow: 0 0 20px rgba(74, 222, 128, 0.3);
+        }
+
+        .redeem-tips {
+            font-size: 14px;
+            color: #999;
+            margin: 15px 0;
+            line-height: 1.6;
+        }
+
+        .btn-redeem {
+            background: linear-gradient(45deg, #4ade80, #22c55e);
+            color: #fff;
+            padding: 12px 40px;
+            border: none;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+        }
+
+        .btn-redeem:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(74, 222, 128, 0.4);
+        }
+
+        .btn-redeem:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
         .header {
             text-align: center;
             margin: 80px 0 40px 0;
@@ -373,6 +477,7 @@
     <div class="particles" id="particles"></div>
     
     <a href="../main.html" class="back-btn">← 返回主页</a>
+    <button class="card-redeem-btn" onclick="showRedeemModal()">🎫 卡密兑换</button>
 
     <div class="container">
         <div class="header">
@@ -440,6 +545,31 @@
                 支付完成后，金币将自动到账<br>
                 如长时间未到账，请联系客服
             </div>
+        </div>
+    </div>
+
+    <!-- 卡密兑换弹窗 -->
+    <div class="redeem-modal" id="redeemModal">
+        <div class="redeem-content">
+            <span class="close-btn" onclick="closeRedeemModal()">&times;</span>
+            
+            <h2>🎫 卡密兑换</h2>
+            
+            <input type="text" 
+                   class="card-input" 
+                   id="cardCodeInput" 
+                   placeholder="请输入16位卡密" 
+                   maxlength="16"
+                   autocomplete="off">
+            
+            <div class="redeem-tips">
+                💡 提示：<br>
+                • 卡密有效期为5分钟<br>
+                • 每个卡密仅可使用一次<br>
+                • 兑换成功后金币将立即到账
+            </div>
+            
+            <button class="btn-redeem" onclick="redeemCard()">立即兑换</button>
         </div>
     </div>
 
@@ -858,6 +988,70 @@
             clearInterval(statusCheckInterval);
             document.getElementById('paymentModal').classList.remove('show');
             currentOrderNo = null;
+        }
+
+        // 显示卡密兑换弹窗
+        function showRedeemModal() {
+            document.getElementById('cardCodeInput').value = '';
+            document.getElementById('redeemModal').classList.add('show');
+        }
+
+        // 关闭卡密兑换弹窗
+        function closeRedeemModal() {
+            document.getElementById('redeemModal').classList.remove('show');
+        }
+
+        // 兑换卡密
+        async function redeemCard() {
+            const cardCode = document.getElementById('cardCodeInput').value.trim().toUpperCase();
+            
+            // 验证卡密格式
+            if (!cardCode) {
+                alert('请输入卡密');
+                return;
+            }
+            
+            if (cardCode.length !== 16) {
+                alert('卡密必须为16位');
+                return;
+            }
+            
+            // 禁用按钮，防止重复提交
+            const btn = event.target;
+            btn.disabled = true;
+            btn.textContent = '兑换中...';
+            
+            try {
+                const response = await fetch('../../server/api/recharge-card.php?action=redeem_card', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        card_code: cardCode
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert(`✓ 兑换成功！\n获得 ${result.coins} 金币\n${result.first_recharge_activated ? '首充状态已激活！' : ''}`);
+                    closeRedeemModal();
+                    // 刷新页面以更新金币显示
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1000);
+                } else {
+                    alert('兑换失败：' + (result.error || '未知错误'));
+                    btn.disabled = false;
+                    btn.textContent = '立即兑换';
+                }
+            } catch (error) {
+                console.error('兑换卡密失败:', error);
+                alert('网络错误，请稍后再试');
+                btn.disabled = false;
+                btn.textContent = '立即兑换';
+            }
         }
 
         // 创建粒子效果
