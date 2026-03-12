@@ -161,11 +161,15 @@ function getServiceConfig() {
         $user_id = getCurrentUserId();
         $is_admin = false;
         
+        // 记录调试信息
+        error_log("[客服配置] 当前用户ID: " . ($user_id ?? 'null'));
+        
         if ($user_id) {
             $stmt = $db->prepare("SELECT user_type FROM users WHERE id = ?");
             $stmt->execute([$user_id]);
             $user = $stmt->fetch();
             $is_admin = $user && in_array($user['user_type'], ['admin', 'super_admin']);
+            error_log("[客服配置] 用户类型: " . ($user['user_type'] ?? 'unknown') . ", 是否管理员: " . ($is_admin ? 'true' : 'false'));
         }
         
         if ($is_admin) {
@@ -184,10 +188,13 @@ function getServiceConfig() {
         }
         
         $configs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        error_log("[客服配置] 查询到配置数量: " . count($configs));
+        error_log("[客服配置] 配置内容: " . json_encode($configs, JSON_UNESCAPED_UNICODE));
         
         logSecurityEvent($db, 'get_service_config', 'success');
         echo json_encode(['success' => true, 'configs' => $configs]);
     } catch (Exception $e) {
+        error_log("[客服配置] 获取失败: " . $e->getMessage());
         logSecurityEvent($db, 'get_service_config', 'failed', null, $e->getMessage());
         http_response_code(500);
         echo json_encode(['error' => '获取配置失败']);

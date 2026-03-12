@@ -182,16 +182,26 @@ class CustomerServiceWidget {
         try {
             // 动态计算API路径
             const apiPath = this.getApiPath();
-            const response = await fetch(`${apiPath}/server/api/customer-service.php?action=config`);
+            const apiUrl = `${apiPath}/server/api/customer-service.php?action=config`;
+            console.log('[客服配置] 请求URL:', apiUrl);
+            
+            const response = await fetch(apiUrl);
+            console.log('[客服配置] 响应状态:', response.status);
+            
             const data = await response.json();
+            console.log('[客服配置] 响应数据:', data);
             
             if (data.success && data.configs) {
+                console.log('[客服配置] 成功获取配置，数量:', data.configs.length);
                 // 将数组转换为对象
                 this.configs = {};
                 data.configs.forEach(config => {
+                    console.log('[客服配置] 处理配置:', config.service_type, config);
                     this.configs[config.service_type] = config;
                 });
+                console.log('[客服配置] 最终配置对象:', this.configs);
             } else {
+                console.warn('[客服配置] API返回失败或无配置数据:', data);
                 // 使用默认配置
                 this.configs = {
                     online: {
@@ -218,7 +228,7 @@ class CustomerServiceWidget {
             
             this.updateConfigs();
         } catch (error) {
-            console.error('加载客服配置失败:', error);
+            console.error('[客服配置] 加载失败，错误:', error);
             // 使用默认配置
             this.configs = {
                 online: {
@@ -248,16 +258,21 @@ class CustomerServiceWidget {
     // 更新配置显示
     updateConfigs() {
         const imagePathPrefix = this.getImagePath();
+        console.log('[客服配置] 更新显示，图片路径前缀:', imagePathPrefix);
+        console.log('[客服配置] 当前配置:', this.configs);
         
         // 更新QQ客服信息
         const qqConfig = this.configs.qq;
-        if (qqConfig && qqConfig.is_enabled) {
+        console.log('[客服配置] QQ配置:', qqConfig);
+        if (qqConfig && (qqConfig.is_enabled == 1 || qqConfig.is_enabled === true)) {
             document.getElementById('qqNumber').textContent = qqConfig.contact_info || '暂未配置';
+            console.log('[客服配置] QQ联系方式:', qqConfig.contact_info);
             
             const qqQR = document.getElementById('qqQR');
             if (qqConfig.qr_code_url) {
                 // 处理图片路径
                 let qrCodeUrl = qqConfig.qr_code_url;
+                console.log('[客服配置] QQ二维码原始URL:', qrCodeUrl);
                 
                 // 如果是绝对路径（http/https），直接使用
                 if (qrCodeUrl.startsWith('http://') || qrCodeUrl.startsWith('https://')) {
@@ -276,21 +291,28 @@ class CustomerServiceWidget {
                     }
                 }
                 
+                console.log('[客服配置] QQ二维码最终URL:', qrCodeUrl);
                 qqQR.innerHTML = `<img src="${qrCodeUrl}" alt="QQ二维码" style="max-width: 200px; border-radius: 8px;">`;
             } else {
+                console.log('[客服配置] QQ二维码URL为空');
                 qqQR.textContent = '二维码暂未配置';
             }
+        } else {
+            console.log('[客服配置] QQ客服未启用或配置不存在');
         }
         
         // 更新微信客服信息
         const wechatConfig = this.configs.wechat;
-        if (wechatConfig && wechatConfig.is_enabled) {
+        console.log('[客服配置] 微信配置:', wechatConfig);
+        if (wechatConfig && (wechatConfig.is_enabled == 1 || wechatConfig.is_enabled === true)) {
             document.getElementById('wechatNumber').textContent = wechatConfig.contact_info || '暂未配置';
+            console.log('[客服配置] 微信联系方式:', wechatConfig.contact_info);
             
             const wechatQR = document.getElementById('wechatQR');
             if (wechatConfig.qr_code_url) {
                 // 处理图片路径
                 let qrCodeUrl = wechatConfig.qr_code_url;
+                console.log('[客服配置] 微信二维码原始URL:', qrCodeUrl);
                 
                 // 如果是绝对路径（http/https），直接使用
                 if (qrCodeUrl.startsWith('http://') || qrCodeUrl.startsWith('https://')) {
@@ -309,10 +331,14 @@ class CustomerServiceWidget {
                     }
                 }
                 
+                console.log('[客服配置] 微信二维码最终URL:', qrCodeUrl);
                 wechatQR.innerHTML = `<img src="${qrCodeUrl}" alt="微信二维码" style="max-width: 200px; border-radius: 8px;">`;
             } else {
+                console.log('[客服配置] 微信二维码URL为空');
                 wechatQR.textContent = '二维码暂未配置';
             }
+        } else {
+            console.log('[客服配置] 微信客服未启用或配置不存在');
         }
     }
     
