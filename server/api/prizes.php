@@ -59,6 +59,64 @@ function getPrizes($luckyPage = null) {
     }
 }
 
+/**
+ * 根据Lucky实例ID获取奖品列表
+ * 需求: 3.1, 3.2, 3.5, 10.1
+ * 
+ * @param int $luckyId Lucky实例ID
+ * @return array 包含成功状态和奖品列表的数组
+ */
+function getPrizesByLuckyId($luckyId) {
+    global $pdo;
+    
+    try {
+        // 验证lucky_id为正整数
+        if (!is_numeric($luckyId) || $luckyId <= 0) {
+            return [
+                'success' => false,
+                'message' => 'Lucky实例ID必须为正整数'
+            ];
+        }
+        
+        // 使用预处理语句防止SQL注入，查询指定lucky_id的激活奖品，按概率降序排序
+        $stmt = $pdo->prepare("
+            SELECT * FROM prizes 
+            WHERE lucky_id = ? AND active = 1 
+            ORDER BY probability DESC
+        ");
+        $stmt->execute([$luckyId]);
+        $prizes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // 🔒 安全过滤：移除敏感信息（概率、库存、成本等）
+        // 前端只需要展示信息，不需要知道抽奖逻辑
+        $safePrizes = array_map(function($prize) {
+            return [
+                'id' => $prize['id'],
+                'name' => $prize['name'],
+                'icon' => $prize['icon'],
+                'image_url' => $prize['image_url'],
+                'value' => $prize['value'],
+                'rarity' => $prize['rarity'],
+                'description' => $prize['description'] ?? '',
+                'lucky_id' => $prize['lucky_id']
+                // ❌ 不返回: probability, stock, cost_price 等敏感信息
+            ];
+        }, $prizes);
+        
+        return [
+            'success' => true,
+            'prizes' => $safePrizes,
+            'lucky_id' => (int)$luckyId,
+            'count' => count($safePrizes)
+        ];
+    } catch (Exception $e) {
+        return [
+            'success' => false,
+            'message' => '获取奖品失败: ' . $e->getMessage()
+        ];
+    }
+}
+
 function drawPrizes($gameType, $count, $userId, $page = '') {
     global $pdo;
     
@@ -346,8 +404,17 @@ $input = json_decode(file_get_contents('php://input'), true);
 
 switch ($method) {
     case 'GET':
+        // 支持 lucky_id 参数（新系统）或 page/lucky_page 参数（旧系统）
+        $luckyId = $_GET['lucky_id'] ?? null;
         $luckyPage = $_GET['page'] ?? $_GET['lucky_page'] ?? null;
-        echo json_encode(getPrizes($luckyPage));
+        
+        if ($luckyId) {
+            // 使用新的 lucky_id 参数
+            echo json_encode(getPrizesByLuckyId($luckyId));
+        } else {
+            // 使用旧的 page 参数（向后兼容）
+            echo json_encode(getPrizes($luckyPage));
+        }
         break;
         
     case 'POST':

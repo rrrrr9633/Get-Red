@@ -265,7 +265,7 @@
             <div class="menu-icon">🎁</div>
             <div class="menu-title">Lucky页面控制</div>
             <div class="menu-description">
-                创建、重命名、设置图片和删除Lucky抽奖页面
+                管理Lucky实例（统一页面系统）- 创建、编辑、删除Lucky实例
             </div>
         </div>
 
@@ -302,7 +302,10 @@
     <!-- 创建Lucky页面弹窗 -->
     <div id="createLuckyModal" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.8);z-index:2100;align-items:center;justify-content:center;">
         <div style="background:#222;padding:30px;border-radius:20px;max-width:500px;width:90%;box-shadow:0 0 30px #4ade80;">
-            <h2 style="color:#4ade80;text-align:center;margin-bottom:20px;">创建新Lucky页面</h2>
+            <h2 style="color:#4ade80;text-align:center;margin-bottom:20px;">创建新Lucky实例</h2>
+            <p style="color:#999;font-size:12px;text-align:center;margin-bottom:15px;">
+                使用统一页面系统，所有Lucky实例共享同一个页面（lucky.html），通过URL参数区分
+            </p>
             <form id="createLuckyForm">
                 <div style="margin-bottom:15px;">
                     <label style="color:#fff;display:block;margin-bottom:5px;">文件名 (lucky开头):</label>
@@ -534,14 +537,20 @@
                 const list = document.getElementById('luckyPageList');
                 list.innerHTML = '';
                 if (pages.length === 0) {
-                    list.innerHTML = '<div style="color:#fff;">未检测到lucky页面</div>';
+                    list.innerHTML = '<div style="color:#fff;">未检测到lucky实例</div>';
                 } else {
                     pages.forEach(function(page) {
                         const btn = document.createElement('button');
                         btn.textContent = page.displayName || page.fileName;
                         btn.style = 'padding:12px 28px;margin:5px;border-radius:18px;background:#ffd700;color:#222;font-weight:bold;border:none;cursor:pointer;font-size:16px;';
                         btn.onclick = function() {
-                            navigateToPage(`prizes.html?page=${encodeURIComponent(page.fileName)}`);
+                            // 使用新的URL格式：lucky.html?id=X
+                            if (page.id) {
+                                navigateToPage(`prizes.html?lucky_id=${page.id}`);
+                            } else {
+                                // 兼容旧格式
+                                navigateToPage(`prizes.html?page=${encodeURIComponent(page.fileName)}`);
+                            }
                         };
                         list.appendChild(btn);
                     });
@@ -674,7 +683,10 @@
 
                 const data = await response.json();
                 if (data.success) {
-                    alert('Lucky页面创建成功！');
+                    alert('Lucky实例创建成功！\n\n' + 
+                          '现在使用统一的lucky.html页面系统。\n' +
+                          '访问地址: ' + data.url + '\n\n' +
+                          '提示: 所有Lucky实例共享同一个页面，通过URL参数区分。');
                     closeCreateLuckyModal();
                     // 刷新页面列表
                     showPrizePageSelector();

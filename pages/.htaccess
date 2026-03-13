@@ -1,0 +1,21 @@
+# Lucky页面重定向规则
+# 将旧的独立HTML文件重定向到统一的lucky.html页面
+
+RewriteEngine On
+
+# Lucky1-11重定向到新的统一页面系统
+RewriteRule ^lucky1\.html$ lucky.html?id=1 [R=301,L,QSA]
+RewriteRule ^lucky2\.html$ lucky.html?id=2 [R=301,L,QSA]
+RewriteRule ^lucky3\.html$ lucky.html?id=3 [R=301,L,QSA]
+RewriteRule ^lucky4\.html$ lucky.html?id=1018 [R=301,L,QSA]
+RewriteRule ^lucky5\.html$ lucky.html?id=1019 [R=301,L,QSA]
+RewriteRule ^lucky6\.html$ lucky.html?id=1020 [R=301,L,QSA]
+RewriteRule ^lucky7\.html$ lucky.html?id=1021 [R=301,L,QSA]
+RewriteRule ^lucky8\.html$ lucky.html?id=1022 [R=301,L,QSA]
+RewriteRule ^lucky9\.html$ lucky.html?id=1023 [R=301,L,QSA]
+RewriteRule ^lucky10\.html$ lucky.html?id=1024 [R=301,L,QSA]
+RewriteRule ^lucky11\.html$ lucky.html?id=1025 [R=301,L,QSA]
+
+# QSA标志：保留原始查询参数
+# R=301：永久重定向
+# L：最后一条规则，匹配后停止处理

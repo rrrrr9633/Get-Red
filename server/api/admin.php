@@ -996,105 +996,87 @@ function deletePrize() {
 
 function listLuckyPages() {
     try {
-        $pagesDir = dirname(__DIR__, 2) . '/pages/';
+        // 使用统一Lucky页面系统：从数据库读取Lucky实例
+        require_once __DIR__ . '/../config/database.php';
+        $database = new Database();
+        $pdo = $database->getConnection();
+        
+        // 查询所有Lucky实例
+        $stmt = $pdo->prepare("
+            SELECT id, name, display_name, description, thumbnail_url, is_active, created_at
+            FROM lucky_instances
+            ORDER BY sort_order ASC, id ASC
+        ");
+        $stmt->execute();
+        $instances = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
         $pages = [];
-        
-        if (is_dir($pagesDir)) {
-            $files = glob($pagesDir . 'lucky*.html');
-            foreach ($files as $file) {
-                $fileName = basename($file);
-                
-                // 尝试读取页面标题
-                $displayName = extractPageTitle($file);
-                if (!$displayName) {
-                    // 如果无法获取标题，使用文件名生成默认显示名
-                    $baseName = str_replace('.html', '', $fileName);
-                    $displayName = str_replace('lucky', '大红行动', $baseName);
-                    if ($displayName === '大红行动') {
-                        $displayName .= '1';
-                    }
-                }
-                
-                // 读取页面描述
-                $description = extractPageDescription($file);
-                if (!$description) {
-                    $description = '抽取心爱的大红';
-                }
-                
-                // 提取中心展示图片（优先）
-                $showcaseImage = extractShowcaseImage($file);
-                
-                // 如果没有中心展示图片，尝试获取缩略图
-                $thumbImage = $showcaseImage ?: getPageThumbImage($fileName);
-                
-                $pages[] = [
-                    'fileName' => $fileName,
-                    'displayName' => $displayName,
-                    'description' => $description,
-                    'icon' => '🍎',
-                    'thumbImage' => $thumbImage
-                ];
-            }
+        foreach ($instances as $instance) {
+            $pages[] = [
+                'id' => $instance['id'],
+                'fileName' => $instance['name'] . '.html', // 保持兼容性
+                'displayName' => $instance['display_name'],
+                'description' => $instance['description'] ?: '抽取心爱的大红',
+                'icon' => '🍎',
+                'thumbImage' => $instance['thumbnail_url'],
+                'isActive' => (bool)$instance['is_active'],
+                'url' => 'lucky.html?id=' . $instance['id'] // 新系统的URL
+            ];
         }
-        
-        // 按文件名排序
-        usort($pages, function($a, $b) {
-            return strcmp($a['fileName'], $b['fileName']);
-        });
         
         echo json_encode(['success' => true, 'pages' => $pages]);
     } catch (Exception $e) {
         http_response_code(500);
-        echo json_encode(['error' => '获取Lucky页面列表失败: ' . $e->getMessage()]);
+        echo json_encode(['success' => false, 'error' => '获取Lucky页面列表失败: ' . $e->getMessage()]);
     }
 }
 
 function createLuckyPage() {
-    global $db;
-    
+    // 使用统一Lucky页面系统：不再创建独立HTML文件，而是创建Lucky实例到数据库
+
     // 处理文件上传，使用$_POST和$_FILES而不是JSON输入
     $fileName = $_POST['fileName'] ?? '';
     $displayName = $_POST['displayName'] ?? '';
     $description = $_POST['description'] ?? '';
-    
+
     if (!$fileName || !$displayName) {
         http_response_code(400);
         echo json_encode(['error' => '缺少必要参数']);
         return;
     }
-    
+
     // 验证文件名格式
     if (!preg_match('/^lucky[a-zA-Z0-9_-]*\.html$/', $fileName)) {
         http_response_code(400);
         echo json_encode(['error' => '文件名格式不正确']);
         return;
     }
-    
+
     try {
-        $pagesDir = dirname(__DIR__, 2) . '/pages/';
-        $templateFile = dirname(__DIR__, 2) . '/luckytemp.html';
-        $newFilePath = $pagesDir . $fileName;
+        // 连接数据库
+        require_once __DIR__ . '/../config/database.php';
+        $database = new Database();
+        $pdo = $database->getConnection();
+
         $imagesDir = dirname(__DIR__, 2) . '/images/';
-        
-        // 检查文件是否已存在
-        if (file_exists($newFilePath)) {
+
+        // 从文件名中提取实例名称（去掉.html后缀）
+        $instanceName = str_replace('.html', '', $fileName);
+
+        // 检查实例名称是否已存在
+        $stmt = $pdo->prepare("SELECT id FROM lucky_instances WHERE name = ?");
+        $stmt->execute([$instanceName]);
+        if ($stmt->fetch()) {
             http_response_code(400);
-            echo json_encode(['error' => '文件已存在']);
+            echo json_encode(['error' => '实例名称已存在']);
             return;
         }
-        
-        // 检查模板文件是否存在
-        if (!file_exists($templateFile)) {
-            http_response_code(500);
-            echo json_encode(['error' => '模板文件不存在']);
-            return;
-        }
-        
-        // 处理图片上传
-        $imageFileName = null;
+
+        // 处理图片上传（作为缩略图）
+        $thumbnailUrl = null;
         if (isset($_FILES['gameImage']) && $_FILES['gameImage']['error'] === UPLOAD_ERR_OK) {
             $uploadedFile = $_FILES['gameImage'];
-            
+
             // 验证文件类型
             $allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
             if (!in_array($uploadedFile['type'], $allowedTypes)) {
@@ -1102,144 +1084,116 @@ function createLuckyPage() {
                 echo json_encode(['error' => '不支持的图片格式']);
                 return;
             }
-            
+
             // 验证文件大小（最大2MB）
             if ($uploadedFile['size'] > 2 * 1024 * 1024) {
                 http_response_code(400);
                 echo json_encode(['error' => '图片文件过大，请控制在2MB以内']);
                 return;
             }
-            
+
             // 生成唯一文件名
             $ext = pathinfo($uploadedFile['name'], PATHINFO_EXTENSION);
-            $imageFileName = pathinfo($fileName, PATHINFO_FILENAME) . '_' . time() . '.' . $ext;
-            
+            $imageFileName = $instanceName . '_' . time() . '.' . $ext;
+
             // 确保images目录存在
             if (!is_dir($imagesDir)) {
                 mkdir($imagesDir, 0755, true);
             }
-            
+
             // 移动上传的文件
             if (!move_uploaded_file($uploadedFile['tmp_name'], $imagesDir . $imageFileName)) {
                 http_response_code(500);
                 echo json_encode(['error' => '图片上传失败']);
                 return;
             }
+
+            $thumbnailUrl = 'images/' . $imageFileName;
         }
-        
-        // 读取模板文件内容
-        $templateContent = file_get_contents($templateFile);
-        
-        // 替换模板中的标题
-        $newContent = str_replace(
-            '<title>幸运掉落 - 幸运降临</title>',
-            '<title>' . $displayName . ' - 幸运降临</title>',
-            $templateContent
-        );
-        
-        // 替换页面标题
-        $newContent = str_replace(
-            '<h2 class="neon-text rainbow">幸运掉落</h2>',
-            '<h2 class="neon-text rainbow">' . $displayName . '</h2>',
-            $newContent
-        );
-        
-        // 如果有描述，替换说明文字
-        if ($description) {
-            $newContent = str_replace(
-                '<p class="neon-text">神秘礼品等你来抽，运气决定一切！</p>',
-                '<p class="neon-text">' . htmlspecialchars($description) . '</p>',
-                $newContent
-            );
-        }
-        
-        // 如果有图片，修改中心展示图片
-        if ($imageFileName) {
-            // 创建图片HTML，使用适合展示区的样式
-            $showcaseImageHtml = '<img src="../images/' . $imageFileName . '" alt="' . htmlspecialchars($displayName) . '" style="max-width: 180px; max-height: 180px; object-fit: contain; border-radius: 15px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); filter: drop-shadow(0 10px 30px rgba(0, 0, 0, 0.5));">';
-            
-            // 替换展示区的emoji图标为图片
-            $newContent = str_replace(
-                '<div class="showcase-icon">🎁</div>',
-                '<div class="showcase-icon">' . $showcaseImageHtml . '</div>',
-                $newContent
-            );
-            
-            // 同时调整showcase-icon的CSS以适应图片
-            $imageStyle = "<style>\n";
-            $imageStyle .= ".showcase-icon img {\n";
-            $imageStyle .= "    animation: float 3s ease-in-out infinite;\n";
-            $imageStyle .= "}\n";
-            $imageStyle .= "</style>\n";
-            
-            // 在</head>前插入样式
-            $newContent = str_replace('</head>', $imageStyle . '</head>', $newContent);
-        }
-        
-        // 调整CSS路径（模板在根目录，新文件在pages目录）
-        $newContent = str_replace('../../css/', '../css/', $newContent);
-        $newContent = str_replace('../../js/', '../js/', $newContent);
-        
-        // 写入新文件
-        if (!file_put_contents($newFilePath, $newContent)) {
-            http_response_code(500);
-            echo json_encode(['error' => '创建文件失败']);
-            return;
-        }
-        
-        // 创建对应的奖品数据表
-        $tableName = str_replace('.html', '_prizes', $fileName);
-        $tableName = str_replace('-', '_', $tableName); // 替换连字符为下划线
-        
-        $createTableSQL = "CREATE TABLE IF NOT EXISTS `{$tableName}` (
-            `id` int(11) NOT NULL AUTO_INCREMENT,
-            `name` varchar(100) NOT NULL COMMENT '奖品名称',
-            `icon` varchar(10) DEFAULT '🎁' COMMENT '奖品图标',
-            `image_url` varchar(500) DEFAULT NULL COMMENT '奖品图片URL',
-            `value` decimal(10,2) DEFAULT 0.00 COMMENT '奖品价值',
-            `probability` decimal(5,2) DEFAULT 0.00 COMMENT '中奖概率(%)',
-            `rarity` enum('common','rare','epic','legendary') DEFAULT 'common' COMMENT '稀有度',
-            `quantity` int(11) DEFAULT NULL COMMENT '奖品数量，NULL表示无限制',
-            `original_probability` decimal(10,4) DEFAULT NULL COMMENT '原始概率，用于恢复',
-            `active` tinyint(1) DEFAULT 1 COMMENT '是否启用',
-            `created_at` timestamp DEFAULT CURRENT_TIMESTAMP,
-            `updated_at` timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            PRIMARY KEY (`id`)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='{$displayName}奖品表'";
-        
-        $db->exec($createTableSQL);
-        
-        // 插入默认奖品数据
+
+        // 开始事务
+        $pdo->beginTransaction();
+
+        // 创建Lucky实例到数据库
+        $stmt = $pdo->prepare("
+            INSERT INTO lucky_instances
+            (name, display_name, description, thumbnail_url, is_active, created_at, updated_at)
+            VALUES (?, ?, ?, ?, 1, NOW(), NOW())
+        ");
+
+        $stmt->execute([
+            $instanceName,
+            $displayName,
+            $description ?: null,
+            $thumbnailUrl
+        ]);
+
+        $newInstanceId = $pdo->lastInsertId();
+
+        // 插入默认奖品数据到prizes表（使用lucky_id关联）
         $defaultPrizes = [
-            ['name' => '大红', 'icon' => '🍎', 'value' => 10.00, 'probability' => 30.00, 'rarity' => 'common', 'quantity' => null, 'original_probability' => 30.00],
-            ['name' => '钻石', 'icon' => '💎', 'value' => 100.00, 'probability' => 5.00, 'rarity' => 'legendary', 'quantity' => 3, 'original_probability' => 5.00],
-            ['name' => '金币', 'icon' => '🪙', 'value' => 1.00, 'probability' => 50.00, 'rarity' => 'common', 'quantity' => null, 'original_probability' => 50.00],
-            ['name' => '空奖', 'icon' => '❌', 'value' => 0.00, 'probability' => 15.00, 'rarity' => 'common', 'quantity' => null, 'original_probability' => 15.00]
+            ['name' => '大红', 'icon' => '🍎', 'value' => 10.00, 'probability' => 30.00, 'rarity' => 'common'],
+            ['name' => '钻石', 'icon' => '💎', 'value' => 100.00, 'probability' => 5.00, 'rarity' => 'legendary'],
+            ['name' => '金币', 'icon' => '🪙', 'value' => 1.00, 'probability' => 50.00, 'rarity' => 'common'],
+            ['name' => '空奖', 'icon' => '❌', 'value' => 0.00, 'probability' => 15.00, 'rarity' => 'common']
         ];
-        
-        $insertSQL = "INSERT INTO `{$tableName}` (name, icon, value, probability, rarity, quantity, original_probability) VALUES (?, ?, ?, ?, ?, ?, ?)";
-        $stmt = $db->prepare($insertSQL);
-        
+
+        $insertSQL = "INSERT INTO prizes (lucky_id, name, icon, value, probability, rarity, active) VALUES (?, ?, ?, ?, ?, ?, 1)";
+        $stmt = $pdo->prepare($insertSQL);
+
         foreach ($defaultPrizes as $prize) {
             $stmt->execute([
-                $prize['name'], 
-                $prize['icon'], 
-                $prize['value'], 
-                $prize['probability'], 
-                $prize['rarity'],
-                $prize['quantity'],
-                $prize['original_probability']
+                $newInstanceId,
+                $prize['name'],
+                $prize['icon'],
+                $prize['value'],
+                $prize['probability'],
+                $prize['rarity']
             ]);
         }
-        
+
+        // 插入默认价格配置到draw_prices表
+        $defaultPrices = [
+            ['price_type' => 'single', 'price_value' => 10.00, 'button_name' => '单抽'],
+            ['price_type' => 'triple', 'price_value' => 30.00, 'button_name' => '三连抽'],
+            ['price_type' => 'quintuple', 'price_value' => 50.00, 'button_name' => '五连抽']
+        ];
+
+        $insertPriceSQL = "INSERT INTO draw_prices (lucky_id, price_type, price_value, button_name) VALUES (?, ?, ?, ?)";
+        $stmt = $pdo->prepare($insertPriceSQL);
+
+        foreach ($defaultPrices as $priceConfig) {
+            $stmt->execute([
+                $newInstanceId,
+                $priceConfig['price_type'],
+                $priceConfig['price_value'],
+                $priceConfig['button_name']
+            ]);
+        }
+
+        // 提交事务
+        $pdo->commit();
+
+        // 获取新创建的实例
+        $stmt = $pdo->prepare("SELECT * FROM lucky_instances WHERE id = ?");
+        $stmt->execute([$newInstanceId]);
+        $newInstance = $stmt->fetch(PDO::FETCH_ASSOC);
+
         echo json_encode([
-            'success' => true, 
-            'message' => 'Lucky页面创建成功',
-            'tableName' => $tableName
+            'success' => true,
+            'message' => 'Lucky实例创建成功！现在使用统一的lucky.html页面，通过URL参数访问',
+            'instance' => $newInstance,
+            'url' => '../pages/lucky.html?id=' . $newInstanceId,
+            'note' => '不再创建独立HTML文件，所有Lucky实例共享同一个页面'
         ]);
+
     } catch (Exception $e) {
+        if (isset($pdo) && $pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        error_log('创建Lucky实例失败: ' . $e->getMessage());
         http_response_code(500);
-        echo json_encode(['error' => '创建Lucky页面失败: ' . $e->getMessage()]);
+        echo json_encode(['error' => '创建失败: ' . $e->getMessage()]);
     }
 }
 
@@ -2934,33 +2888,37 @@ function updatePageMerge() {
 
 // 获取合并后的页面列表（用于main.html）
 function listLuckyPagesMerged() {
-    global $db;
     try {
+        // 使用统一Lucky页面系统：从数据库读取Lucky实例和分组
+        require_once __DIR__ . '/../config/database.php';
+        $database = new Database();
+        $pdo = $database->getConnection();
+        
         $items = [];
         
-        // 1. 获取所有合并组
-        $stmt = $db->query("
-            SELECT id, group_name, group_icon, group_thumb, description
-            FROM lucky_merge_groups
+        // 1. 获取所有分组
+        $stmt = $pdo->query("
+            SELECT id, name, description, icon
+            FROM lucky_groups
             WHERE is_active = 1
-            ORDER BY id ASC
+            ORDER BY sort_order ASC, id ASC
         ");
         $groups = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         foreach ($groups as $group) {
-            // 获取该组的第一个页面作为入口
-            $stmt = $db->prepare("
-                SELECT file_name, display_name, thumb_image
-                FROM lucky_pages_meta
-                WHERE merge_group_id = ? AND is_active = 1
-                ORDER BY merge_order ASC
+            // 获取该组的第一个实例作为入口
+            $stmt = $pdo->prepare("
+                SELECT id, name, display_name, thumbnail_url
+                FROM lucky_instances
+                WHERE group_id = ? AND is_active = 1
+                ORDER BY sort_order ASC, id ASC
                 LIMIT 1
             ");
             $stmt->execute([$group['id']]);
-            $firstPage = $stmt->fetch(PDO::FETCH_ASSOC);
+            $firstInstance = $stmt->fetch(PDO::FETCH_ASSOC);
             
-            if ($firstPage) {
-                // 自动选择modle图片：按照合并组ID选择 modle1.png, modle2.png 等
+            if ($firstInstance) {
+                // 自动选择modle图片：按照分组ID选择 modle1.png, modle2.png 等
                 $modleImage = "images/modle/modle{$group['id']}.png";
                 $modleImagePath = dirname(__DIR__, 2) . '/' . $modleImage;
                 
@@ -2972,69 +2930,39 @@ function listLuckyPagesMerged() {
                 $items[] = [
                     'type' => 'group',
                     'groupId' => $group['id'],
-                    'fileName' => $firstPage['file_name'],
-                    'displayName' => $group['group_name'],
+                    'fileName' => 'lucky.html?id=' . $firstInstance['id'], // 使用新URL格式
+                    'displayName' => $group['name'],
                     'description' => $group['description'],
-                    'icon' => $group['group_icon'],
-                    'thumbImage' => $modleImage  // 使用modle图片作为封面
+                    'icon' => $group['icon'],
+                    'thumbImage' => $modleImage
                 ];
             }
         }
         
-        // 2. 获取所有独立页面（未合并的）
-        $stmt = $db->query("
-            SELECT file_name, display_name, description, thumb_image
-            FROM lucky_pages_meta
-            WHERE (merge_group_id IS NULL OR merge_group_id = 0) AND is_active = 1
-            ORDER BY file_name ASC
+        // 2. 获取所有独立实例（未分组的）
+        $stmt = $pdo->query("
+            SELECT id, name, display_name, description, thumbnail_url
+            FROM lucky_instances
+            WHERE (group_id IS NULL OR group_id = 0) AND is_active = 1
+            ORDER BY sort_order ASC, id ASC
         ");
-        $independentPages = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $independentInstances = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
-        foreach ($independentPages as $page) {
+        foreach ($independentInstances as $instance) {
             $items[] = [
                 'type' => 'page',
-                'fileName' => $page['file_name'],
-                'displayName' => $page['display_name'],
-                'description' => $page['description'] ?: '抽取心爱的大红',
+                'fileName' => 'lucky.html?id=' . $instance['id'], // 使用新URL格式
+                'displayName' => $instance['display_name'],
+                'description' => $instance['description'] ?: '抽取心爱的大红',
                 'icon' => '🍎',
-                'thumbImage' => $page['thumb_image']
+                'thumbImage' => $instance['thumbnail_url']
             ];
-        }
-        
-        // 3. 获取数据库中不存在的页面（兼容旧系统）
-        $pagesDir = dirname(__DIR__, 2) . '/pages/';
-        if (is_dir($pagesDir)) {
-            $files = glob($pagesDir . 'lucky*.html');
-            $existingFiles = array_column($independentPages, 'file_name');
-            
-            // 获取合并组中的文件
-            foreach ($groups as $group) {
-                $stmt = $db->prepare("SELECT file_name FROM lucky_pages_meta WHERE merge_group_id = ?");
-                $stmt->execute([$group['id']]);
-                $groupFiles = $stmt->fetchAll(PDO::FETCH_COLUMN);
-                $existingFiles = array_merge($existingFiles, $groupFiles);
-            }
-            
-            foreach ($files as $file) {
-                $fileName = basename($file);
-                if (!in_array($fileName, $existingFiles)) {
-                    $displayName = extractPageTitle($file) ?: str_replace('.html', '', $fileName);
-                    $items[] = [
-                        'type' => 'page',
-                        'fileName' => $fileName,
-                        'displayName' => $displayName,
-                        'description' => '抽取心爱的大红',
-                        'icon' => '🍎',
-                        'thumbImage' => null
-                    ];
-                }
-            }
         }
         
         echo json_encode(['success' => true, 'items' => $items]);
     } catch (Exception $e) {
         http_response_code(500);
-        echo json_encode(['error' => '获取页面列表失败: ' . $e->getMessage()]);
+        echo json_encode(['success' => false, 'error' => '获取页面列表失败: ' . $e->getMessage()]);
     }
 }
 

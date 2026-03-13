@@ -1,5 +1,18 @@
 RewriteEngine On
 
+# Lucky页面重定向规则 (301永久重定向)
+RewriteRule ^pages/lucky1\.html$ /pages/lucky.html?id=1 [R=301,L,QSA]
+RewriteRule ^pages/lucky2\.html$ /pages/lucky.html?id=2 [R=301,L,QSA]
+RewriteRule ^pages/lucky3\.html$ /pages/lucky.html?id=3 [R=301,L,QSA]
+RewriteRule ^pages/lucky4\.html$ /pages/lucky.html?id=4 [R=301,L,QSA]
+RewriteRule ^pages/lucky5\.html$ /pages/lucky.html?id=5 [R=301,L,QSA]
+RewriteRule ^pages/lucky6\.html$ /pages/lucky.html?id=6 [R=301,L,QSA]
+RewriteRule ^pages/lucky7\.html$ /pages/lucky.html?id=7 [R=301,L,QSA]
+RewriteRule ^pages/lucky8\.html$ /pages/lucky.html?id=8 [R=301,L,QSA]
+RewriteRule ^pages/lucky9\.html$ /pages/lucky.html?id=9 [R=301,L,QSA]
+RewriteRule ^pages/lucky10\.html$ /pages/lucky.html?id=10 [R=301,L,QSA]
+RewriteRule ^pages/lucky11\.html$ /pages/lucky.html?id=11 [R=301,L,QSA]
+
 # API 重写规则
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
