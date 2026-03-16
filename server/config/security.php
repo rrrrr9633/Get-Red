@@ -4,10 +4,9 @@
  * 统一管理Session、错误显示等安全设置
  */
 
-// 检测是否为生产环境
-$isProduction = ($_SERVER['SERVER_NAME'] !== 'localhost' && 
-                 $_SERVER['SERVER_NAME'] !== '127.0.0.1' &&
-                 !in_array($_SERVER['REMOTE_ADDR'], ['127.0.0.1', '::1']));
+// 环境配置：当前项目已经处于生产环境
+// 如需本地调试，可改为 false 或根据环境变量判断
+$isProduction = true;
 
 // 错误显示配置
 if ($isProduction) {
@@ -87,6 +86,8 @@ function configureSecureSession() {
 
 // 强制刷新Session Cookie（在登录后调用）
 function refreshSessionCookie() {
+    global $isProduction;
+    
     if (session_status() === PHP_SESSION_ACTIVE) {
         // 保存当前 Session 数据
         $sessionData = $_SESSION;
@@ -105,13 +106,11 @@ function refreshSessionCookie() {
                 'expires' => time() + 28800, // 8小时
                 'path' => '/',
                 'domain' => '',
-                'secure' => false, // 开发环境使用HTTP
+                'secure' => $isProduction ? true : false,
                 'httponly' => true,
-                'samesite' => 'Lax'
+                'samesite' => $isProduction ? 'Lax' : ''
             ]
         );
-        
-        error_log("Session Cookie 已刷新: " . session_name() . "=" . session_id());
     }
 }
 
@@ -133,20 +132,10 @@ function verifyCsrfToken() {
         }
     }
     
-    // 调试信息
-    error_log("CSRF验证 - Session Token: " . ($_SESSION['csrf_token'] ?? 'null'));
-    error_log("CSRF验证 - Request Token: " . ($token ?: 'empty'));
-    error_log("CSRF验证 - Session ID: " . session_id());
-    
     if (!isset($_SESSION['csrf_token']) || empty($token)) {
         http_response_code(403);
         echo json_encode([
-            'error' => 'CSRF验证失败：缺少token',
-            'debug' => [
-                'has_session_token' => isset($_SESSION['csrf_token']),
-                'has_request_token' => !empty($token),
-                'session_id' => session_id()
-            ]
+            'error' => 'CSRF验证失败：缺少token'
         ]);
         exit;
     }
@@ -154,11 +143,7 @@ function verifyCsrfToken() {
     if (!hash_equals($_SESSION['csrf_token'], $token)) {
         http_response_code(403);
         echo json_encode([
-            'error' => 'CSRF验证失败：token无效',
-            'debug' => [
-                'session_token_length' => strlen($_SESSION['csrf_token']),
-                'request_token_length' => strlen($token)
-            ]
+            'error' => 'CSRF验证失败：token无效'
         ]);
         exit;
     }
@@ -176,33 +161,61 @@ function generateCsrfToken() {
 
 // 请求频率限制
 function checkRateLimit($action, $maxAttempts = 5, $timeWindow = 300) {
-    $ip = $_SERVER['REMOTE_ADDR'];
-    $key = "rate_limit_{$action}_{$ip}";
+    $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+    $key = sha1($action . '|' . $ip);
     
-    if (!isset($_SESSION[$key])) {
-        $_SESSION[$key] = ['count' => 0, 'start_time' => time()];
+    // 使用临时文件进行基于 IP 的限流，避免仅依赖单个 Session
+    $dir = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'rate_limits';
+    if (!is_dir($dir)) {
+        @mkdir($dir, 0700, true);
     }
     
-    $data = $_SESSION[$key];
+    $file = $dir . DIRECTORY_SEPARATOR . $key . '.json';
+    $now  = time();
+    $data = [
+        'count'      => 0,
+        'start_time' => $now
+    ];
+    
+    if (file_exists($file)) {
+        $content = @file_get_contents($file);
+        if ($content !== false) {
+            $decoded = json_decode($content, true);
+            if (is_array($decoded) && isset($decoded['count'], $decoded['start_time'])) {
+                $data = $decoded;
+            }
+        }
+    }
     
     // 时间窗口过期，重置计数器
-    if (time() - $data['start_time'] > $timeWindow) {
-        $_SESSION[$key] = ['count' => 1, 'start_time' => time()];
+    if ($now - $data['start_time'] > $timeWindow) {
+        $data = [
+            'count'      => 1,
+            'start_time' => $now
+        ];
+        @file_put_contents($file, json_encode($data), LOCK_EX);
         return true;
     }
     
     // 检查是否超限
     if ($data['count'] >= $maxAttempts) {
-        $remainingTime = $timeWindow - (time() - $data['start_time']);
+        $remainingTime = $timeWindow - ($now - $data['start_time']);
+        if ($remainingTime < 0) {
+            $remainingTime = 0;
+        }
+        
         http_response_code(429);
         echo json_encode([
-            'error' => '请求过于频繁，请稍后再试',
+            'error'       => '请求过于频繁，请稍后再试',
             'retry_after' => $remainingTime
         ]);
         exit;
     }
     
-    $_SESSION[$key]['count']++;
+    // 增加计数并写回文件
+    $data['count']++;
+    @file_put_contents($file, json_encode($data), LOCK_EX);
+    
     return true;
 }
 
