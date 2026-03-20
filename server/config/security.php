@@ -4,9 +4,27 @@
  * 统一管理Session、错误显示等安全设置
  */
 
-// 环境配置：当前项目已经处于生产环境
-// 如需本地调试，可改为 false 或根据环境变量判断
-$isProduction = true;
+// 环境配置：
+// 优先根据 APP_ENV 环境变量判断，其次在本地（localhost/IP）自动启用开发模式
+$appEnv = getenv('APP_ENV');
+// getenv() 在未设置时可能返回 false；这里统一转成空字符串，避免默认直接走 production
+if ($appEnv === false) {
+    $appEnv = '';
+}
+$appEnvLower = strtolower(trim($appEnv));
+
+// 本地访问：默认按开发模式（除非显式设置为 production/prod）
+$serverName = $_SERVER['SERVER_NAME'] ?? '';
+$remoteAddr = $_SERVER['REMOTE_ADDR'] ?? '';
+$isLocalHost = in_array($serverName, ['localhost', '127.0.0.1']) ||
+               in_array($remoteAddr, ['127.0.0.1', '::1']);
+
+if ($isLocalHost) {
+    $isProduction = in_array($appEnvLower, ['production', 'prod']);
+} else {
+    // 非本地：根据 APP_ENV 判断（local/dev/development/test 为开发，其余为生产）
+    $isProduction = !in_array($appEnvLower, ['local', 'dev', 'development', 'test']);
+}
 
 // 错误显示配置
 if ($isProduction) {
@@ -172,13 +190,33 @@ function checkRateLimit($action, $maxAttempts = 5, $timeWindow = 300) {
     
     $file = $dir . DIRECTORY_SEPARATOR . $key . '.json';
     $now  = time();
+    
+    // 通过 flock 对“读-改-写”整个过程加锁，避免并发竞态条件
+    $fh = @fopen($file, 'c+');
+    if ($fh === false) {
+        // 打不开文件时，直接放行请求，避免影响正常功能
+        return true;
+    }
+    
+    // 独占锁，阻塞直到获得锁
+    if (!flock($fh, LOCK_EX)) {
+        fclose($fh);
+        return true;
+    }
+    
+    // 从文件读取当前计数
     $data = [
         'count'      => 0,
         'start_time' => $now
     ];
     
-    if (file_exists($file)) {
-        $content = @file_get_contents($file);
+    // 将文件指针移到开头再读
+    clearstatcache(true, $file);
+    $filesize = filesize($file);
+    if ($filesize > 0) {
+        // 确保文件指针在开头位置再读取
+        rewind($fh);
+        $content = fread($fh, $filesize);
         if ($content !== false) {
             $decoded = json_decode($content, true);
             if (is_array($decoded) && isset($decoded['count'], $decoded['start_time'])) {
@@ -193,28 +231,41 @@ function checkRateLimit($action, $maxAttempts = 5, $timeWindow = 300) {
             'count'      => 1,
             'start_time' => $now
         ];
-        @file_put_contents($file, json_encode($data), LOCK_EX);
-        return true;
-    }
-    
-    // 检查是否超限
-    if ($data['count'] >= $maxAttempts) {
-        $remainingTime = $timeWindow - ($now - $data['start_time']);
-        if ($remainingTime < 0) {
-            $remainingTime = 0;
+    } else {
+        // 检查是否超限
+        if ($data['count'] >= $maxAttempts) {
+            $remainingTime = $timeWindow - ($now - $data['start_time']);
+            if ($remainingTime < 0) {
+                $remainingTime = 0;
+            }
+            
+            // 更新文件中的数据后再返回（记录当前被拒绝的状态）
+            ftruncate($fh, 0);
+            rewind($fh);
+            fwrite($fh, json_encode($data));
+            fflush($fh);
+            flock($fh, LOCK_UN);
+            fclose($fh);
+            
+            http_response_code(429);
+            echo json_encode([
+                'error'       => '请求过于频繁，请稍后再试',
+                'retry_after' => $remainingTime
+            ]);
+            exit;
         }
         
-        http_response_code(429);
-        echo json_encode([
-            'error'       => '请求过于频繁，请稍后再试',
-            'retry_after' => $remainingTime
-        ]);
-        exit;
+        // 尚未超限，增加计数
+        $data['count']++;
     }
     
-    // 增加计数并写回文件
-    $data['count']++;
-    @file_put_contents($file, json_encode($data), LOCK_EX);
+    // 将更新后的数据写回文件（覆盖原内容）
+    ftruncate($fh, 0);
+    rewind($fh);
+    fwrite($fh, json_encode($data));
+    fflush($fh);
+    flock($fh, LOCK_UN);
+    fclose($fh);
     
     return true;
 }
